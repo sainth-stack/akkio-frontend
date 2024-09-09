@@ -3,7 +3,6 @@ import Papa from 'papaparse';
 import { app } from '../firebaseConfig';
 import { DataReducer as reducer } from '../reducers/DataReducer'
 import { Spin } from 'antd';
-import { getFirestore, collection, addDoc, onSnapshot } from 'firebase/firestore';
 import { read, utils } from 'xlsx'; // Import xlsx for Excel file parsing
 
 const GetDataContext = createContext()
@@ -83,7 +82,6 @@ const GetDataApi = ({ children }) => {
     return transformedData;
   };
 
-  const db = getFirestore(app);
 
   const handleUpload = async (file, database = false, data = [],tableName='') => {
     setLoading(true)

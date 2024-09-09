@@ -1,0 +1,33 @@
+table {
+    font-family: arial, sans-serif;
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid black;
+}
+
+th, td {
+    border: 1px solid #ddd !important;
+    padding: 8px;
+  }
+
+.nametd {
+    width: 800px;
+}
+
+tr:nth-child(even) {
+    background-color: inherit;
+}
+
+.page-header{
+    font-size: 20px;
+    font-family: Poppins;
+    font-weight: 600;
+    line-height: 28px;
+}
+
+.desc-ben{
+    font-size: 16px;
+    font-weight: 400;
+    font-family: Poppins;
+    line-height: 20px;
+}

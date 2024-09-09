@@ -1,0 +1,13 @@
+.cardHeaderContainer{
+    display: flex;
+    padding: 16px 20px;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    height: 63px;
+    overflow: hidden;
+    border-top-right-radius: 8px;
+    border-top-left-radius: 8px;
+    border-bottom: 1px solid hsl(240, 17.4%, 91%);
+    background: hsl(240, 27.3%, 97.8%);
+}

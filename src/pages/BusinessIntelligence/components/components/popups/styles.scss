@@ -1,0 +1,38 @@
+.container3 {
+    display: flex;
+    justify-content: center;
+    // align-items: center;
+    // height: 100vh;
+}
+
+.cardnew {
+    background-color: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 20px;
+    width: 400px;
+    border:1px solid #e4e7ec;
+}
+
+.card-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+label {
+    margin-bottom: 5px;
+    font-weight: 500;
+    font-size: 14px;
+    color: hsl(240, 46.3%, 8%);
+}
+
+input,select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    width: calc(100% - 16px);
+}

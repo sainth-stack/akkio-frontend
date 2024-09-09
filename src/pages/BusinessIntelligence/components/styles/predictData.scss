@@ -1,0 +1,175 @@
+.predictLeftCont {
+    padding-left: 30px;
+    padding-right: 30px;
+    padding-top: 20px;
+    border-right: 1px solid #e0eaf0;
+    height: calc(100vh - 120px);
+}
+
+.predictHeader {
+    color: #101828;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.predictSecondHeader {
+    max-width: 300px;
+    margin-bottom: 12px;
+    font-family: Inter;
+    color: #344054;
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+.paragraphText {
+    max-width: 300px;
+    opacity: .8;
+    font-size: 12px;
+    color: #667085;
+    margin-bottom: 15px;
+}
+
+.predictFieldsContainer {
+    position: relative;
+    width: 100%;
+    padding: 0 5px;
+    border: 1px solid #c0cadc;
+    margin-bottom: 10px;
+    font-family: Inter, sans-serif;
+    font-weight: 400;
+}
+
+.prediction-multiselect-searchbox {
+    font-family: Inter, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    outline: none;
+    height: 46px;
+    color: #59707f;
+    background-color: #fff;
+    box-sizing: border-box;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+    transition: border-width .1s, border-color .1s, border-radius .1s, background-image .1s;
+    background-image: url(../../../../assets/svg/search-icon.svg);
+    background-position: 13px 50%;
+    background-repeat: no-repeat no-repeat;
+    background-size: 16px;
+    border-bottom: 1px solid #e2e8f4;
+}
+
+.checkboxTick {
+    background-color: hsl(211.2, 95.3%, 58%);
+    border-color: hsl(211.2, 95.3%, 58%);
+    background-image: url(../../../../assets/svg/checkBoxWhite.svg);
+    background-position: 50%;
+    background-repeat: no-repeat;
+    background-size: 12px;
+}
+
+.checkboxContainer {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #d0d5dd;
+    border-radius: 20px;
+    margin-top: 0;
+    margin-left: 0;
+    margin-right: 10px;
+}
+
+.fieldText {
+    font-size: 14px;
+    color: #333333;
+    font-weight: 400;
+}
+
+.rightContainer {
+    padding-top: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+    height: calc(100vh - 120px);
+    overflow: auto;
+}
+
+
+.rightttconttt {
+    padding-left: 50px;
+}
+
+.rightHeaderText {
+    color: #101928;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.rightDesctext {
+    color: #9ba9b2;
+    font-size: 12px;
+    font-family: Inter;
+    margin-top: 10px;
+}
+
+
+.regressioncard {
+    border-style: solid;
+    border-width: 1px;
+    border-color: #e4e7ec;
+    border-radius: 10px;
+    background-color: #fff;
+    padding: 20px;
+    margin-bottom: 80px;
+    min-width: 350px;
+    flex: 1;
+    overflow-x: auto;
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    width: 40%;
+    margin-top: 10px;
+}
+
+.regressionCardInnerContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.cardFirstLineText {
+    color: #667085;
+    font-size: 14px;
+}
+
+.cardLargeNumberText {
+    color: #101828;
+    font-size: 32px;
+    font-weight: 500;
+}
+
+.secondcardFirstLineText {
+    font-size: 16px;
+    color: #475467;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.secondcardLargeNumberText {
+    color: #102818;
+    font-size: 28px;
+    font-weight: 500
+}
+
+
+.regressionCardInnerContainer table{
+    border:none !important;
+    height: fit-content;
+    th{
+        background-color: #ffff;
+    }
+}

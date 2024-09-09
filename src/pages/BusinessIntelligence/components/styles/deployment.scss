@@ -1,0 +1,116 @@
+.inputStyles{
+    font:'400 14px/20px "Inter", sans-serif';
+    padding:4px 8px !important;
+    width: 100%;
+    border-radius: 4px;
+    border: 1px solid hsl(240, 17.4%, 91%);
+    background: rgba(255, 255, 255, 1);
+    color: hsl(240, 46.3%, 8%);
+    padding: 6px 10px 0;
+    max-width: 100%;
+    box-shadow: 0px 1px 2px 0px rgba(18, 18, 23, .05);
+    transition: background-color 50ms cubic-bezier(.55, 0, .45, 1), border-color 50ms cubic-bezier(.55, 0, .45, 1);
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.rightttContainerDeploy{
+    height: 100%;
+    border: 1px solid #c0cadc;
+    border-radius: 5px 5px 2px 2px;
+    overflow: hidden;
+    align-items: start;
+    display: flex;
+    flex-direction: column;
+    padding-left: 20px;
+    padding-top: 20px;
+}
+
+.deployScreenContainer{
+    align-content: flex-start;
+    border: 1px none #e0eaf0;
+    border-radius: 10px;
+    box-shadow: #1e284c1a 0 26px 16px -11px;
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: wrap;
+    overflow: hidden;
+    position: relative;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.fieldContainerDepl{
+    -webkit-box-flex: 1;
+    box-shadow: #e0eaf0 0 0 0 0.5px inset;
+    box-sizing: border-box;
+    // flex: 1;
+    // min-width: 150px;
+    position: relative;
+    padding: 5px;
+}
+
+.deployScreenInput{
+    background-color: transparent;
+    border: 2px transparent;
+    border-style: none none solid;
+    box-sizing: border-box;
+    color: #000;
+    display: block;
+    font-size: 16px;
+    height: 40px;
+    margin: 0;
+    transition: border-color .15s cubic-bezier(.215,.61,.355,1);
+    width: 100%;
+    white-space: nowrap;
+}
+.deployScreenSelectInput{
+    background-color: transparent;
+    border: 2px transparent;
+    border-style: none none solid;
+    box-sizing: border-box;
+    color: #000;
+    display: block;
+    font-size: 16px;
+    height: 40px;
+    margin: 0;
+    transition: border-color .15s cubic-bezier(.215,.61,.355,1);
+    width: 100%;
+    // white-space: nowrap;
+    border-style: none none solid;
+
+}
+.deployPredictButton{
+    align-items: center;
+    background-color: #000;
+    border-radius: 8px;
+    box-shadow: #1e284c1a 0 25px 20px -9px;
+    box-sizing: border-box;
+    color: #fff;
+    display: flex;
+    font-size: 16px;
+    height: 38px;
+    justify-content: center;
+    margin-bottom: 10px;
+    max-width: 100%;
+    text-decoration: none;
+    width: 40%;
+    margin-top: 20px;
+    &:hover{
+        background-color: #000;
+    }
+}
+
+
+.exportButtonDeploy{
+    align-items: center;
+    background-color: transparent;
+    border-radius: 10px;
+    box-sizing: border-box;
+    display: flex;
+    font-size: 16px;
+    height: 38px;
+    justify-content: center;
+    margin-bottom: 10px;
+    width: 100%;
+}

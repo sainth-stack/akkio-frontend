@@ -1,0 +1,43 @@
+.middleContent {
+  text-align: center;
+  padding: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.middleContent h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+.middleContent p {
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+}
+
+.middleContent .ctaButton {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.middleContent .ctaButton:hover {
+  background-color: #0056b3;
+}
+
+
+.rightContent {
+  height: 92vh;
+  background-image: url("../../assets/images/download.jpeg");
+  background-size: cover;
+  /* Make the background image cover the entire element */
+  background-repeat: no-repeat;
+  /* Prevent the background image from repeating */
+  background-position: center;
+}

@@ -1,0 +1,103 @@
+.popup-container {
+    position: fixed;
+    right: 0px;
+    top: 208px;
+    width: 400px;
+    height: 600px;
+    background-color: rgba(#fffdfcde, 0.99);
+    color: black;
+    // padding: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    align-items: center;
+    box-shadow: -1px -1px 6px rgba($color: #000000, $alpha: 0.25);
+    border-radius: 5px;
+    font-family: Inter, sans-serif;
+    ;
+
+    .title {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        margin-top: 40px;
+        padding: 0px 20px;
+        padding: 30px;
+        border-bottom: 1px solid black;
+        font-size: 20px;
+        // border-bottom: 0.25px solid;
+        align-items: center;
+        height: 20px;
+
+        .close-btn {
+            scale: 1;
+            transition: 0.5s ease-in;
+        }
+
+        .close-btn:hover {
+            border-radius: 3px;
+            // padding: 5px;
+            scale: 1.1;
+            transition: 0.5s ease-out;
+            background-color: rgba(rgb(193, 193, 193), 0.3);
+        }
+    }
+
+    .data {
+        margin-top: 0px;
+        display: flex;
+        width: 100%;
+        padding: 0px 10px;
+        height: 80px;
+        font-size: 1.25em;
+        // padding: 5px 0px;
+        justify-content: space-around;
+        align-items: center;
+        border-bottom: 1.5px solid gray;
+        border-left: none;
+
+        .rows {
+            border-right: 1.5px solid gray;
+            padding: 10px 15px;
+            // display: flex;
+            // justify-content: center;
+            // align-items: center;
+            // gap: 4px;
+        }
+    }
+
+    .graph {
+        position: relative;
+        top: -80px;
+    }
+
+}
+
+.close-popup {
+    transition: 0.2s ease-out;
+    transform: translateX(100%);
+}
+
+.open-popup {
+    transition: 0.2s ease-in;
+    transform: translateX(0);
+}
+
+.new-fin {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    // justify-content: center;
+    // align-items: center;
+    height: calc(100vh - 250px);
+    overflow-y: auto;
+    /* Set overflow-y to auto */
+    overflow-x: hidden;
+}
+
+@media screen and (max-width:590px) {
+    .popup-container {
+        top: 469px;
+
+    }
+}

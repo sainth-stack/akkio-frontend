@@ -1,0 +1,112 @@
+.headerText{
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.4em;
+    text-align: center;
+    margin-top: 60px;
+    margin-bottom: 40px;
+}
+
+.mainConatiner{
+    background-color: #fff;
+    display: grid;
+    grid-gap: 5px;
+    border-radius: 5px;
+    grid-template-rows: auto;
+    grid-template-columns: repeat(auto-fit,minmax(310px,1fr));
+    grid-auto-columns: 1fr;
+    padding: 40px;
+    margin: auto;
+    max-width: 1320px;
+    box-shadow: 0 1px 3px #0000001a;
+    border: 1px solid #e0eaf0;
+}
+
+.outerContainer{
+    display: inline-block;
+    position: relative;
+    font-size: 16px;
+    width: auto;
+    height: 135px;
+    margin: 10px;
+}
+
+.cardContainer{
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    -webkit-box-direction: normal;
+    -webkit-box-orient: vertical;
+    -webkit-box-pack: end;
+    background-color: #fcfeff;
+    border: 1px solid #e0eaf0;
+    border-radius: 5px;
+    box-shadow: #00000005 0 3px 4px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    transform: scale(1.00001);
+    transition: background-color .2s cubic-bezier(.25,.46,.45,.94),border-color .2s cubic-bezier(.25,.46,.45,.94),box-shadow .2s cubic-bezier(.215,.61,.355,1),transform .2s cubic-bezier(.215,.61,.355,1),-webkit-transform .2s cubic-bezier(.215,.61,.355,1);
+    width: 100%;
+}
+
+.stepContainer{
+    display: flex;
+    height: 100%;
+    padding: 15px;
+    width: 100%;
+    gap: 7px;
+}
+
+.footerContainer{
+    background-color: #f2f5f8;
+    border-top: 1px solid #e0eaf0;
+    display: flex;
+    align-items: center;
+    height: 40px;
+    padding-left: 15px;
+    padding-right: 15px;
+    width: 100%;
+}
+
+.footerText{
+    color: #a4aeb7;
+    font-family: Satoshi,sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1em;
+    margin-right: 10px;
+}
+
+.textHeader{
+    color: #59707f;
+    font-family: Satoshi,sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 24px;
+    // margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.textDesc{
+    color: #a4aeb7;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 20px;
+    font-family: Satoshi,sans-serif;
+}
+
+.stepCommonContainer{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    padding: 15px;
+    width: 100%;
+    gap: 7px;
+}

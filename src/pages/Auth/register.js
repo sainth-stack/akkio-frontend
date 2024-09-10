@@ -1,5 +1,5 @@
-import Logo from "../../assets/images/Logo2.png";
-import loginbg from "../../assets/svg/loginbg.svg";
+import Logo from "../../assets/images/Logo2.jpg";
+import loginbg from "../../assets/svg/bg.jpg";
 import eye from "../../assets/svg/eye-fill.svg";
 import eye2 from "../../assets/svg/eye-slash.svg";
 import { useState } from "react";
@@ -147,7 +147,10 @@ export const Register =()=>{
             </div>
           </div>
         </div>
-        <div className="col-md-6 p-0 m-0 bg-biscuit text-center pt-4 pb-4 d-none d-lg-block">
+        <div className="col-md-6 p-0">
+        <img className="img-fluid" src={loginbg} alt="Logo" style={{height:'100vh',width:'100%',overflow:'auto'}} />
+      </div>
+        {/* <div className="col-md-6 p-0 m-0 bg-biscuit text-center pt-4 pb-4 d-none d-lg-block">
           <h5 className="text-green font-weight-bold mt-2">WELCOME TO KEYPULSE</h5>
           <h3 className="mt-3">Your Digital Growth Partner <br /> For Manufacturing</h3>
           <div className="d-flex justify-content-center">
@@ -155,7 +158,7 @@ export const Register =()=>{
               <img className="img-fluid p-3" src={loginbg} alt="Logo" />
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     )
 }

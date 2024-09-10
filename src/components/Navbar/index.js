@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from "react";
 // import "./styles.scss";
 // import userprofile from '../../assets/images/userprofile.png'
 import { useNavigate } from "react-router-dom";
-import Logo from '../../assets/images/Logo2.png'
+import Logo from '../../assets/images/Logo2.jpg'
 import { AiTwotoneCalendar } from 'react-icons/ai'
 import { useLocation } from "react-router-dom";
 function Navbar() {
@@ -31,7 +31,7 @@ function Navbar() {
       setName("Business KPI")
     }
     else {
-      setName("Process")
+      setName("")
     }
   }, [location.pathname])
 

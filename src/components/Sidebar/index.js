@@ -56,15 +56,15 @@ export default function Sidebar() {
   }
   return (
     <>
-      <div class="shadow sidebar-scroll sticky-top mt-3" style={{ overflow: 'auto', width: '220px', position: "fixed", left: 0, top: 60, background: '#000', zIndex: 10, height: '92vh' }}>
-        <div style={{ padding: '8px', paddingTop: '24px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+      <div class="shadow sidebar-scroll sticky-top mt-2" style={{ overflow: 'auto', width: '220px', position: "fixed", left: 0, top: 60, background: '#000', zIndex: 10, height: '92vh' }}>
+        {/* <div style={{ padding: '8px', paddingTop: '24px', display: 'flex', alignItems: 'center', gap: '5px' }}>
           <IoLocationSharp size={30} style={{ color: 'white' }} />
           <div>
             <h2 style={{ fontSize: '14px', fontWeight: 500, color: 'white' }}>Digital Twin</h2>
             <h2 style={{ fontSize: '12px', fontWeight: 400, color: 'white' }}>U.S</h2>
           </div>
-        </div>
-        <hr style={{ border: '1px solid white', padding: 0, margin: 0, marginTop: '3px' }} />
+        </div> */}
+        <hr style={{ border: '1px solid white', padding: 0, margin: 0, marginTop: '0px' }} />
         <ul class="sidebar-list-items pt-2" id="menu">
           {data.map((item) => {
             let NewIcon = (item.id === 2 && expand.expand1) || (item.id === 3 && expand.expand2) || (item.id === 5 && expand.expand3) ? FaAngleDown : FaAngleRight

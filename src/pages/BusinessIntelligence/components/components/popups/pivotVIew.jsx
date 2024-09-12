@@ -20,7 +20,6 @@ export const PivotView = ({ headers, data, removeDuplicates }) => {
             }
         })
         let uniqueArr = removeDuplicates(updatedArray)
-        console.log(uniqueArr)
         if (type == 'dp') {
             if (!isNaN(data[0][header])) {
                 return 'Number'
@@ -39,7 +38,7 @@ export const PivotView = ({ headers, data, removeDuplicates }) => {
             }
         }
         if (type == 'er') {
-            return uniqueArr.filter(element => element === undefined || element =='').length || 0;
+            return uniqueArr.filter(element => element === undefined || element ==='')?.length || 0;
         }
         if(type=='uv'){
             return uniqueArr.length

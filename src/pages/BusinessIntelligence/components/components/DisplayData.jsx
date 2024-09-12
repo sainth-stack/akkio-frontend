@@ -16,21 +16,14 @@ const DisplayData = () => {
   const [headers, setHeaders] = useState([])
   const [hoveredRowIndex, setHoveredRowIndex] = useState(-1);
   const [displaypopup, setDisplaypopup] = useState(false)
-  const [valuesArray, setValuesArray] = useState([])
   const [loading, setLoading] = useState(false)
   const [popup, setPopup] = useState(displaypopup)
   const [prepData, setPrepData] = useState("")
   const [filename, setFilename] = useState("")
-  const [displayData, setDisplayData] = useState({})
-  // const [file, setFile] = useState(null)
-
-  const navigate = useNavigate()
-
-  // Data Prep States
   const [open, setOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [view, setView] = useState(false)
-
+  const navigate = useNavigate()
   const {
     displayPopupFun,
     displayContent,
@@ -64,6 +57,11 @@ const DisplayData = () => {
   const showModal = () => {
     setOpen(true);
   };
+
+  const handleChatprepData = () => {
+    localStorage.setItem('prepData', JSON.stringify(data));
+    navigate('/gen-ai')
+  }
   const handleOk = async () => {
     // setModalText('The modal will be closed after two seconds');
     // setPrepData(e.)
@@ -73,17 +71,7 @@ const DisplayData = () => {
       setConfirmLoading(false)
     }, 2000)
     setOpen(false)
-
-
   };
-  const handleCancel = () => {
-    console.log('Clicked cancel button');
-    setOpen(false);
-  };
-
-  const handleEvent = (e) => {
-    setPrepData(e.target.value)
-  }
 
   const handleRowHover = (index) => {
     setHoveredRowIndex(index);
@@ -144,9 +132,12 @@ const DisplayData = () => {
     setPopup(displaypopup)
   }, [displaypopup])
 
-  useEffect(() => {
-
-  }, [])
+  const handleClearedData = async () => {
+    const data = await handleCleanData()
+    setData(data?.displayContent?.data)
+    const rowsRemoved = data?.displayContent?.rowsRemoved || 0;
+    alert(`Rows removed: ${rowsRemoved}`);
+  }
 
 
   return (
@@ -164,10 +155,10 @@ const DisplayData = () => {
         </div>
         <div className="filterData ms-2">
           <Button variant="outlined" onClick={() => {
-            showModal()
+            handleChatprepData()
           }}>Chat Data Prep</Button>
           <div className="clean-section" onClick={() => {
-            handleCleanData()
+            handleClearedData()
           }} >
             <AiOutlineClear size={25} />
             <span>Clean</span>
@@ -373,7 +364,7 @@ const DisplayData = () => {
                 })}
               </tbody>
             </table> : <div>
-              <PivotView {...{headers,data,removeDuplicates}} />
+              <PivotView {...{ headers, data, removeDuplicates }} />
             </div>}
           </div>
         }

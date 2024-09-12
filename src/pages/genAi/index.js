@@ -2,7 +2,7 @@
 
 import { CircularProgress, Grid } from "@mui/material"
 import TextField from '@mui/material/TextField';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import './Main.css'
 import ColumnDescriptions from "./components/columnDesc";
@@ -73,40 +73,84 @@ const GenAi = () => {
         setFile(selectedFile);
     };
 
-    const handleUpload = async (data) => {
+    const arrayToCSV = (data) => {
+        const csvRows = [];
+
+        // Get the headers (keys of the first object)
+        const headers = Object.keys(data[0]);
+        csvRows.push(headers.join(','));
+
+        // Loop through the data and convert each object to a CSV row
+        for (const row of data) {
+            const values = headers.map(header => row[header]);
+            csvRows.push(values.join(','));
+        }
+
+        return csvRows.join('\n');
+    };
+
+    const handleUpload = async (data, fileC) => {
         var formData = new FormData();
-        formData.append('file', file);
-        setLoading(true)
-        setStartChart(true)
+
+        // Convert array to CSV blob if data exists
+        if (data) {
+            const csvData = arrayToCSV(data);  // Convert data to CSV
+            const file = new Blob([csvData], { type: 'text/csv' });  // Create CSV Blob
+            formData.append('file', file, 'data.csv');  // Append CSV file to formData
+        } else {
+            formData.append('file', fileC);  // Append CSV file to formData
+        }
+
+        setLoading(true);
+        setStartChart(true);
+
         try {
             await axios.post(`${akkiourl}/upload`, formData)
                 .then((response) => {
-                    setLoading(false)
-                    setResponse(response)
-                    // const columnDescriptions = response?.data?.col_desc;
-                    // const sampleData = response?.data["sample data"]
-                    setColumnDesc(response?.data?.column_description)
-                    setSampleData(response?.data?.first_10_rows)
+                    setLoading(false);
+                    setResponse(response);
+
+                    // Set response data for further processing
+                    setColumnDesc(response?.data?.column_description);
+                    setSampleData(response?.data?.first_10_rows);
+
                     const textQuestions = response?.data?.text_questions
                         .split('\n')
-                        .filter(desc => desc.trim() !== '')
-                    // Remove the first item
+                        .filter(desc => desc.trim() !== '');
 
                     const graphQuestions = response?.data?.plotting_questions
                         .split('\n')
-                        .filter(desc => desc.trim() !== '')
-                    // Remove the first item
+                        .filter(desc => desc.trim() !== '');
+
                     setAllQuestions({
                         textQuestions,
                         graphQuestions
-                    })
-                    setQuestions(textQuestions)
+                    });
+                    setQuestions(textQuestions);
                 });
         } catch (err) {
-            setLoading(false)
-            console.log(err)
+            setLoading(false);
+            console.log(err);
         }
-    }
+    };
+    // Handle file upload manually from user input
+    const handleFileUpload = (event) => {
+        if (file) {
+            handleUpload(false, file)
+        }
+    };
+
+    useEffect(() => {
+        // Check for data in localStorage
+        const storedData = localStorage.getItem('prepData');
+
+        if (storedData) {
+            // Parse the stored data and send it to the API
+            const parsedData = JSON.parse(storedData);
+            handleUpload(parsedData);
+        }
+    }, []);
+
     const regenerateQuestions = () => {
         if (currentTab == 0) {
             regenerateTextQuestions()
@@ -118,7 +162,7 @@ const GenAi = () => {
         try {
             var formData = new FormData();
             formData.append('tablename', 'retail sales data');
-            await axios.post(`${akkiourl}/regenerate`,formData)
+            await axios.post(`${akkiourl}/regenerate`, formData)
                 .then((response) => {
                     const questions = response?.data?.questions.split('\n')
                         .filter(desc => desc.trim() !== '')
@@ -138,7 +182,7 @@ const GenAi = () => {
         try {
             var formData = new FormData();
             formData.append('tablename', 'retail sales data');
-            await axios.post(`${akkiourl}/regenerate_chart`,formData)
+            await axios.post(`${akkiourl}/regenerate_chart`, formData)
                 .then((response) => {
                     const questions = response?.data?.questions.split('\n')
                         .filter(desc => desc.trim() !== '')
@@ -163,9 +207,9 @@ const GenAi = () => {
             const res = await axios.post(
                 `${akkiourl}/${currentTab === 1 ? 'getResult' : 'genresponse'}`,
                 formData,
-                { responseType:currentTab === 1 ? 'blob':'' }
+                { responseType: currentTab === 1 ? 'blob' : '' }
             );
-            const imageUrl =currentTab === 1 ? URL.createObjectURL(res.data) :'';
+            const imageUrl = currentTab === 1 ? URL.createObjectURL(res.data) : '';
             const ans = data.map((item) => {
                 if (item.question == question) {
                     return {
@@ -226,7 +270,7 @@ const GenAi = () => {
                         width: "100%"
                     }}>
                         <div>
-                            <FileUpload handleFileChange={handleFileChange} handleUpload={handleUpload} />
+                            <FileUpload handleFileChange={handleFileChange} handleUpload={handleFileUpload} />
                             {/* {!startChart && <p style={{ fontSize: '14px', fontStyle: 'italic', margin: '0px' }}>To get insights from your own data, please upload your csv file.</p>
                             } */}
                         </div>

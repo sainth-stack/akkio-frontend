@@ -55,29 +55,34 @@ export const DataReducer = (state, action) => {
 
 
     if (action.type === "Clean_Data") {
-        const cleanedData = state.displayContent.data.filter((field, index) => {
-            return !Object.values(field).includes('0')
-        })
-
+        const originalDataLength = state.displayContent.data.length;
+    
+        const cleanedData = state.displayContent.data.filter((field) => {
+            // Filter rows where no value is empty, undefined, null, '0', or 0
+            return !Object.values(field).some(value => 
+                value === '0' || value === 0 || value === '' || value === null || value === undefined
+            );
+        });
+    
+        const rowsRemoved = originalDataLength - cleanedData.length;
+    
+        console.log(`Rows removed: ${rowsRemoved}`);
+    
         return {
             ...state,
             displayContent: {
-                filename: state.displayContent.filename,
-                headers: state.displayContent.headers,
+                ...state.displayContent, // Preserve other properties of displayContent
                 data: cleanedData
             }
-        }
+        };
     }
+    
+    
 
     if (action.type === "Prepare_Data") {
         const value = action.inputData.toLowerCase()
         const filteredHeaders = state.displayContent.headers.filter((header, index) => {
             return value.includes(header.toLowerCase())
-        })
-        console.log({
-            filename: state.displayContent.filename,
-            headers: filteredHeaders,
-            data: state.displayContent.data
         })
         return {
             ...state,

@@ -1,172 +1,93 @@
-import { useState } from 'react'
-import { ApexChart } from '../../../../components/ApexBarChart';
-import { AddChartPopup } from './addChartPopup';
+import React, { useEffect, useState } from 'react';
+import { Grid, Card, CardMedia, CardContent, Typography, Button, Modal, Box } from '@mui/material';
 
 export const DashboardReports = () => {
-    const [showModal, setShowModal] = useState(false)
-    const [type, setType] = useState('')
-    let name1 = 'Industry by Company Size'
-    let desc1 = 'A barplot showing the number of leads by Industry and Company Size.'
-    let name2 = ' Industry by Positive Lead Count'
-    let desc2 = ' A barplot showing the number of positive leads by Industry. '
-    const [data, setdata] = useState([
-        { name: '', description: '', data: [],id:0 },
-        { name: '', description: '', data: [], id: 1 },
-        { name: '', description: '', data: [], id: 2 },
-        { name: '', description: '', data: [], id: 3 },
-        { name: '', description: '', data: [], id: 4 },
-        { name: '', description: '', data: [], id: 5 }
-    ])
-    const [id, setId] = useState('')
-    const toptions = {
-        chart: {
-            type: 'bar',
-            height: 350
-        },
-        colors: ["#1b3c7a", "#427ae3", "#3dc7d1", '#faa93e'],
-        fill: {
-            colors: ["#1b3c7a", "#427ae3", "#3dc7d1", '#faa93e']
-        },
-        plotOptions: {
-            bar: {
-                horizontal: false,
-                columnWidth: '55%',
-                endingShape: 'rounded'
-            },
-        },
-        dataLabels: {
-            enabled: false
-        },
-        stroke: {
-            show: true,
-            width: 2,
-            colors: ['transparent']
-        },
-        yaxis: {
-            title: {
-                text: 'count'
-            }
-        },
-        xaxis: {
-            title: {
-                text: 'Industry'
-            }
-        },
-        fill: {
-            opacity: 1
-        },
-        tooltip: {
-            y: {
-                formatter: function (val) {
-                    return val
-                }
-            }
-        }
-    };
+  const [savedImages, setSavedImages] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
-    const series1 = [{
-        data: [{
-            x: 'category A',
-            y: 700
-        }, {
-            x: 'category B',
-            y: 650
-        }, {
-            x: 'category C',
-            y: 690
-        },
-        {
-            x: 'category C',
-            y: 660
-        }]
-    }]
+  useEffect(() => {
+    // Get the saved images from localStorage
+    const images = JSON.parse(localStorage.getItem('savedImages') || '[]');
+    setSavedImages(images);
+  }, []);
 
-    const series2 = [{
-        data: [{
-            x: 'category A',
-            y: 200
-        }, {
-            x: 'category B',
-            y: 180
-        }, {
-            x: 'category C',
-            y: 190
-        },
-        {
-            x: 'category C',
-            y: 200
-        }]
-    }]
+  const handleRemoveImage = (index) => {
+    // Remove the selected image from savedImages and update localStorage
+    const updatedImages = [...savedImages];
+    updatedImages.splice(index, 1);
+    setSavedImages(updatedImages);
+    localStorage.setItem('savedImages', JSON.stringify(updatedImages));
+  };
 
-    const handleSave = () => {
-        const finName = type == '1' ? name1 : name2;
-        const finDesc = type == '1' ? desc1 : desc2;
-        const newData = type == '1' ? series1 : series2
-        console.log(type)
-        console.log(id)
-        const finData = data.map((item) => {
-            if (item.id == id) {
-                return {
-                    name: finName,
-                    description: finDesc,
-                    data: newData
-                }
-            } else {
-                return item
-            }
-        })
-        setdata(finData)
-    }
+  const handleImageClick = (imageUrl) => {
+    setSelectedImage(imageUrl);
+    setOpen(true);
+  };
 
-    return (
-        <div style={{ padding: '80px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <h5>My New Dashboard</h5>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <button className="btn btn-primary">share</button>
-                    <button className="btn btn-primary">save</button>
-                </div>
-            </div>
-            {/* <div className='container'> */}
-            <div className='row'>
-                {data.map((item) => {
-                    return (
-                        <div className='col-4 p-2'>
-                            <div style={{ minHeight: '450px', border: '1px solid lightgrey', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {item.name ? <div style={{ padding: '20px' }}>
-                                    <h6>
-                                        {item.name}
-                                    </h6>
-                                    <p style={{ width: '80%' }}>
-                                        {item.description}
-                                    </p>
-                                    <div>
-                                        <div style={{ minHeight: "300px", maxHeight: "300px", width: "100%" }}>
-                                            <ApexChart series={item.data} options={{
-                                                ...toptions, xaxis: {
-                                                    categories: ['Finance', 'Healthcare', ['IT', 'Manufacturing'], 'Retail'],
-                                                    title: {
-                                                        text: 'Industry'
-                                                    }
-                                                },
-                                                yaxis: {
-                                                    title: {
-                                                        text:item.name=="Industry by Positive Lead Count" ? "Positive Lead": 'count'
-                                                    }
-                                                },
-                                            }} height={"300px"} width={"100%"} />
-                                        </div>
-                                    </div>
-                                </div> : <div style={{ display: 'flex', alignItems: 'center', height: '100%', cursor: 'pointer' }}>
-                                    <h6 onClick={() => { setShowModal(true); setId(item.id) }}> + Add Chart</h6>
-                                </div>}
-                            </div>
-                            {showModal && <AddChartPopup {...{ showModal, setShowModal, type, setType, handleSave }} />}
-                        </div>
-                    )
-                })}
-                {/* </div> */}
-            </div>
-        </div>
-    )
-}
+  const handleClose = () => {
+    setOpen(false);
+    setSelectedImage(null);
+  };
+
+  return (
+    <div style={{ padding: '20px' }}>
+      <Typography variant="h4" gutterBottom>
+        Image Reports
+      </Typography>
+      {savedImages.length === 0 ? (
+        <Typography variant="body1">No images saved yet.</Typography>
+      ) : (
+        <Grid container spacing={2}>
+          {savedImages.map((imageUrl, index) => (
+            <Grid item xs={12} sm={4} key={index}>
+              <Card style={{ boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', borderRadius: '8px', overflow: 'hidden' }}>
+                <CardMedia
+                  component="img"
+                  height="200"
+                  image={imageUrl}
+                  alt={`Report Image ${index + 1}`}
+                  onClick={() => handleImageClick(imageUrl)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <CardContent style={{ padding: '16px', textAlign: 'center' }}>
+                  <Typography variant="h6" gutterBottom>
+                    Report Image {index + 1}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => handleRemoveImage(index)}
+                    style={{ marginTop: '10px' }}
+                  >
+                    Remove
+                  </Button>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      {/* Full View Modal */}
+      <Modal open={open} onClose={handleClose}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            bgcolor: 'background.paper',
+            boxShadow: 24,
+            p: 4,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <img src={selectedImage} alt="Full view" style={{ maxWidth: '100%', maxHeight: '80vh' }} />
+        </Box>
+      </Modal>
+    </div>
+  );
+};

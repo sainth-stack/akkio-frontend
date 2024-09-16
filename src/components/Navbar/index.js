@@ -6,15 +6,17 @@ import { useNavigate } from "react-router-dom";
 import Logo from '../../assets/images/Logo2.jpg'
 import { AiTwotoneCalendar } from 'react-icons/ai'
 import { useLocation } from "react-router-dom";
+import { useDataAPI } from "../../pages/BusinessIntelligence/components/contexts/GetDataApi";
 function Navbar() {
   const navigate = useNavigate()
   const [name, setName] = useState("Dashboard")
+  const {handleLogout2} = useDataAPI()
   const handleLogout = () => {
-    localStorage.removeItem("token")
+    localStorage.clear()
+    handleLogout2()
     navigate('/login')
   }
   let location = useLocation();
-  console.log(name)
   useEffect(() => {
     console.log(location.pathname == '/gen-ai')
     if (location.pathname == '/productivity') {

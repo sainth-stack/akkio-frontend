@@ -3,6 +3,7 @@ import { useDataAPI } from '../contexts/GetDataApi'
 import BarGraph from './BarGraph'
 import { AiOutlineClose } from "react-icons/ai"
 import { Progress } from 'antd'
+import { getFinalData } from '../../../../utils/const'
 const EndPopup = ({ setDisplaypopup, popup }) => {
   const {
     displayPopup
@@ -10,87 +11,60 @@ const EndPopup = ({ setDisplaypopup, popup }) => {
   const [state, setState] = useState({})
   console.log(state)
   useEffect(() => {
-    setState(displayPopup)
+    setState({
+      ...displayPopup,
+
+    })
   }, [displayPopup, popup])
+
+
   const calculateCorrelationCoefficient = (data, header1, header2) => {
-    let arrf1 = []
-    let arrf2 = []
-    const arr1 = data.map(obj => {
-      if (obj[header1]) {
-        arrf1.push(obj[header1])
+    console.log(data);
+  
+    // Initialize arrays for values
+    let arrf1 = [];
+    let arrf2 = [];
+  
+    // Extract values for header1 and header2, ensuring they are numbers
+    data.forEach(obj => {
+      if (obj[header1] && obj[header2]) {
+        const val1 = parseFloat(obj[header1]);
+        const val2 = parseFloat(obj[header2]);
+  
+        if (!isNaN(val1) && !isNaN(val2)) {
+          arrf1.push(val1);
+          arrf2.push(val2);
+        }
       }
     });
-    const arr2 = data.map(obj => {
-      if (obj[header2]) {
-        arrf2.push(obj[header2])
-      }
-    });;
-
-    const correper = calculateCorrelation(arrf1, arrf2)
-    console.log(correper)
-    return correper;
-  };
-  const calculateCorrelation = (arr1,arr2) => {
-    // Create contingency table
-    const contingencyTable = {};
-    for (let i = 0; i < arr1.length; i++) {
-      if (!contingencyTable[arr1[i]]) {
-        contingencyTable[arr1[i]] = {};
-      }
-      if (!contingencyTable[arr1[i]][arr2[i]]) {
-        contingencyTable[arr1[i]][arr2[i]] = 0;
-      }
-      contingencyTable[arr1[i]][arr2[i]]++;
+  
+    // Ensure arrays have valid values before calculating correlation
+    if (arrf1.length === 0 || arrf2.length === 0) {
+      console.error('No valid data to calculate correlation.');
+      return 0; // Return 0 if no valid data found
     }
-
-    // Calculate chi-square
-    let chiSquare = 0;
-    const totalObservations = arr1.length;
-    const totalGenders = Object.keys(contingencyTable).length;
-    const totalJobs = Object.keys(contingencyTable[arr1[0]]).length;
-
-    for (const gender in contingencyTable) {
-      for (const job in contingencyTable[gender]) {
-        const observed = contingencyTable[gender][job];
-        const expected = (arr1.filter(g => g === gender).length * arr2.filter(j => j === job).length) / totalObservations;
-        chiSquare += Math.pow((observed - expected), 2) / expected;
-      }
-    }
-
-    // Degrees of freedom
-    const degreesOfFreedom = (totalGenders - 1) * (totalJobs - 1);
-
-    // Look up chi-square critical value for given degrees of freedom and confidence level (e.g., 0.05)
-    const chiSquareCriticalValue = getChiSquareCriticalValue(degreesOfFreedom);
-
-    // Calculate correlation percentage
-    const correlationPercentage = 1 - getChiSquareProbability(chiSquare, degreesOfFreedom);
-
-   return correlationPercentage.toFixed(2) * 100
-  };
-
-  const getChiSquareCriticalValue = (degreesOfFreedom) => {
-    // Lookup table for critical values (alpha = 0.05)
-    const criticalValues = {
-      1: 3.841,
-      2: 5.991,
-      3: 7.815,
-      4: 9.488,
-      5: 11.070,
-      // Add more degrees of freedom and their corresponding critical values as needed
-    };
   
-    return criticalValues[degreesOfFreedom] || null; // Return null if degrees of freedom not found
+    // Call the function to calculate Pearson correlation
+    const correper = Math.abs(calculatePearsonCorrelation(arrf1, arrf2)); // Absolute value for positive correlation
+    console.log(correper);
+  
+    // Return the correlation percentage
+    return (correper * 100).toFixed(2);
   };
   
-  const getChiSquareProbability = (chiSquare, degreesOfFreedom) => {
-    // Implement approximation function or use lookup table for chi-square probability
-    // For simplicity, we will use a built-in JavaScript function to get the probability.
-    // This approach may not be accurate for all cases and might require more complex calculations.
-    const probability = 1 - Math.round(Math.pow(Math.E, -chiSquare / 2) * 100) / 100;
+  const calculatePearsonCorrelation = (arr1, arr2) => {
+    const n = arr1.length;
+    const sum1 = arr1.reduce((a, b) => a + b, 0);
+    const sum2 = arr2.reduce((a, b) => a + b, 0);
+    const sum1Sq = arr1.reduce((a, b) => a + b * b, 0);
+    const sum2Sq = arr2.reduce((a, b) => a + b * b, 0);
+    const pSum = arr1.map((_, i) => arr1[i] * arr2[i]).reduce((a, b) => a + b, 0);
+    const num = pSum - (sum1 * sum2 / n);
+    const den = Math.sqrt((sum1Sq - sum1 * sum1 / n) * (sum2Sq - sum2 * sum2 / n));
   
-    return probability;
+    return den === 0 ? 0 : num / den;
   };
+  
 
 
 
@@ -108,7 +82,7 @@ const EndPopup = ({ setDisplaypopup, popup }) => {
       }
       else if (!isNaN(Date.parse(value[header]))) {
         const date = new Date(value[header])
-        return date.getDate()
+        return date;
       }
       else if (timePattern.test(value[header])) {
         return parseInt(value[header].slice(0, 3))
@@ -141,6 +115,8 @@ const EndPopup = ({ setDisplaypopup, popup }) => {
     })
   }
 
+
+  const finalData=getFinalData(state.updatedArray,state.isDate,12)
   return (
     <>
       <div className={popup ? 'popup-container open-popup' : 'popup-container close-popup'} >
@@ -183,8 +159,8 @@ const EndPopup = ({ setDisplaypopup, popup }) => {
                   </>
                 );
               }) :
-                <div>
-                  <BarGraph data={state.updatedData} cursor={'pointer'} header={state.title} />
+                <div style={{width:'100%'}}>
+                  <BarGraph data={finalData} cursor={'pointer'} header={state.title} width={320} height={220}/>
                 </div>
             }
           </div>
@@ -192,7 +168,7 @@ const EndPopup = ({ setDisplaypopup, popup }) => {
             <span style={{ padding: '0px 20px', fontSize: '18px', fontWeight: 500 }}>Correlations</span>
             {
               headers.map((header2, index2) => {
-                if (state.title !== header2 && state.correlations && corHeadrs.filter((item) => item.toString() === header2.toString()).length > 0) {
+                if (state.title !== header2) {
                   let correlation;
                   correlation = calculateCorrelationCoefficient(state.totData?.length > 0 ? state.totData : [], state.title, header2);
                   return (

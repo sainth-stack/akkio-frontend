@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 
-export const DetailedLineGraph = ({ labelsNew, data, data2 }) => {
+export const DetailedLineGraph = ({ labelsNew, data, data2,selectedField }) => {
     const chartRef = useRef(null);
     const myChartRef = useRef(null);
 
@@ -80,7 +80,7 @@ export const DetailedLineGraph = ({ labelsNew, data, data2 }) => {
                         position: 'left',
                         title: {
                             display: true,
-                            text: 'Sales',
+                            text: selectedField,
                             color: 'black',
                             fontWeight: 700,
                             padding: 5

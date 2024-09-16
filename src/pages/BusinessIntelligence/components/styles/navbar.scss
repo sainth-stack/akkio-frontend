@@ -57,7 +57,7 @@
     // left: 0px;
     // top: 57px;
     // border-top: 1px solid;
-    z-index: 10 !important;
+    z-index: index inherit;;
     // overflow-x: hidden !important;
     color: rgba(0, 0, 0, 0.602);
     display: flex;
@@ -87,7 +87,6 @@
   position: relative;
   // top: 133px;
   // left: 0px;
-  z-index: 100;
   display: flex;
   justify-content: center;
   gap: 50px;

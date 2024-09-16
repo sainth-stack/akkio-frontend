@@ -14,6 +14,16 @@ export const DataReducer = (state, action) => {
             files: [...state.files, file]
         }
     }
+    if (action.type === "LOGOUT") {
+        return {
+            ...state,
+            displayContent: {
+                filename: '',
+                headers: [],
+                data: [],
+            }
+        }
+    }
 
 
 
@@ -56,18 +66,16 @@ export const DataReducer = (state, action) => {
 
     if (action.type === "Clean_Data") {
         const originalDataLength = state.displayContent.data.length;
-    
+
         const cleanedData = state.displayContent.data.filter((field) => {
             // Filter rows where no value is empty, undefined, null, '0', or 0
-            return !Object.values(field).some(value => 
+            return !Object.values(field).some(value =>
                 value === '0' || value === 0 || value === '' || value === null || value === undefined
             );
         });
-    
+
         const rowsRemoved = originalDataLength - cleanedData.length;
-    
-        console.log(`Rows removed: ${rowsRemoved}`);
-    
+
         return {
             ...state,
             displayContent: {
@@ -76,8 +84,8 @@ export const DataReducer = (state, action) => {
             }
         };
     }
-    
-    
+
+
 
     if (action.type === "Prepare_Data") {
         const value = action.inputData.toLowerCase()

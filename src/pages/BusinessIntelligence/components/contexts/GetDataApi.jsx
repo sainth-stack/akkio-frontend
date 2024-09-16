@@ -86,11 +86,17 @@ const GetDataApi = ({ children }) => {
   };
 
 
+  const handleLogout2 = () => {
+    dispatch({ type: "LOGOUT" });
+  }
+
+
   const handleUpload = async (file, database = false, data = [], tableName = '') => {
     setLoading(true)
     dispatch({ type: "ADD_FILE_DETAILS", payload: file })
     if (database) {
       const finalData = transformData(data)
+      console.log(finalData)
       const value = JSON.stringify({
         filename: tableName,
         data: finalData,
@@ -148,7 +154,6 @@ const GetDataApi = ({ children }) => {
             filename: file.name,
             data: flattenedData,
           });
-          console.log(value)
           setUploadedData([value]);
         }
         setLoading(false);
@@ -175,7 +180,6 @@ const GetDataApi = ({ children }) => {
       reader.readAsText(file);
     } else {
       // Unsupported file type
-      console.error("Unsupported file type");
       setLoading(false);
     }
 
@@ -195,7 +199,6 @@ const GetDataApi = ({ children }) => {
   }
 
   const displayPopupFun = (popupData) => {
-    console.log(popupData)
     dispatch({ type: "DISPLAY_POPUP", payload: popupData })
   }
 
@@ -208,7 +211,6 @@ const GetDataApi = ({ children }) => {
   }
 
   const handleCleanData = () => {
-    console.log(state.displayContent)
     const originalDataLength = state.displayContent.data.length;
 
     const cleanedData = state.displayContent.data.filter((field) => {
@@ -220,7 +222,6 @@ const GetDataApi = ({ children }) => {
 
     const rowsRemoved = originalDataLength - cleanedData.length;
 
-    console.log(`Rows removed: ${rowsRemoved}`);
     return {
       ...state,
       displayContent: {
@@ -236,7 +237,7 @@ const GetDataApi = ({ children }) => {
   }
 
   return (
-    <GetDataContext.Provider value={{ ...state, handleUpload, loadingFun, removeData, displayPopupFun, showContent, changePopup, handleCleanData, handlePrepareData, key: "key" }}>
+    <GetDataContext.Provider value={{ ...state, handleUpload, loadingFun, removeData, displayPopupFun, showContent, changePopup, handleCleanData, handlePrepareData,handleLogout2, key: "key" }}>
       {children}
     </GetDataContext.Provider>
   )

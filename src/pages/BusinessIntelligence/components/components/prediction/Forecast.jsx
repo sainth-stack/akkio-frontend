@@ -105,9 +105,10 @@ const ForecastData = () => {
         }, 2000)
 
     }, [displayContent])
-    console.log(headers,'hj')
+    const fileName=localStorage.getItem('filename')
     return (
-        <div style={{ height: '85vh', overflow: 'hidden' }}>
+        <>
+        {fileName ? <div style={{ height: '85vh', overflow: 'hidden' }}>
             <Navbar />
             <div className="professional-table ms-2">
                 <div className="file-details" style={{ borderBottom: '1px solid #e0eaf0' }}>
@@ -161,14 +162,15 @@ const ForecastData = () => {
                             <h2 className='rightDesctext'> The predictions of the model, compared to the historical data and extrapolated forward.                            </h2>
                             <div className='regressioncard' style={{ width: '96%' }}>
                                 <div className='regressionCardInnerContainer' style={{ minHeight: '400px',width:'100%' }}>
-                                    <DetailedLineGraph {...{ labelsNew: totData.lables, data: totData.data3, data2: totData.data4 }} />
+                                    <DetailedLineGraph {...{ labelsNew: totData.lables, data: totData.data3, data2: totData.data4,selectedField }} />
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </div> : <div style={{display:'flex',justifyContent:'center'}}>Please upload data to view the forecast</div>}
+        </>
     )
 }
 

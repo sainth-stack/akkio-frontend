@@ -9,9 +9,10 @@ import { Spin, Modal, Input, Progress } from 'antd'
 import { AiOutlineClear } from "react-icons/ai"
 import { BsStars } from 'react-icons/bs'
 import { PivotView } from './popups/pivotVIew'
-
+import ChatDataPrep from './popups/chatdataprep'
+import { getFinalData } from '../../../../utils/const'
+import '../styles/discover.scss'
 const DisplayData = () => {
-
   const [data, setData] = useState([])
   const [headers, setHeaders] = useState([])
   const [hoveredRowIndex, setHoveredRowIndex] = useState(-1);
@@ -23,6 +24,7 @@ const DisplayData = () => {
   const [open, setOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [view, setView] = useState(false)
+  const [showModel, setShowModel] = useState(false)
   const navigate = useNavigate()
   const {
     displayPopupFun,
@@ -48,19 +50,10 @@ const DisplayData = () => {
       }, 0)
     }
   }
-  // const barChartData = [
-
-  //   // Add more data as needed
-  // ];
-
-  // Data Prep Modal Functions
-  const showModal = () => {
-    setOpen(true);
-  };
 
   const handleChatprepData = () => {
     localStorage.setItem('prepData', JSON.stringify(data));
-    navigate('/gen-ai')
+    setShowModel(true);
   }
   const handleOk = async () => {
     // setModalText('The modal will be closed after two seconds');
@@ -121,7 +114,6 @@ const DisplayData = () => {
     setData(displayContent.data)
     setFilename(localStorage.getItem("filename"))
 
-    console.log(loading)
     setTimeout(() => {
       setLoading(false)
     }, 2000)
@@ -141,7 +133,7 @@ const DisplayData = () => {
 
 
   return (
-    <div style={{ minHeight: '90vh' }}>
+    <div style={{ minHeight: '90vh',overflow:'auto'}}>
       <Navbar />
       <div className="professional-table">
         <div className="file-details ms-2">
@@ -170,7 +162,7 @@ const DisplayData = () => {
 
         {loading ? <Spin className='spinner' size={'large'} /> :
           <div className=''>
-            {!view ? <table style={{ border: 'none' }}>
+            {!view ? <table style={{ border: 'none' }} className='discover-table'>
               <thead>
                 <tr style={{ zIndex: 9999999 }}>
                   {
@@ -225,33 +217,38 @@ const DisplayData = () => {
                 <tr>
                   {
                     headers.map((header, id) => {
+                      console.log(data)
                       const updatedArray = data.map((value) => {
                         const timePattern = /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
                         if (!isNaN(value[header])) {
-                          return parseInt(value[header])
+                          return parseFloat(value[header])
                         }
                         else if (!isNaN(Date.parse(value[header]))) {
                           const date = new Date(value[header])
-                          return date.getDate()
+                          return date
                         }
                         else if (timePattern.test(value[header])) {
-                          return parseInt(value[header].slice(0, 3))
+                          return parseFloat(value[header].slice(0, 3))
                         }
                         else {
                           return value[header]
                         }
                       })
+                      // console.log(updatedArray)
 
                       let uniqueArr = removeDuplicates(updatedArray)
                       if (!isNaN(Date.parse(data[0][header])) || !isNaN(data[0][header])) {
-
+                        const isDate = isNaN(data[0][header]);
                         const updatedData = uniqueArr.map((uniVal) => {
-
                           return {
                             value: uniVal,
                             count: count(updatedArray, uniVal)
                           }
                         })
+                        if(isDate){
+                          // console.log(updatedData)
+                        }
+                        const finalData=getFinalData(updatedArray,isDate,6)
                         return (
                           <td className='firstRow' style={{ overflowX: "hidden", cursor: "pointer" }} key={id}
                             onClick={() => {
@@ -260,17 +257,19 @@ const DisplayData = () => {
                                 uniqueValues: uniqueArr.length,
                                 uniqueArr: uniqueArr,
                                 updatedData: updatedData,
+                                updatedArray:updatedArray,
                                 title: header,
                                 progress: false,
                                 totData: data,
                                 category: false,
+                                isDate:isDate
                               })
                               setPopup(displaypopup)
                               setDisplaypopup(true)
                             }}
                           >
                             {/* <p>{uniqueArr.length} Unique Values</p> */}
-                            <BarGraph data={updatedData} strokeColor={'rgba(0, 163, 255, 1)'} width={180} className="graph" cursor={'pointer'} header={header} />
+                            <BarGraph data={finalData} strokeColor={'rgba(0, 163, 255, 1)'} width={180} className="graph" cursor={'pointer'} header={header} />
                           </td>)
                       }
                       else {
@@ -373,6 +372,8 @@ const DisplayData = () => {
         displaypopup ? <EndPopup setDisplaypopup={setDisplaypopup} popup={popup} /> : <></>
       }
 
+
+
       <Modal
         title=""
         open={open}
@@ -399,6 +400,9 @@ const DisplayData = () => {
           <p style={{ fontSize: '14px', fontWeight: '400' }}>Please Upgrade your plan to use this feature</p>
         </div>
       </Modal>
+      <>
+      </>
+      <ChatDataPrep {...{ showModel, setShowModel }} />
     </div>
   )
 }

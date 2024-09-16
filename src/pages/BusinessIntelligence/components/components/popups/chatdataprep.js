@@ -4,71 +4,27 @@ import { CircularProgress, Grid } from "@mui/material"
 import TextField from '@mui/material/TextField';
 import { useEffect, useState } from "react";
 import axios from "axios";
-import './Main.css'
-import ColumnDescriptions from "./components/columnDesc";
-import SampleDataTable from "./components/sampleData";
-import Accordion from "./components/accordian";
-import FileUpload from "./components/browseFiles";
-import SampleQuestion from "./components/questions";
-import AnswersAccordion from "./components/answers";
+import '../../../../genAi/Main.css'
+import SampleQuestion from "../../../../genAi/components/questions";
+import AnswersAccordion from "../../../../genAi/components/answers";
 import { Tabs, Tab, InputAdornment } from '@mui/material';
 import { IoMdRefresh, IoMdSend } from 'react-icons/io';
-import { akkiourl } from "../../utils/const";
-const GenAi = () => {
-
+import { Modal } from "antd";
+import { akkiourl } from "../../../../../utils/const";
+const ChatDataPrep = ({ showModel, setShowModel }) => {
+    const fileName = localStorage.getItem('filename')?.replace(/\.[^/.]+$/, '');
     const [search, setSearch] = useState('')
-    const [question, setQuestion] = useState([])
-    const [fileName, setFileName] = useState('')
     const [response, setResponse] = useState()
-    const handleSend = () => {
-        const updatedata = [...question, {
-            question: search,
-            answer: true,
-        }]
-        setQuestion(updatedata)
-        handleGetAnswer(updatedata)
-        setSearch('')
-    }
-
-
-    const [questions, setQuestions] = useState([
-        "What is the minimum gross_income of the data?",
-        "What is the mean quantity of the data?",
-        "What is the 50th percentile of unit price of the data?",
-        "What is the 25th percentile of gross_income of the data?",
-        "What is the 25th percentile of tax_5_percentage of the data?"
-    ]);
+    const [questions, setQuestions] = useState([]);
     const [answers, setAnswers] = useState([]);
-
-    const [columnDescriptions, setColumnDesc] = useState(`a description of the columns in the provided data:
-  
-  1. Store ID: This column contains numerical values representing the unique identification number of the store where the sales data was recorded. Each row corresponds to a different store.
-  2. Employee Number: This column includes numerical values that represent the unique identification number of the employee associated with the sales data recorded in each row.
-  3. Date: This column likely includes date values indicating when the sales data was recorded.
-  4. Net Sales: This column contains numerical values representing the total sales amount after deducting any returns or discounts. It may include sales from both in-store and online transactions.
-  5. Taxes: This column likely includes numerical values representing the amount of taxes applied to the sales recorded in each row.
-  6. Taxable Sales: This column contains numerical values representing the portion of sales that are subject to taxation.
-  7. Home Sales: This column includes numerical values representing the sales amount specifically related to home products or categories.
-  8. Clothes Sales: This column contains numerical values representing the sales amount specifically related to clothing products or categories.
-  
-  These descriptions provide an overview of the data columns and the type of information they contain`);
-
-    const [sampleData, setSampleData] = useState(`{"Store ID":{"0":1,"1":1,"2":1,"3":1,"4":1,"5":1,"6":1,"7":1,"8":1,"9":1},"Employee Number":{"0":54,"1":57,"2":50,"3":56,"4":50,"5":56,"6":52,"7":56,"8":55,"9":58},"Area":{"0":"Asia","1":"Asia","2":"Asia","3":"Asia","4":"Asia","5":"Asia","6":"Asia","7":"Asia","8":"Asia","9":"Asia"},"Date":{"0":"2018-01-31","1":"2018-02-28","2":"2018-03-31","3":"2018-04-30","4":"2018-05-31","5":"2018-06-30","6":"2018-07-31","7":"2018-08-31","8":"2018-09-30","9":"2018-10-31"},"Sales":{"0":86586.23,"1":131181.61,"2":185833.69,"3":150538.66,"4":183421.04,"5":292656.36,"6":214964.98,"7":189526.91,"8":222308.26,"9":213762.78},"Marketing Spend":{"0":16022.68,"1":6562.93,"2":1106.61,"3":16586.79,"4":2708.69,"5":10459.98,"6":26320.18,"7":26479.09,"8":4848.86,"9":13452.72},"Electronics Sales":{"0":23312.79,"1":38738.19,"2":53601.54,"3":42062.01,"4":42276.04,"5":69192.41,"6":48065.41,"7":47851.76,"8":64556.77,"9":43525.38},"Home Sales":{"0":10991.36,"1":17000.27,"2":26926.41,"3":25817.93,"4":26700.62,"5":45898.82,"6":24049.25,"7":27550.8,"8":38468.88,"9":21181.46},"Clothes Sales":{"0":28089.66,"1":52073.81,"2":58401.37,"3":50028.65,"4":63996.07,"5":95964.42,"6":94098.8,"7":74569.68,"8":71728.8,"9":78333.69}}`);
-
-    const [file, setFile] = useState(null)
     const [startChart, setStartChart] = useState(false)
     const [loading, setLoading] = useState(false)
     const [currentTab, setCurrentTab] = useState(0);
-    const [imageSrc, setImageSrc] = useState(null)
     const [allQuestions, setAllQuestions] = useState({
         textQuestions: [],
         graphQuestions: []
     })
-    // const [img, setImage] = useState(null)
-    const handleFileChange = (event) => {
-        const selectedFile = event.target.files[0];
-        setFile(selectedFile);
-    };
+
 
     const arrayToCSV = (data) => {
         const csvRows = [];
@@ -88,7 +44,9 @@ const GenAi = () => {
 
     const handleUpload = async (data, fileC) => {
         var formData = new FormData();
-
+        setLoading(true);
+        setStartChart(true);
+        console.log(data)
         // Convert array to CSV blob if data exists
         if (data) {
             const csvData = arrayToCSV(data);  // Convert data to CSV
@@ -98,19 +56,13 @@ const GenAi = () => {
             formData.append('file', fileC);  // Append CSV file to formData
         }
 
-        setLoading(true);
-        setStartChart(true);
+
 
         try {
             await axios.post(`${akkiourl}/upload`, formData)
                 .then((response) => {
                     setLoading(false);
                     setResponse(response);
-
-                    // Set response data for further processing
-                    setColumnDesc(response?.data?.column_description);
-                    setSampleData(response?.data?.first_10_rows);
-
                     const textQuestions = response?.data?.text_questions
                         .split('\n')
                         .filter(desc => desc.trim() !== '');
@@ -131,13 +83,16 @@ const GenAi = () => {
         }
     };
 
-    const handleFileUpload = (event) => {
-        if (file) {
-            console.log(file?.name?.replace(/\.[^/.]+$/, ''))
-            setFileName(file?.name?.replace(/\.[^/.]+$/, ''))
-            handleUpload(false, file)
+    useEffect(() => {
+        // Check for data in localStorage
+        const storedData = localStorage.getItem('prepData');
+
+        if (storedData) {
+            // Parse the stored data and send it to the API
+            const parsedData = JSON.parse(storedData);
+            handleUpload(parsedData);
         }
-    };
+    }, []);
 
     const regenerateQuestions = () => {
         if (currentTab == 0) {
@@ -223,9 +178,6 @@ const GenAi = () => {
         }
     }
 
-    // const columnDescriptions = response?.data?.col_desc;
-    // const sampleData = response?.data["sample data"]
-
     const handleQuestionClick = async (question) => {
         const data = [...answers, { question, answer: "", loading: true }]
         setAnswers(data);
@@ -238,7 +190,14 @@ const GenAi = () => {
     };
 
     return (
-        <Grid display={"flex"}>
+        <Modal
+            title=""
+            open={showModel}
+            style={{ top: '0%', zIndex: 99999, width: '80vh', height: '100vh', overflow: 'auto' }}
+            onCancel={() => setShowModel(false)}
+            width={'110vh'}
+            footer={null}
+        >
             <Grid item md={10} padding={"10px"} sx={{
                 width: "100%"
             }}>
@@ -246,33 +205,17 @@ const GenAi = () => {
                     background: '#FFF',
                     width: "100%"
                 }}>
-                    {imageSrc && <img src={imageSrc} alt="Generated Image" style={{ width: '100%', height: 'auto' }} />}
-
                     <Grid sx={{
                         padding: '20px 10px 10px 10px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '30px',
-                        // height: 'calc(100vh - 150px)',
                         overflow: 'auto',
                         width: "100%"
                     }}>
-                        <div>
-                            <FileUpload handleFileChange={handleFileChange} handleUpload={handleFileUpload} />
-                            {/* {!startChart && <p style={{ fontSize: '14px', fontStyle: 'italic', margin: '0px' }}>To get insights from your own data, please upload your csv file.</p>
-                            } */}
-                        </div>
                         {startChart && <div>
                             {!loading ? <div>
-                                <h2 style={{ fontSize: '30px' }}>Data Explanation</h2>
-                                <p>The topic below gives the general feel of the dataset,click on expander ro see more.</p>
-
-                                <Accordion title="See Data Explanation">
-                                    <ColumnDescriptions descriptions={columnDescriptions} />
-                                </Accordion>
-                                <Accordion title="See Raw Data">
-                                    <SampleDataTable data={sampleData} />
-                                </Accordion>
+                                <h2 style={{ fontSize: '30px' }}>Data Exploration</h2>
                                 <Tabs
                                     value={currentTab}
                                     onChange={handleTabChange}
@@ -374,7 +317,7 @@ const GenAi = () => {
                                             <button className="btn btn-primary" onClick={() => setAnswers([])}>Reset</button>
                                         </div>
                                         {answers?.map((item, index) => (
-                                            <AnswersAccordion key={index} question={item.question} answer={item.answer} loading={item?.loading} type={item.view} />
+                                            <AnswersAccordion key={index} question={item.question} answer={item.answer} loading={item?.loading} type={item.view} name={"genbi"}/>
                                         ))}
                                     </div>
                                 </div>
@@ -386,8 +329,8 @@ const GenAi = () => {
 
                 </Grid>
             </Grid>
-        </Grid >
+        </Modal>
     )
 }
 
-export default GenAi;
+export default ChatDataPrep;

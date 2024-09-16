@@ -1,0 +1,48 @@
+.discover-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Arial', sans-serif;
+    margin: 20px 0;
+    font-size: 16px;
+    text-align: left;
+  
+    th, td {
+      padding: 12px 15px;
+      border: 1px solid #ddd; // Light border for a clean look
+    }
+  
+    th {
+      background-color: #f4f4f4; // Light background for table headers
+      font-weight: bold;
+      color: #333;
+      text-transform: uppercase;
+    }
+  
+    td {
+      color: #555;
+    }
+  
+    tr:nth-child(even) {
+      background-color: #f9f9f9; // Alternating row colors for clarity
+    }
+  
+    tr:hover {
+      background-color: #f1f1f1; // Subtle hover effect for better user interaction
+    }
+  
+    // Add a border around the entire table
+    &,
+    th,
+    td {
+      border: 1px solid #ccc;
+    }
+  
+    // Optional: Add some spacing between table rows
+    tr {
+      transition: background-color 0.3s ease;
+    }
+  
+    // Add a bit of shadow for a professional touch
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  

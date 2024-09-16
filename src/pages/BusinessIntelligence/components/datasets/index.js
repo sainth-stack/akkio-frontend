@@ -60,14 +60,12 @@ export const Datasets = () => {
     
     const handleGetData = async () => {
         const response = await axios.post('http://3.132.248.171:7500/tableinfo',{});
-        console.log(response)
         if (response.status === 200) {
          const data= transformData(response.data).map((item)=>{
             return({
                 ...item,datecreated:moment(item.datecreated).format("YY-MMM-DD"),lastupdate:moment(item.lastupdate).format("YY-MMM-DD")
             })
          })
-         console.log(data)
          setDatasets(data)
         }
     }

@@ -148,7 +148,7 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
 
         try {
             const res = await axios.post(
-                `${akkiourl}/${currentTab === 1 ? 'getResult' : 'genresponse'}`,
+                `${akkiourl}/${currentTab === 1 ? 'getResult2' : 'genresponse2'}`,
                 formData,
                 { responseType: currentTab === 1 ? 'blob' : '' }
             );

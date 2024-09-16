@@ -27,7 +27,7 @@ export default function Sidebar() {
         { name: 'Connect', icon: BiSolidData, path: '/connect', },
         { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', },
         { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast' },
-        // { name: 'Predict', icon: MdOutlineFindInPage, path: '/deployment' },
+        { name: 'Predict', icon: MdOutlineFindInPage, path: '/deployment' },
         { name: 'Reports', icon: TbReportSearch, path: '/reports' },
       ]
     },

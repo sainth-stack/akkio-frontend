@@ -26,18 +26,22 @@ import { Billing } from './pages/BusinessIntelligence/components/settings/compon
 import { Usage } from './pages/BusinessIntelligence/components/settings/components/organization/usage';
 import { TermsConst } from './pages/BusinessIntelligence/components/settings/components/account/legal/terms';
 import { LegalConst } from './pages/BusinessIntelligence/components/settings/components/account/legal/legal';
+import DeploymentData from './pages/BusinessIntelligence/components/deployments';
 import { ReportsGenBI } from './pages/BusinessIntelligence/components/reports';
 import { DashboardReports } from './pages/BusinessIntelligence/components/reports/dashboard';
 import Connect from './pages/BusinessIntelligence/components/components/connect';
 import MiddleContent from './pages/entryPage';
 import GenAi from './pages/genAi';
 import ForecastData from './pages/BusinessIntelligence/components/components/prediction/Forecast';
+import NewDeploymentData from './pages/BusinessIntelligence/components/deployments/newDeployment';
+import { PredictionAndForecast } from './pages/BusinessIntelligence/components/components/prediction';
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
-        {/* <Route path="/new-deployment" element={<NewDeploymentData />} /> */}
+        <Route path="/new-deployment" element={<NewDeploymentData />} />
         <Route path="/" element={<AdminLayout />}>
           <Route path='/welcome' Component={MiddleContent} />
           <Route path='/gen-dashboard' Component={DashboardReports} />
@@ -45,10 +49,11 @@ function App() {
           <Route path='/gen-ai' element={<GenAi />} />
           <Route path='/connect' Component={Connect} />
           <Route path='/discover' Component={DisplayData} />
-          {/* <Route path='/predict' Component={PredictionAndForecast} /> */}
+          <Route path='/predict' Component={PredictionAndForecast} />
           <Route path='/forecast' Component={ForecastData} />
           <Route path='/reports' Component={ReportsGenBI} />
           <Route path='/data-source' element={<DataSource />} />
+          <Route path='/deployment' Component={DeploymentData} />
           <Route path='/business-intelligence' element={<BusinessIntelligence />} />
           <Route path='/datasets' element={<Datasets />} />
         </Route>

@@ -1,0 +1,54 @@
+.clean-data-modal .ant-modal-content {
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+  }
+  
+  .clean-data-modal .ant-modal-header {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  
+  .clean-popup-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+    text-align: center;
+  }
+  
+  .clean-popup-content {
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .clean-popup-checkbox {
+    font-size: 16px;
+    color: #444;
+    /* margin-left: 8px; */
+  }
+  
+  .clean-popup-btn {
+    width: 100%;
+    background-color: #1890ff;
+    color: #fff;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.3s;
+  }
+  
+  .clean-popup-btn:hover {
+    background-color: #40a9ff;
+  }
+  
+  .clean-popup-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  }
+  

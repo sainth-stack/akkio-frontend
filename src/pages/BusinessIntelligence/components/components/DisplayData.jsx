@@ -12,6 +12,7 @@ import { PivotView } from './popups/pivotVIew'
 import ChatDataPrep from './popups/chatdataprep'
 import { getFinalData } from '../../../../utils/const'
 import '../styles/discover.scss'
+import { CleanDataPopup } from './popups/cleandata'
 const DisplayData = () => {
   const [data, setData] = useState([])
   const [headers, setHeaders] = useState([])
@@ -25,6 +26,11 @@ const DisplayData = () => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [view, setView] = useState(false)
   const [showModel, setShowModel] = useState(false)
+  const [showPopup, setShowPopup] = useState(false);
+
+  const handleCleanButtonClick = () => {
+    setShowPopup(!showPopup);
+  };
   const navigate = useNavigate()
   const {
     displayPopupFun,
@@ -131,9 +137,9 @@ const DisplayData = () => {
     alert(`Rows removed: ${rowsRemoved}`);
   }
 
-
+  console.log(showPopup)
   return (
-    <div style={{ minHeight: '90vh',overflow:'auto'}}>
+    <div style={{ minHeight: '90vh', overflow: 'auto' }}>
       <Navbar />
       <div className="professional-table">
         <div className="file-details ms-2">
@@ -150,8 +156,8 @@ const DisplayData = () => {
             handleChatprepData()
           }}>Chat Data Prep</Button>
           <div className="clean-section" onClick={() => {
-            handleClearedData()
-          }} >
+            handleCleanButtonClick()
+          }}>
             <AiOutlineClear size={25} />
             <span>Clean</span>
           </div>
@@ -217,7 +223,6 @@ const DisplayData = () => {
                 <tr>
                   {
                     headers.map((header, id) => {
-                      console.log(data)
                       const updatedArray = data.map((value) => {
                         const timePattern = /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
                         if (!isNaN(value[header])) {
@@ -245,10 +250,10 @@ const DisplayData = () => {
                             count: count(updatedArray, uniVal)
                           }
                         })
-                        if(isDate){
+                        if (isDate) {
                           // console.log(updatedData)
                         }
-                        const finalData=getFinalData(updatedArray,isDate,6)
+                        const finalData = getFinalData(updatedArray, isDate, 6)
                         return (
                           <td className='firstRow' style={{ overflowX: "hidden", cursor: "pointer" }} key={id}
                             onClick={() => {
@@ -257,12 +262,12 @@ const DisplayData = () => {
                                 uniqueValues: uniqueArr.length,
                                 uniqueArr: uniqueArr,
                                 updatedData: updatedData,
-                                updatedArray:updatedArray,
+                                updatedArray: updatedArray,
                                 title: header,
                                 progress: false,
                                 totData: data,
                                 category: false,
-                                isDate:isDate
+                                isDate: isDate
                               })
                               setPopup(displaypopup)
                               setDisplaypopup(true)
@@ -403,6 +408,18 @@ const DisplayData = () => {
       <>
       </>
       <ChatDataPrep {...{ showModel, setShowModel }} />
+      {showPopup &&
+        <CleanDataPopup
+          {...{
+            showModal:showPopup, setShowModal:setShowPopup,
+          }}
+          onClose={() => setShowPopup(false)}
+          onCleanData={(options) => {
+            handleCleanData(options);
+            setShowPopup(false);
+          }}
+        />
+      }
     </div>
   )
 }

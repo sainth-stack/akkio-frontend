@@ -13,6 +13,8 @@ import { BiSolidAnalyse } from "react-icons/bi";
 import { MdOutlineFindInPage } from "react-icons/md";
 import { TbReportSearch } from "react-icons/tb";
 import { IoHome } from "react-icons/io5";
+import { GoProjectRoadmap } from "react-icons/go";
+
 export default function Sidebar() {
   const location = useLocation()
   const [expand, setExpand] = useState({
@@ -22,6 +24,7 @@ export default function Sidebar() {
   })
   const finData = [
     { name: 'Home', icon: IoHome, path: '/welcome', id: 1 },
+    { name: 'Projects', icon: GoProjectRoadmap, path: '/projects', id: 2 },
     {
       name: 'Gen BI', icon: GiArtificialIntelligence, id: 3, children: [
         { name: 'Connect', icon: BiSolidData, path: '/connect', },

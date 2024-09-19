@@ -35,6 +35,7 @@ import GenAi from './pages/genAi';
 import ForecastData from './pages/BusinessIntelligence/components/components/prediction/Forecast';
 import NewDeploymentData from './pages/BusinessIntelligence/components/deployments/newDeployment';
 import { PredictionAndForecast } from './pages/BusinessIntelligence/components/components/prediction';
+import Projects from './pages/projects';
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
           <Route path='/gen-dashboard' Component={DashboardReports} />
           <Route path='/review-report' element={<HtmlReport />} />
           <Route path='/gen-ai' element={<GenAi />} />
+          <Route path='/projects' Component={Projects} />
           <Route path='/connect' Component={Connect} />
           <Route path='/discover' Component={DisplayData} />
           <Route path='/predict' Component={PredictionAndForecast} />

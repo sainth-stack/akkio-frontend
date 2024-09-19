@@ -26,7 +26,7 @@ function Navbar() {
     } else if (location.pathname == '/reports' || location.pathname == '/review-report') {
       setName("Reports")
     }
-    else if (location.pathname == '/business-intelligence' || location.pathname == '/discover') {
+    else if (location.pathname == '/business-intelligence') {
       setName("Business Intelligence")
     }
     else if (location.pathname == '/process') {

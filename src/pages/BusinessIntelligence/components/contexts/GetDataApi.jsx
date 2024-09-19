@@ -210,34 +210,138 @@ const GetDataApi = ({ children }) => {
     dispatch({ type: "CHANGE_POPUP" })
   }
 
-  const handleCleanData = () => {
-    const originalDataLength = state.displayContent.data.length;
+  // const handleCleanData = () => {
+  //   const originalDataLength = state.displayContent.data.length;
 
-    const cleanedData = state.displayContent.data.filter((field) => {
-      // Filter rows where no value is empty, undefined, null, '0', or 0
-      return !Object.values(field).some(value =>
-        value === '' || value === null || value === undefined
+  //   const cleanedData = state.displayContent.data.filter((field) => {
+  //     // Filter rows where no value is empty, undefined, null, '0', or 0
+  //     return !Object.values(field).some(value =>
+  //       value === '' || value === null || value === undefined
+  //     );
+  //   });
+
+  //   const rowsRemoved = originalDataLength - cleanedData.length;
+
+  //   return {
+  //     ...state,
+  //     displayContent: {
+  //       ...state.displayContent, // Preserve other properties of displayContent
+  //       data: cleanedData,
+  //       rowsRemoved
+  //     }
+  //   };
+  // }
+
+  const handleCleanData = (options) => {
+    let data = [...state.displayContent.data];
+    let removedRows = [];  // To store removed rows
+  
+    // 1. Standardize Date Columns
+    if (options.standardizeDateColumns) {
+      data = data.map(row => ({
+        ...row,
+        // Assuming date columns have 'Date' in their name (adjust logic as needed)
+        Date: isValidDate(row.Date) ? new Date(row.Date).toISOString() : row.Date
+      }));
+    }
+  
+    // 2. Remove Unexpected Nulls
+    if (options.removeNulls) {
+      const removed = data.filter((row) => {
+        return Object.values(row).some(value =>
+          value === '' || value === null || value === undefined
+        );
+      });
+      removedRows.push(...removed);  // Track removed rows
+      data = data.filter((row) => {
+        return !Object.values(row).some(value =>
+          value === '' || value === null || value === undefined
+        );
+      });
+    }
+  
+    // 3. Replace Excess Categories with "Other"
+    if (options.replaceExcessCategories) {
+      const categoryColumns = Object.keys(data[0]).filter(col => typeof data[0][col] === 'string');
+      categoryColumns.forEach((col) => {
+        const counts = {};
+        data.forEach(row => counts[row[col]] = (counts[row[col]] || 0) + 1);
+  
+        const top32Categories = Object.entries(counts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 32)
+          .map(entry => entry[0]);
+  
+        // Replace non-top 32 categories with "Other"
+        data = data.map(row => ({
+          ...row,
+          [col]: top32Categories.includes(row[col]) ? row[col] : 'Other'
+        }));
+      });
+    }
+  
+    // 4. Remove Constant Columns
+    if (options.removeConstantColumns) {
+      const columnsToRemove = Object.keys(data[0]).filter(col =>
+        data.every(row => row[col] === data[0][col])
       );
-    });
-
-    const rowsRemoved = originalDataLength - cleanedData.length;
-
-    return {
-      ...state,
-      displayContent: {
-        ...state.displayContent, // Preserve other properties of displayContent
-        data: cleanedData,
-        rowsRemoved
+      data = data.map(row => {
+        const newRow = { ...row };
+        columnsToRemove.forEach(col => delete newRow[col]);
+        return newRow;
+      });
+    }
+  
+    // 5. Remove Mostly Unreadable Numerical Columns
+    if (options.removeUnreadableColumns) {
+      const numericalColumns = Object.keys(data[0]).filter(col => typeof data[0][col] === 'number');
+      numericalColumns.forEach(col => {
+        const nonNullValues = data.filter(row => row[col] !== null);
+        if (nonNullValues.length / data.length < 0.01) {
+          removedRows.push(...data.filter(row => row[col] !== null));  // Track removed rows
+          data = data.map(row => {
+            const newRow = { ...row };
+            delete newRow[col];
+            return newRow;
+          });
+        }
+      });
+    }
+  
+    // Alert the removed data
+    if (removedRows.length > 0) {
+      alert(JSON.stringify(removedRows, null, 2));  // You can customize this to show in a better way
+    } else {
+      alert("No rows were removed during cleaning.");
+    }
+  
+    // Dispatch action to update the state
+    dispatch({
+      type: 'Clean_Data',
+      payload: {
+        data,  // The cleaned data
+        rowsRemoved: removedRows.length,  // Number of rows removed (optional)
       }
-    };
-  }
+    });
+  };
+  
+  // Helper function to check if a date is valid
+  const isValidDate = (date) => {
+    const parsedDate = new Date(date);
+    return !isNaN(parsedDate.getTime());
+  };
+  
+
+  // Helper function to check if a date is valid
+
+
 
   const handlePrepareData = (inputData) => {
     dispatch({ type: "Prepare_Data", inputData: inputData })
   }
 
   return (
-    <GetDataContext.Provider value={{ ...state, handleUpload, loadingFun, removeData, displayPopupFun, showContent, changePopup, handleCleanData, handlePrepareData,handleLogout2, key: "key" }}>
+    <GetDataContext.Provider value={{ ...state, handleUpload, loadingFun, removeData, displayPopupFun, showContent, changePopup, handleCleanData, handlePrepareData, handleLogout2, key: "key" }}>
       {children}
     </GetDataContext.Provider>
   )

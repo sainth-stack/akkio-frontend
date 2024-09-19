@@ -65,24 +65,16 @@ export const DataReducer = (state, action) => {
 
 
     if (action.type === "Clean_Data") {
-        const originalDataLength = state.displayContent.data.length;
-
-        const cleanedData = state.displayContent.data.filter((field) => {
-            // Filter rows where no value is empty, undefined, null, '0', or 0
-            return !Object.values(field).some(value =>
-                value === '0' || value === 0 || value === '' || value === null || value === undefined
-            );
-        });
-
-        const rowsRemoved = originalDataLength - cleanedData.length;
-
+        console.log(action)
         return {
             ...state,
             displayContent: {
-                ...state.displayContent, // Preserve other properties of displayContent
-                data: cleanedData
+                ...state.displayContent,
+                data: action.payload.data,  // Update with cleaned data
+                rowsRemoved: action.payload.rowsRemoved, // Optional: track removed rows
             }
         };
+
     }
 
 

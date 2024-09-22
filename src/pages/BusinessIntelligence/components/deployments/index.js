@@ -13,10 +13,10 @@ const DeploymentData = () => {
 
     ]
 
-    const name = localStorage.getItem("filename")
-    let db = (name === "retail sales data 2024.csv" ? 'retail_sales_data' : 'Credit_Card_Fraud')
-    let db1 = (name === "retail sales data 2024.csv" ? 'Retail Sales Data' : 'Credit Card Fraud')
-    let db2 = (name === "retail sales data 2024.csv" ? 'Simulations to determine retail sales data.' : 'Simulations to determine credit card fraud.')
+    const name = localStorage.getItem("filename").replace(/\.[^/.]+$/, '')
+    let db = (name)
+    let db1 = (name)
+    let db2 = (name)
 
     const [data, setData] = useState([])
     const [headers, setHeaders] = useState([])
@@ -69,8 +69,7 @@ const DeploymentData = () => {
     } = useDataAPI()
 
     const getLeftData = async () => {
-        const name=localStorage.getItem("filename")
-        let db=(name==="retail sales data 2024.csv" ?'retail_sales_data' :'Credit_Card_Fraud') 
+        let db=(name) 
     
         const response = await axios.post(`${akkiourl}/predict/${db}`, {});
         if (response.status === 200) {

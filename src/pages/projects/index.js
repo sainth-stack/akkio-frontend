@@ -1,39 +1,52 @@
 import React, { useEffect, useState } from 'react';
 import { Modal } from 'antd';
 import { AiFillPlusCircle } from "react-icons/ai"
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { IoArrowBackSharp } from 'react-icons/io5';
 import { useDataAPI } from '../BusinessIntelligence/components/contexts/GetDataApi';
 import PostgreSql from '../BusinessIntelligence/components/components/popups/postgresql';
 
 
 
-const Projects = (datas) => {
+const Projects = () => {
   const { uploadedData, handleUpload, showContent } = useDataAPI()
   const [open, setOpen] = useState(false);
   const [postgresOpen, setPostgresOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [fetchedData, setFetchedData] = useState([])
-  const [connection,setConnection] = useState(false)
+  const [connection, setConnection] = useState(false)
   const [file, setFile] = useState(null);
   const navigate = useNavigate()
+  const location = useLocation()
+  console.log(location)
+  const [datas, setDatas] = useState({ datasource: location?.state?.datasource || '' })
 
+
+  useEffect(() => {
+    if (location?.state?.datasource === 'postgresql') {
+      setPostgresOpen(true)
+    }
+  }, [location.state])
 
   // useEffects Hooks
   useEffect(() => {
-    const updateData=uploadedData.map((item) => {
+    const updateData = uploadedData.map((item) => {
       return item
     })
     setFetchedData(updateData)
-    if (datas?.datasource !== 'csv' && uploadedData.length>0 && connection) {
+    if (datas?.datasource !== 'csv' && uploadedData.length > 0 && connection) {
       handleNavigate(JSON.parse(updateData[0]))
     }
   }, [uploadedData])
 
 
   // Functions
-  const showModal = () => {
-  navigate('/data-source')
+  const showModal = (csv) => {
+    if (csv) {
+      setOpen(true)
+    } else {
+      navigate('/data-source')
+    }
   };
 
   const handleCancel = () => {
@@ -54,6 +67,7 @@ const Projects = (datas) => {
       navigate('/data-source')
     } else {
       setPostgresOpen(false)
+      navigate('/projects')
     }
   }
 
@@ -69,7 +83,7 @@ const Projects = (datas) => {
     localStorage.setItem("file", finalValue)
     navigate("/discover")
   }
-
+  console.log(datas?.datasource, 'postgresql', postgresOpen)
   return (
     <>
       {/* <Navbar /> */}
@@ -78,7 +92,7 @@ const Projects = (datas) => {
       </div>
       {!postgresOpen && <div className="container">
         <div className="upload-section">
-          <div className="upload-container" onClick={showModal}>
+          <div className="upload-container" onClick={() => showModal(datas?.datasource === 'csv')}>
             <AiFillPlusCircle size={45} />
             {datas?.datasource === 'csv' ? <p>Upload Dataset</p> : <p>New Data Source</p>}
           </div>
@@ -92,7 +106,6 @@ const Projects = (datas) => {
           >
 
             <input type='file' onChange={handleFileChange} />
-
           </Modal>}
         </div>
 
@@ -109,9 +122,7 @@ const Projects = (datas) => {
         }
       </div>}
 
-      {datas?.datasource === 'postgresql' && postgresOpen && <PostgreSql setPostgresOpen={setPostgresOpen} setConnection={setConnection}/>}
-
-
+      {datas?.datasource === 'postgresql' && postgresOpen && <PostgreSql setPostgresOpen={setPostgresOpen} setConnection={setConnection} />}
     </>
   );
 }

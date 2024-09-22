@@ -56,8 +56,6 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
             formData.append('file', fileC);  // Append CSV file to formData
         }
 
-
-
         try {
             await axios.post(`${akkiourl}/upload`, formData)
                 .then((response) => {
@@ -87,12 +85,12 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
         // Check for data in localStorage
         const storedData = localStorage.getItem('prepData');
 
-        if (storedData) {
+        if (storedData && showModel) {
             // Parse the stored data and send it to the API
             const parsedData = JSON.parse(storedData);
             handleUpload(parsedData);
         }
-    }, []);
+    }, [showModel]);
 
     const regenerateQuestions = () => {
         if (currentTab == 0) {

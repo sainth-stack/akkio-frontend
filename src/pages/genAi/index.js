@@ -106,19 +106,12 @@ const GenAi = () => {
                 .then((response) => {
                     setLoading(false);
                     setResponse(response);
-
+                    console.log(response?.data)
                     // Set response data for further processing
                     setColumnDesc(response?.data?.column_description);
                     setSampleData(response?.data?.first_10_rows);
-
-                    const textQuestions = response?.data?.text_questions
-                        .split('\n')
-                        .filter(desc => desc.trim() !== '');
-
-                    const graphQuestions = response?.data?.plotting_questions
-                        .split('\n')
-                        .filter(desc => desc.trim() !== '');
-
+                    const textQuestions = response?.data?.text_questions?.split('\n')?.filter(desc => desc.trim() !== '');
+                    const graphQuestions = response?.data?.plotting_questions?.split('\n')?.filter(desc => desc.trim() !== '');
                     setAllQuestions({
                         textQuestions,
                         graphQuestions

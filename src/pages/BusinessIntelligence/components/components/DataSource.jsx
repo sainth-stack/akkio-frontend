@@ -14,7 +14,7 @@ export const DataSource = () => {
             <h2 className='headerText'>  Pick a data source to start
             </h2>
             <div className='mainConatiner'>
-                <div className='outerContainer' onClick={()=>navigate('/business-intelligence',{state:{datasource:'csv'}})}>
+                <div className='outerContainer' onClick={()=>navigate('/projects',{state:{datasource:'csv'}})}>
                     <div className='cardContainer' style={{ display: 'flex' }}>
                         <div className="stepContainer">
                             <img style={{ width: 24, height: 24, marginTop: '2px' }} src={tableSvg} class="step-tile-icon" />
@@ -70,7 +70,7 @@ export const DataSource = () => {
                     </div>
                 </div>
                 <div className='outerContainer'>
-                    <div className='cardContainer' onClick={()=>navigate('/business-intelligence',{state:{datasource:'postgresql'}})}>
+                    <div className='cardContainer' onClick={()=>navigate('/projects',{state:{datasource:'postgresql'}})}>
                         <div className="stepCommonContainer">
                             <BiLogoPostgresql size={40}/>
                             <div>

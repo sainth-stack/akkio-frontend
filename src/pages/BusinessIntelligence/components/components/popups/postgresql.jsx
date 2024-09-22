@@ -4,13 +4,16 @@ import { useNavigate } from 'react-router-dom'
 import './styles.scss'; // Import CSS file for styling
 import { useDataAPI } from '../../contexts/GetDataApi'
 import { IoMdArrowRoundBack, IoMdArrowRoundForward } from 'react-icons/io'
-
+import { akkiourl } from '../../../../../utils/const';
+import { Spinner } from 'react-bootstrap';
 const PostgreSql = (props) => {
     // const {details,setDetails} = props;
     const [secondScreen, setSecondScreen] = useState(false)
     const { uploadedData, handleUpload, showContent } = useDataAPI()
     const [data, setData] = useState()
     const [fetchedData, setFetchedData] = useState([])
+    const [loading, setLoading] = useState(false);
+    const [loading2, setLoading2] = useState(false);
 
     const navigate = useNavigate()
     const handleChange = ({ target: { name, value } }) => {
@@ -29,44 +32,59 @@ const PostgreSql = (props) => {
         tableName: 'retail_sales_data'
     })
     const handleConnectionCheck = async () => {
-        const formData = new FormData();
-        formData.append('username', details.userName);
-        formData.append('password', details.password);
-        formData.append('database', details.databaseName);
-        formData.append('host', details.hostName);
-        formData.append('port', details.port);
-        const response = await axios.post('http://3.132.248.171:7500', formData);
-        if (response.status === 200) {
-            setSecondScreen(true)
-            const tables = JSON.parse(response.data.tables)
-            const names = Object.values(tables?.name).map((item) => {
-                return {
-                    label: item, value: item
-                }
-            })
-            setData(names)
+        setLoading(true); // Start loading
+        try {
+            const formData = new FormData();
+            formData.append('username', details.userName);
+            formData.append('password', details.password);
+            formData.append('database', details.databaseName);
+            formData.append('host', details.hostName);
+            formData.append('port', details.port);
+
+            const response = await axios.post(`${akkiourl}/connect`, formData);
+            if (response.status === 200) {
+                setSecondScreen(true);
+                const tables = JSON.parse(response.data.tables);
+                const names = Object.values(tables?.name).map((item) => {
+                    return { label: item, value: item };
+                });
+                setData(names);
+            }
+        } catch (error) {
+            console.error('Connection failed', error);
+        } finally {
+            setLoading(false); // Stop loading
         }
-    }
+    };
+
 
     const handleGetData = async () => {
-        const formData = new FormData();
-        formData.append('tablename', 'retail_sales_data');
-        formData.append('schemaname', 'postgres');
-        const response = await axios.post('http://3.132.248.171:7500/tabledata', formData);
-        if (response.status === 200) {
-            setSecondScreen(true)
-            handleUpload(null, true, response.data, details.tableName)
-            // navigate('/business-intelligence')
-            props.setConnection(true)
-            props.setPostgresOpen(false)
+        setLoading2(true); // Start second loader
+        try {
+            const formData = new FormData();
+            formData.append('tablename', details?.tableName);
+            formData.append('schemaname', 'postgres');
+            const response = await axios.post(`${akkiourl}/tabledata`, formData);
+            if (response.status === 200) {
+                setSecondScreen(true);
+                handleUpload(null, true, response.data, details.tableName);
+                // navigate('/business-intelligence');
+                props.setConnection(true);
+                props.setPostgresOpen(false);
+            }
+        } catch (error) {
+            console.error('Failed to get data', error);
+        } finally {
+            setLoading2(false); // Stop second loader
         }
-    }
+    };
 
     useEffect(() => {
         setFetchedData(uploadedData.map((item) => {
             return item
         }))
     }, [uploadedData])
+
 
     return (
         <div className="container3">
@@ -120,11 +138,18 @@ const PostgreSql = (props) => {
                         </div>
                         <div className='d-flex' style={{ gap: '5px' }}>
                             <button className='btn w-100'><IoMdArrowRoundBack /> Back</button>
-                            <button className='btn btn-primary w-100' onClick={() => handleConnectionCheck()}>Next <IoMdArrowRoundForward /></button>
-                        </div>
+                            <button className='btn btn-primary w-100' onClick={handleConnectionCheck} disabled={loading}>
+                                {loading ? (
+                                    <Spinner animation="border" size="sm" role="status" aria-hidden="true" />  // Loader
+                                ) : (
+                                    <>
+                                        Next <IoMdArrowRoundForward />
+                                    </>
+                                )}
+                            </button>                        </div>
                     </div>
                 </div>}
-                {!secondScreen && <div className="cardnew">
+                {secondScreen && <div className="cardnew">
                     <div className="card-content">
                         <h2>Connection Details</h2>
                         <h5>Step 2/2</h5>
@@ -150,7 +175,15 @@ const PostgreSql = (props) => {
                         </div>
                         <div className='d-flex' style={{ gap: '5px' }}>
                             <button className='btn w-100' onClick={() => setSecondScreen(false)}><IoMdArrowRoundBack /> Back</button>
-                            <button className='btn btn-primary w-100' onClick={() => handleGetData()}>Continue <IoMdArrowRoundForward /></button>
+                            <button className='btn btn-primary w-100 mt-3' onClick={handleGetData} disabled={loading2}>
+                                {loading2 ? (
+                                    <Spinner animation="border" size="sm" role="status" aria-hidden="true" />
+                                ) : (
+                                    <>
+                                        Continue <IoMdArrowRoundForward />
+                                    </>
+                                )}
+                            </button>
                         </div>
                     </div>
                 </div>}

@@ -44,10 +44,10 @@ export const CommonField = ({ name, value, setSelData, selData }) => {
 const NewDeploymentData = () => {
     const [selData, setSelData] = useState({})
     const [result, setResult] = useState([])
-    const name = localStorage.getItem("filename")
-    let db = (name === "retail sales data.csv" ? 'retail_sales_data' : 'Credit_Card_Fraud')
-    let db1 = (name === "retail sales data.csv" ? 'Retail Sales Data' : 'Credit Card Fraud')
-    let db2 = (name === "retail sales data.csv" ? 'Simulations to determine retail sales data.' : 'Simulations to determine credit card fraud.')
+    const name = localStorage.getItem("filename").replace(/\.[^/.]+$/, '')
+    let db = (name)
+    let db1 = (name)
+    let db2 = (name)
     const predictItem = localStorage.getItem('predictItem')
 
     const [totData, setTotData] = useState({
@@ -69,6 +69,7 @@ const NewDeploymentData = () => {
         const url = localStorage.getItem('url')
         const response = await axios.post(`${akkiourl}/deployments/${url}`, {});
         if (response.status === 200) {
+            console.log(response.data.columns)
             setSelectedField(response?.data?.columns)
         }
     }
@@ -104,9 +105,9 @@ const NewDeploymentData = () => {
                     <h2 style={{ font: '400 14px "Inter", sans-serif', color: 'hsl(240, 10.3%, 38%)' }}>{totData.description}</h2>
                     <div className='deployScreenContainer row' style={{ width: '100%', gap: '0px', margin: '0px' }}>
                         <div className='deployScreenContainer row' style={{ width: '100%', gap: '0px', margin: '0px' }}>
-                            {selectedField?.map((item) => (
+                            {Object.keys(selectedField)?.map((item) => (
                                 <div className='col-6' style={{ padding: '0px', margin: '0px' }}>
-                                    <CommonField key={item} name={item} value={null} selData={selData} setSelData={setSelData} />
+                                    <CommonField key={item} name={item} value={selectedField[item]} selData={selData} setSelData={setSelData} />
                                 </div>
                             ))}
                         </div>
@@ -123,7 +124,7 @@ const NewDeploymentData = () => {
                     {result.map((item, index) => {
                         return (
                             <div >
-                                <h2 style={{ fontSize: '22px', fontWeight: 400, marginTop: '10px' }}>{predictItem} - {parseFloat(item).toFixed(2)}</h2>
+                                <h2 style={{ fontSize: '22px', fontWeight: 400, marginTop: '10px' }}>{predictItem} - {item}</h2>
                             </div>
                         )
                     })}

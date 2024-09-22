@@ -25,10 +25,10 @@ const PredictData = () => {
             Importances: []
         }
     })
-    
-    const name=localStorage.getItem("filename")
+
+    const name = localStorage.getItem("filename")
     const [selectedField, setSelectedField] = useState()
-    let db=(name==="retail sales data.csv" ?'retail_sales_data' :'Credit_Card_Fraud') 
+    let db = (name)
 
     const datann = [
         { id: '25% ', name: 'sampledata.csv', freq: '40%', freq2: '45%' },
@@ -68,7 +68,7 @@ const PredictData = () => {
     }
 
     const handleGetDataFinalData = async (id) => {
-        const response = await axios.get(`${akkiourl}/predict/${db}/${id.replace(' ','_')}`);
+        const response = await axios.get(`${akkiourl}/predict/${db}/${id.replace(' ', '_')}`);
         if (response.status === 200) {
             const data = response?.data?.data
             const finSampleData = transformData(JSON.parse(data?.sample_rows)).slice(0, 15)
@@ -79,7 +79,7 @@ const PredictData = () => {
                 finSamplerows: finSampleData,
                 plot: data.Plot,
                 headers: Object.keys(data.sample_rows),
-                metrics:data?.metrics
+                metrics: data?.metrics
             })
         }
     }

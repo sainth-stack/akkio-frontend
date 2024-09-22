@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Grid, Card, CardMedia, CardContent, Typography, Button, Modal, Box } from '@mui/material';
-
+import { Grid, Card, CardMedia, CardContent, Typography, Button, Modal, Box, IconButton } from '@mui/material';
+import { IoCloudDownload } from "react-icons/io5";
 export const DashboardReports = () => {
   const [savedImages, setSavedImages] = useState([]);
   const [open, setOpen] = useState(false);
@@ -30,6 +30,13 @@ export const DashboardReports = () => {
     setSelectedImage(null);
   };
 
+  const handleDownloadImage = (imageUrl) => {
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = 'report_image'; // You can customize the filename
+    link.click();
+  };
+
   return (
     <div style={{ padding: '20px' }}>
       <Typography variant="h4" gutterBottom>
@@ -54,6 +61,9 @@ export const DashboardReports = () => {
                   <Typography variant="h6" gutterBottom>
                     Report Image {index + 1}
                   </Typography>
+                  <IconButton onClick={() => handleDownloadImage(imageUrl)} color="primary">
+                    <IoCloudDownload />
+                  </IconButton>
                   <Button
                     variant="contained"
                     color="secondary"

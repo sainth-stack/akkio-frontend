@@ -5,6 +5,7 @@ import { DataReducer as reducer } from '../reducers/DataReducer'
 import { Spin } from 'antd';
 import { read, utils } from 'xlsx'; // Import xlsx for Excel file parsing
 import { finalData } from './data';
+import moment from 'moment';
 
 const GetDataContext = createContext()
 
@@ -30,7 +31,6 @@ const initalState = {
 const GetDataApi = ({ children }) => {
 
   const [uploadedData, setUploadedData] = useState(finalData)
-  console.log(uploadedData)
   const [state, dispatch] = useReducer(reducer, initalState)
   const [loading, setLoading] = useState(false)
 
@@ -100,7 +100,7 @@ const GetDataApi = ({ children }) => {
         filename: tableName,
         data: finalData,
       });
-      setUploadedData([value,...uploadedData]);
+      setUploadedData([value, ...uploadedData]);
       getData();
     }
     else if (file?.type === "text/csv") {
@@ -122,7 +122,7 @@ const GetDataApi = ({ children }) => {
               data: flattenedData,
             });
 
-            setUploadedData([value,...uploadedData]);
+            setUploadedData([value, ...uploadedData]);
           }
           setLoading(false);
           getData();
@@ -152,7 +152,7 @@ const GetDataApi = ({ children }) => {
             filename: file.name,
             data: flattenedData,
           });
-          setUploadedData([value,...uploadedData]);
+          setUploadedData([value, ...uploadedData]);
         }
         setLoading(false);
         getData();
@@ -170,7 +170,7 @@ const GetDataApi = ({ children }) => {
             data: jsonData,
           });
 
-          setUploadedData([value,...uploadedData]);
+          setUploadedData([value, ...uploadedData]);
         }
         setLoading(false);
         getData();
@@ -239,9 +239,12 @@ const GetDataApi = ({ children }) => {
       data = data.map(row => ({
         ...row,
         // Assuming date columns have 'Date' in their name (adjust logic as needed)
-        Date: isValidDate(row.Date) ? new Date(row.Date).toISOString() : row.Date
+        Date: isValidDate(row.Date)
+          ? moment(row.Date).format('DD-MM-YYYY')  // Use moment to format date as DD-MM-YYYY
+          : row.Date
       }));
     }
+
 
     // 2. Remove Unexpected Nulls
     if (options.removeNulls) {
@@ -255,54 +258,6 @@ const GetDataApi = ({ children }) => {
         return !Object.values(row).some(value =>
           value === '' || value === null || value === undefined
         );
-      });
-    }
-
-    // 3. Replace Excess Categories with "Other"
-    if (options.replaceExcessCategories) {
-      const categoryColumns = Object.keys(data[0]).filter(col => typeof data[0][col] === 'string');
-      categoryColumns.forEach((col) => {
-        const counts = {};
-        data.forEach(row => counts[row[col]] = (counts[row[col]] || 0) + 1);
-
-        const top32Categories = Object.entries(counts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 32)
-          .map(entry => entry[0]);
-
-        // Replace non-top 32 categories with "Other"
-        data = data.map(row => ({
-          ...row,
-          [col]: top32Categories.includes(row[col]) ? row[col] : 'Other'
-        }));
-      });
-    }
-
-    // 4. Remove Constant Columns
-    if (options.removeConstantColumns) {
-      const columnsToRemove = Object.keys(data[0]).filter(col =>
-        data.every(row => row[col] === data[0][col])
-      );
-      data = data.map(row => {
-        const newRow = { ...row };
-        columnsToRemove.forEach(col => delete newRow[col]);
-        return newRow;
-      });
-    }
-
-    // 5. Remove Mostly Unreadable Numerical Columns
-    if (options.removeUnreadableColumns) {
-      const numericalColumns = Object.keys(data[0]).filter(col => typeof data[0][col] === 'number');
-      numericalColumns.forEach(col => {
-        const nonNullValues = data.filter(row => row[col] !== null);
-        if (nonNullValues.length / data.length < 0.01) {
-          removedRows.push(...data.filter(row => row[col] !== null));  // Track removed rows
-          data = data.map(row => {
-            const newRow = { ...row };
-            delete newRow[col];
-            return newRow;
-          });
-        }
       });
     }
 

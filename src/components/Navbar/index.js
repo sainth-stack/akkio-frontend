@@ -10,13 +10,21 @@ import { useDataAPI } from "../../pages/BusinessIntelligence/components/contexts
 function Navbar() {
   const navigate = useNavigate()
   const [name, setName] = useState("Dashboard")
-  const {handleLogout2} = useDataAPI()
+  const {handleLogout2,displayContent} = useDataAPI()
+  console.log(displayContent)
   const handleLogout = () => {
     localStorage.clear()
     handleLogout2()
     navigate('/login')
   }
   let location = useLocation();
+  const formatname = (name) => {
+    console.log(name)
+    const nameWithoutExtension = name.split('.')[0];  // Remove the extension
+    const words = nameWithoutExtension.split('_');  // Split by underscore
+    return words[0]?.charAt(0)?.toUpperCase() + words[0]?.slice(1) + ' ' +
+           words[1]?.charAt(0)?.toUpperCase() + words[1]?.slice(1);  // Capitalize and join
+  };
   useEffect(() => {
     console.log(location.pathname == '/gen-ai')
     if (location.pathname == '/productivity') {
@@ -33,7 +41,7 @@ function Navbar() {
       setName("Business KPI")
     }
     else {
-      setName("")
+      setName(formatname(displayContent?.filename || ''))
     }
   }, [location.pathname])
 

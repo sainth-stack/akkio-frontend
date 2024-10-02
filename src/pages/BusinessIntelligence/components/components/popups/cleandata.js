@@ -43,7 +43,7 @@ export const CleanDataPopup = ({ showModal, setShowModal, onCleanData }) => {
             onChange={handleOptionChange}
             className="clean-popup-checkbox"
           >
-            Standardize Date Columns
+            Date Standardization
           </Checkbox>
 
           <Checkbox
@@ -52,34 +52,7 @@ export const CleanDataPopup = ({ showModal, setShowModal, onCleanData }) => {
             onChange={handleOptionChange}
             className="clean-popup-checkbox"
           >
-            Remove Unexpected Nulls
-          </Checkbox>
-
-          <Checkbox
-            name="replaceExcessCategories"
-            checked={options.replaceExcessCategories}
-            onChange={handleOptionChange}
-            className="clean-popup-checkbox"
-          >
-            Replace Excess Categories with "Other"
-          </Checkbox>
-
-          <Checkbox
-            name="removeConstantColumns"
-            checked={options.removeConstantColumns}
-            onChange={handleOptionChange}
-            className="clean-popup-checkbox"
-          >
-            Remove Constant Columns
-          </Checkbox>
-
-          <Checkbox
-            name="removeUnreadableColumns"
-            checked={options.removeUnreadableColumns}
-            onChange={handleOptionChange}
-            className="clean-popup-checkbox"
-          >
-            Remove Mostly Unreadable Numerical Columns
+            Delete Null Rows
           </Checkbox>
         </div>
       </Modal>

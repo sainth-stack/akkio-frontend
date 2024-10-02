@@ -82,13 +82,26 @@ const ForecastData = () => {
                         data4.push(item);
                     }
                 });
-
+                console.log({
+                    predictData: finPredictData,
+                    labels: labels,
+                    data3: data3,
+                    data4: data4
+                })
                 setTotData({
                     predictData: finPredictData,
                     labels: labels,
                     data3: data3,
                     data4: data4
                 });
+            } else {
+                setTotData({
+                    accuracy: 0,
+                    predictData: {},
+                    lables: [],
+                    data3: [],
+                    data4: []
+                })
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -117,10 +130,11 @@ const ForecastData = () => {
         getLeftData()
     }, [displayContent])
     const fileName = localStorage.getItem('filename')
+    console.log(totData)
     return (
         <>
-            {loading3 ?<div style={{display:'flex',justifyContent:'center',alignItems:'center'}}> <CircularProgress /></div> : <>
-                {(fileName && totData?.lables?.length > 0) ? <div style={{ height: '85vh', overflow: 'hidden' }}>
+            {loading3 ? <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}> <CircularProgress /></div> : <>
+                {<div style={{ height: '85vh', overflow: 'hidden' }}>
                     <Navbar />
                     <div className="professional-table ms-2">
                         <div className="file-details" style={{ borderBottom: '1px solid #e0eaf0' }}>
@@ -174,14 +188,14 @@ const ForecastData = () => {
                                     <h2 className='rightDesctext'> The predictions of the model, compared to the historical data and extrapolated forward.                            </h2>
                                     <div className='regressioncard' style={{ width: '96%' }}>
                                         <div className='regressionCardInnerContainer' style={{ minHeight: '400px', width: '100%' }}>
-                                            <DetailedLineGraph {...{ labelsNew: totData.lables, data: totData.data3, data2: totData.data4, selectedField }} />
+                                            <DetailedLineGraph {...{ labelsNew: totData.labels, data: totData.data3, data2: totData.data4, selectedField }} />
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div> : <div style={{ display: 'flex', justifyContent: 'center' }}>Forecase is not Possible.</div>}
+                </div>}
             </>}
         </>
     )

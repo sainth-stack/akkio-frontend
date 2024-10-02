@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
 
 export const DetailedLineGraph = ({ labelsNew, data, data2,selectedField }) => {
+    console.log(data,data2,labelsNew)
     const chartRef = useRef(null);
     const myChartRef = useRef(null);
 

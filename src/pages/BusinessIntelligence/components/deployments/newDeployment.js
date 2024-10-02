@@ -103,8 +103,8 @@ const NewDeploymentData = () => {
                 <div className='rightttContainerDeploy' style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     <h2 style={{ font: '500 36px "Inter", sans-serif', color: 'hsl(240, 46.3%, 8%)' }}>{totData.title}</h2>
                     <h2 style={{ font: '400 14px "Inter", sans-serif', color: 'hsl(240, 10.3%, 38%)' }}>{totData.description}</h2>
-                    <div className='deployScreenContainer row' style={{ width: '100%', gap: '0px', margin: '0px' }}>
-                        <div className='deployScreenContainer row' style={{ width: '100%', gap: '0px', margin: '0px' }}>
+                    <div className='deployScreenContainer row' style={{ width: '100%', gap: '0px', margin: '0px',overflow:'auto' }}>
+                        <div className='deployScreenContainer row' style={{ width: '100%', gap: '0px', margin: '0px',overflow:'auto' }}>
                             {Object.keys(selectedField)?.map((item) => (
                                 <div className='col-6' style={{ padding: '0px', margin: '0px' }}>
                                     <CommonField key={item} name={item} value={selectedField[item]} selData={selData} setSelData={setSelData} />

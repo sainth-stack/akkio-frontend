@@ -41,7 +41,7 @@ function Navbar() {
       setName("Business KPI")
     }
     else {
-      setName(formatname(displayContent?.filename || ''))
+      setName(displayContent?.filename ?formatname(displayContent?.filename || '') :'')
     }
   }, [location.pathname])
 

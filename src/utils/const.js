@@ -1,4 +1,4 @@
-export const akkiourl="http://54.179.220.21:3001/api"
+export const akkiourl="http://18.142.251.129:3001/api"
 export const keypulseurl="http://18.143.174.1:8000/api"
 
 export function getFinalData(uniqueArr, isDate, length) {

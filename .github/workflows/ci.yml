@@ -44,7 +44,7 @@ jobs:
               docker stop akkio-frontend-container || true
               docker rm akkio-frontend-container || true
 
-              # Run the new Docker container
+              # Run the new Docker container on port 3000
               docker run -d -p 3000:3000 --name akkio-frontend-container sainath521/akkio-frontend:latest
             "
           EOF

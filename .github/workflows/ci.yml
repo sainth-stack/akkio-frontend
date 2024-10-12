@@ -35,7 +35,7 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@18.143.174.1 << 'EOF'
+          ssh -o StrictHostKeyChecking=no ubuntu@47.129.187.19 << 'EOF'
             sudo bash -c "
               # Pull the latest Docker image
               docker pull sainath521/akkio-frontend:latest

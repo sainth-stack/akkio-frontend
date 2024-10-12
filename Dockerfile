@@ -1,22 +1,23 @@
-# Use an official Node runtime as a parent image
-FROM node:16-alpine
+FROM node:14
 
-# Set the working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
 COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy the rest of the application code
+# Copy the rest of the application
 COPY . .
 
-# Build the app
-# Install serve globally to serve the build
-# Expose the port the app runs on
-EXPOSE 4000
+# Increase Node.js memory limit
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Start the app on port 4000
-CMD ["npm","start"]
+# Build the application
+RUN npm run build
+
+# Expose the app's port
+EXPOSE 3000
+
+# Start the application
+CMD ["npm", "start"]

@@ -1,5 +1,5 @@
-export const akkiourl="http://18.142.251.129:3001/api"
-export const keypulseurl="http://18.143.174.1:8000/api"
+export const akkiourl = "http://47.129.223.39:3001/api"
+export const keypulseurl = "http://18.143.174.1:8000/api"
 
 export function getFinalData(uniqueArr, isDate, length) {
   // Convert values to valid Date objects or numbers
@@ -63,4 +63,3 @@ export function getFinalData(uniqueArr, isDate, length) {
 
 
 
-  

@@ -103,7 +103,7 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
         try {
             var formData = new FormData();
             formData.append('tablename', fileName);
-            await axios.post(`${akkiourl}/regenerate`, formData)
+            await axios.post(`${akkiourl}/regenerate_txt_questions`, formData)
                 .then((response) => {
                     const questions = response?.data?.questions.split('\n')
                         .filter(desc => desc.trim() !== '')
@@ -123,7 +123,7 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
         try {
             var formData = new FormData();
             formData.append('tablename', fileName);
-            await axios.post(`${akkiourl}/regenerate_chart`, formData)
+            await axios.post(`${akkiourl}/regenerate_graph_questions`, formData)
                 .then((response) => {
                     const questions = response?.data?.questions.split('\n')
                         .filter(desc => desc.trim() !== '')
@@ -146,7 +146,7 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
 
         try {
             const res = await axios.post(
-                `${akkiourl}/${currentTab === 1 ? 'getResult2' : 'genresponse2'}`,
+                `${akkiourl}/${currentTab === 1 ? 'gen_graph_response' : 'gen_txt_response'}`,
                 formData,
                 { responseType: currentTab === 1 ? 'blob' : '' }
             );

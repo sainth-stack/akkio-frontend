@@ -67,6 +67,7 @@ const Connect = (datas) => {
     // Uploaded Data is storing the localstorage  
     localStorage.setItem("filename", finalValue.filename)
     localStorage.setItem("file", finalValue)
+    localStorage.setItem('prepData', JSON.stringify(finalValue.data));
     navigate("/discover")
   }
 

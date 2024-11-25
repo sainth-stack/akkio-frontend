@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styles from '../styles/AnswersAccordion.module.css';
 import { CircularProgress, Button } from '@mui/material';
 
-const AnswersAccordion = ({ question, answer, loading, type ,name='savedImages'}) => {
+const AnswersAccordion = ({ question, answer, loading, type ,name='savedImages',desc}) => {
   const [isOpen, setIsOpen] = useState(false);
   const imageUrl = answer;
   const [isSaved, setIsSaved] = useState(false); // To manage save status
@@ -55,6 +55,7 @@ const AnswersAccordion = ({ question, answer, loading, type ,name='savedImages'}
                       </Button>
                     )}
                   </div>
+                  {desc&& <div className='mt-3'>{desc}</div>}
                   {isSaved && <div style={{ marginTop: '10px' }}>Image already to Dashboard</div>}
                 </>
               )}

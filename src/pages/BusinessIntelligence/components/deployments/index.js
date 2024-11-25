@@ -24,6 +24,7 @@ const DeploymentData = () => {
     const [loading, setLoading] = useState(false)
     const [filename, setFilename] = useState("")
     const [deployed, setDeployed] = useState(false)
+    const [prediction, setNoPrediction] = useState(false)
     const navigate = useNavigate()
     const [totData, setTotData] = useState({
         title: db1,
@@ -69,14 +70,20 @@ const DeploymentData = () => {
     } = useDataAPI()
 
     const getLeftData = async () => {
-        let db=(name) 
-    
-        const response = await axios.post(`${akkiourl}/predict/${db}`, {});
-        if (response.status === 200) {
-            setLeftData(response?.data?.columns)
-            setSelectedField([response?.data?.columns[0]])
+        try {
+            let db = name; // Assuming `name` is defined elsewhere
+            const response = await axios.post(`${akkiourl}/predict/${db}`, {});
+
+            if (response.status === 200) {
+                setLeftData(response?.data?.columns);
+                setSelectedField([response?.data?.columns[0]]);
+            }
+        } catch (error) {
+            setNoPrediction(true)
+            console.error('Error fetching left data:', error);
         }
-    }
+    };
+
 
 
     useEffect(() => {
@@ -154,7 +161,8 @@ const DeploymentData = () => {
     }
 
     return (
-        <div style={{ minHeight: '90vh', overflow: 'hidden' }}>
+       <>
+       {!prediction?  <div style={{ minHeight: '90vh', overflow: 'hidden' }}>
             <Navbar />
             <div className="professional-table">
                 <div className="file-details ms-2" style={{ borderBottom: '1px solid #e0eaf0', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -196,7 +204,8 @@ const DeploymentData = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div> : <div style={{fontSize:'18px',display:'flex',justifyContent:'center'}}>No Prediction Found!</div>}
+       </>
     )
 }
 

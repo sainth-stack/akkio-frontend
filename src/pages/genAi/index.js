@@ -8,7 +8,6 @@ import './Main.css'
 import ColumnDescriptions from "./components/columnDesc";
 import SampleDataTable from "./components/sampleData";
 import Accordion from "./components/accordian";
-import FileUpload from "./components/browseFiles";
 import SampleQuestion from "./components/questions";
 import AnswersAccordion from "./components/answers";
 import { Tabs, Tab, InputAdornment } from '@mui/material';
@@ -17,20 +16,7 @@ import { akkiourl } from "../../utils/const";
 const GenAi = () => {
 
     const [search, setSearch] = useState('')
-    const [question, setQuestion] = useState([])
     const [fileName, setFileName] = useState('')
-    const [response, setResponse] = useState()
-    const handleSend = () => {
-        const updatedata = [...question, {
-            question: search,
-            answer: true,
-        }]
-        setQuestion(updatedata)
-        handleGetAnswer(updatedata)
-        setSearch('')
-    }
-
-
     const [questions, setQuestions] = useState([
         "What is the minimum gross_income of the data?",
         "What is the mean quantity of the data?",
@@ -54,8 +40,6 @@ const GenAi = () => {
   These descriptions provide an overview of the data columns and the type of information they contain`);
 
     const [sampleData, setSampleData] = useState(`{"Store ID":{"0":1,"1":1,"2":1,"3":1,"4":1,"5":1,"6":1,"7":1,"8":1,"9":1},"Employee Number":{"0":54,"1":57,"2":50,"3":56,"4":50,"5":56,"6":52,"7":56,"8":55,"9":58},"Area":{"0":"Asia","1":"Asia","2":"Asia","3":"Asia","4":"Asia","5":"Asia","6":"Asia","7":"Asia","8":"Asia","9":"Asia"},"Date":{"0":"2018-01-31","1":"2018-02-28","2":"2018-03-31","3":"2018-04-30","4":"2018-05-31","5":"2018-06-30","6":"2018-07-31","7":"2018-08-31","8":"2018-09-30","9":"2018-10-31"},"Sales":{"0":86586.23,"1":131181.61,"2":185833.69,"3":150538.66,"4":183421.04,"5":292656.36,"6":214964.98,"7":189526.91,"8":222308.26,"9":213762.78},"Marketing Spend":{"0":16022.68,"1":6562.93,"2":1106.61,"3":16586.79,"4":2708.69,"5":10459.98,"6":26320.18,"7":26479.09,"8":4848.86,"9":13452.72},"Electronics Sales":{"0":23312.79,"1":38738.19,"2":53601.54,"3":42062.01,"4":42276.04,"5":69192.41,"6":48065.41,"7":47851.76,"8":64556.77,"9":43525.38},"Home Sales":{"0":10991.36,"1":17000.27,"2":26926.41,"3":25817.93,"4":26700.62,"5":45898.82,"6":24049.25,"7":27550.8,"8":38468.88,"9":21181.46},"Clothes Sales":{"0":28089.66,"1":52073.81,"2":58401.37,"3":50028.65,"4":63996.07,"5":95964.42,"6":94098.8,"7":74569.68,"8":71728.8,"9":78333.69}}`);
-
-    const [file, setFile] = useState(null)
     const [startChart, setStartChart] = useState(false)
     const [loading, setLoading] = useState(false)
     const [currentTab, setCurrentTab] = useState(0);
@@ -64,11 +48,7 @@ const GenAi = () => {
         textQuestions: [],
         graphQuestions: []
     })
-    // const [img, setImage] = useState(null)
-    const handleFileChange = (event) => {
-        const selectedFile = event.target.files[0];
-        setFile(selectedFile);
-    };
+
 
     const arrayToCSV = (data) => {
         const csvRows = [];
@@ -88,8 +68,6 @@ const GenAi = () => {
 
     const handleUpload = async (data, fileC) => {
         var formData = new FormData();
-
-        // Convert array to CSV blob if data exists
         if (data) {
             const csvData = arrayToCSV(data);  // Convert data to CSV
             const file = new Blob([csvData], { type: 'text/csv' });  // Create CSV Blob
@@ -97,21 +75,21 @@ const GenAi = () => {
         } else {
             formData.append('file', fileC);  // Append CSV file to formData
         }
-
         setLoading(true);
         setStartChart(true);
 
         try {
             await axios.post(`${akkiourl}/upload`, formData)
                 .then((response) => {
+                    function sanitizeJsonData(data) {
+                        return data.replace(/NaN|Infinity/g, 'null');
+                    }
+                    const data = JSON.parse(sanitizeJsonData(response?.data))
                     setLoading(false);
-                    setResponse(response);
-                    console.log(response?.data)
-                    // Set response data for further processing
-                    setColumnDesc(response?.data?.column_description);
-                    setSampleData(response?.data?.first_10_rows);
-                    const textQuestions = response?.data?.text_questions?.split('\n')?.filter(desc => desc.trim() !== '');
-                    const graphQuestions = response?.data?.plotting_questions?.split('\n')?.filter(desc => desc.trim() !== '');
+                    setColumnDesc(data?.column_description);
+                    setSampleData(data?.first_10_rows);
+                    const textQuestions = data?.text_questions?.split('\n')?.filter(desc => desc.trim() !== '');
+                    const graphQuestions = data?.plotting_questions?.split('\n')?.filter(desc => desc.trim() !== '');
                     setAllQuestions({
                         textQuestions,
                         graphQuestions
@@ -124,13 +102,16 @@ const GenAi = () => {
         }
     };
 
-    const handleFileUpload = (event) => {
-        if (file) {
-            console.log(file?.name?.replace(/\.[^/.]+$/, ''))
-            setFileName(file?.name?.replace(/\.[^/.]+$/, ''))
-            handleUpload(false, file)
+    useEffect(() => {
+        const storedData = localStorage.getItem('prepData');
+        const name = localStorage.getItem('filename')
+        if (storedData) {
+            const parsedData = JSON.parse(storedData);
+
+            setFileName(name)
+            handleUpload(parsedData);
         }
-    };
+    }, []);
 
     const regenerateQuestions = () => {
         if (currentTab == 0) {
@@ -190,6 +171,11 @@ const GenAi = () => {
                 formData,
                 { responseType: currentTab === 1 ? 'blob' : '' }
             );
+            let res2=''
+            if (currentTab === 1) {
+                const res1 = await axios.post(`${akkiourl}/get_description`);
+                res2=(res1?.data?.description)
+            }
             const imageUrl = currentTab === 1 ? URL.createObjectURL(res.data) : '';
             const ans = data.map((item) => {
                 if (item.question == question) {
@@ -197,7 +183,8 @@ const GenAi = () => {
                         ...item,
                         view: currentTab === 1 ? "Graph" : "Text",
                         answer: currentTab === 1 ? imageUrl : res?.data?.answer,
-                        loading: false
+                        loading: false,
+                        desc:res2
                     }
                 } else return item;
             })
@@ -251,7 +238,7 @@ const GenAi = () => {
                         width: "100%"
                     }}>
                         <div>
-                            <FileUpload handleFileChange={handleFileChange} handleUpload={handleFileUpload} />
+                            {/* <FileUpload handleFileChange={handleFileChange} handleUpload={handleFileUpload} fileName={fileName} /> */}
                             {/* {!startChart && <p style={{ fontSize: '14px', fontStyle: 'italic', margin: '0px' }}>To get insights from your own data, please upload your csv file.</p>
                             } */}
                         </div>
@@ -367,7 +354,7 @@ const GenAi = () => {
                                             <button className="btn btn-primary" onClick={() => setAnswers([])}>Reset</button>
                                         </div>
                                         {answers?.map((item, index) => (
-                                            <AnswersAccordion key={index} question={item.question} answer={item.answer} loading={item?.loading} type={item.view} />
+                                            <AnswersAccordion key={index} desc={item.desc} question={item.question} answer={item.answer} loading={item?.loading} type={item.view} />
                                         ))}
                                     </div>
                                 </div>

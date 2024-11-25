@@ -130,12 +130,6 @@ const DisplayData = () => {
     setPopup(displaypopup)
   }, [displaypopup])
 
-  const handleClearedData = async () => {
-    const data = await handleCleanData()
-    setData(data?.displayContent?.data)
-    const rowsRemoved = data?.displayContent?.rowsRemoved || 0;
-    alert(`Rows removed: ${rowsRemoved}`);
-  }
 
   console.log(showPopup)
   return (

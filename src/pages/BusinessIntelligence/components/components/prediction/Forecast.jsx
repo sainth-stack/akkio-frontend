@@ -8,12 +8,13 @@ import { DetailedLineGraph } from './lineGraph'
 import moment from 'moment'
 import { akkiourl } from '../../../../../utils/const'
 import { CircularProgress } from '@mui/material'
+import { toast } from 'react-toastify'
 const ForecastData = () => {
 
     const [data, setData] = useState([])
     const [headers, setLeftData] = useState([])
     const [loading3, setLoading3] = useState(false); // Loading state for handleGetDataFinalData
-
+    const [training, setTraining] = useState(false)
     const [filename, setFilename] = useState("")
     const [totData, setTotData] = useState({
         accuracy: 0,
@@ -25,7 +26,6 @@ const ForecastData = () => {
     const name = localStorage.getItem("filename").replace(/\.[^/.]+$/, '')
     // const [file, setFile] = useState(null)
     const [selectedField, setSelectedField] = useState('')
-
     const handleSelect = (item) => {
         setSelectedField(item)
     }
@@ -33,21 +33,20 @@ const ForecastData = () => {
     const getLeftData = async () => {
         let db = (name)
 
-        const response = await axios.post(`${akkiourl}/predict/${db}`, {});
+        const response = await axios.post(`${akkiourl}/forecast/${db}`, {});
         if (response.status === 200) {
             setLeftData(response?.data?.columns)
-            setSelectedField([response?.data?.columns[0]])
+            setSelectedField(response?.data?.columns[0])
         }
     }
 
     const handleGetDataFinalData = async (id) => {
-        setLoading3(true); // Start loading
         try {
             const response = await axios.post(`${akkiourl}/forecast/${name}/${selectedField}`);
             if (response.status === 200 && Object.keys(response?.data?.result)?.length > 0) {
                 const data = response?.data?.result;
-                const finActualData = data?.Actual;
-                const finPredictData = data?.prediction;
+                const finActualData = data?.actual;
+                const finPredictData = data?.forecast;
                 const labels = [];
                 const data3 = [];
                 const data4 = [];
@@ -111,14 +110,53 @@ const ForecastData = () => {
     };
 
     useEffect(() => {
-        if (selectedField) {
+        if (selectedField && training) {
             handleGetDataFinalData(selectedField)
         }
-    }, [selectedField])
+    }, [selectedField, training])
+
+
     const {
         displayContent,
     } = useDataAPI()
 
+    const handleTrainData = async () => {
+        setLoading3(true);
+        const fileName = localStorage.getItem('filename')
+        try {
+            // toast.success('Training Started', {
+            //     autoClose: false
+            // });
+            toast.success('Training in process', {
+                autoClose: false
+            });
+
+            // Execute both requests and wait for them to complete without blocking the main thread
+            // const res = axios.post(`${akkiourl}/train/predict/${(file.name).replace(/\.[^/.]+$/, '')}`);
+            const res2 = await axios.post(`${akkiourl}/train/forecast/${(fileName).replace(/\.[^/.]+$/, '')}`);
+            console.log(res2)
+            if (res2?.data ==="Success") {
+                setTraining(true)
+                getLeftData()
+                toast.success('Training completed', {
+                    autoClose: false
+                });
+            } else{
+                setLoading3(false);
+                toast.error('Training Failed', {
+                    autoClose: false
+                });
+            }
+
+        } catch (error) {
+            console.error('Training error:', error);
+            toast.error('Training failed');
+        }
+    };
+
+    useEffect(() => {
+        handleTrainData()
+    }, [])
 
     useEffect(() => {
         // console.log(displayContent)
@@ -127,13 +165,10 @@ const ForecastData = () => {
         setFilename(localStorage.getItem("filename"))
         setTimeout(() => {
         }, 2000)
-        getLeftData()
     }, [displayContent])
-    const fileName = localStorage.getItem('filename')
-    console.log(totData)
     return (
         <>
-            {loading3 ? <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}> <CircularProgress /></div> : <>
+            {loading3 ? <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center',height:'100vh' }}> <CircularProgress /></div> : <>
                 {<div style={{ height: '85vh', overflow: 'hidden' }}>
                     <Navbar />
                     <div className="professional-table ms-2">

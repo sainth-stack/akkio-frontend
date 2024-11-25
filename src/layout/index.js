@@ -11,7 +11,7 @@ export function AdminLayout(props) {
   return (
     <div className="row p-0 m-0">
       <React.Fragment>
-      { isAuthenticated() ? <div className="col-lg-12 col-md-12 col-sm-12 col-xs-12 p-0 m-0 bg-light">
+        {isAuthenticated() ? <div className="col-lg-12 col-md-12 col-sm-12 col-xs-12 p-0 m-0 bg-light">
           {/* Top Navbar */}
           <Navbar />
           {/* Main content */}
@@ -20,7 +20,7 @@ export function AdminLayout(props) {
               <Sidebar />
             </div>
             <div className="p-0 w-100 main-content">
-            <Outlet />
+              <Outlet />
             </div>
           </div>
         </div> : (

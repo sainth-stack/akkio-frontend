@@ -5,8 +5,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { IoArrowBackSharp } from 'react-icons/io5';
 import { useDataAPI } from '../BusinessIntelligence/components/contexts/GetDataApi';
 import PostgreSql from '../BusinessIntelligence/components/components/popups/postgresql';
-
-
+import { akkiourl } from '../../utils/const';
+import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const Projects = () => {
   const { uploadedData, handleUpload, showContent } = useDataAPI()
@@ -16,11 +17,11 @@ const Projects = () => {
   const [fetchedData, setFetchedData] = useState([])
   const [connection, setConnection] = useState(false)
   const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  console.log(location)
   const [datas, setDatas] = useState({ datasource: location?.state?.datasource || '' })
-
+  const [training, setTraining] = useState(false)
 
   useEffect(() => {
     if (location?.state?.datasource === 'postgresql') {
@@ -53,9 +54,27 @@ const Projects = () => {
     setOpen(false);
   };
 
+  const handleUpload2 = async () => {
+    var formData = new FormData();
+    formData.append('file', file);  // Append CSV file to formData
+    setConfirmLoading(true)
+    try {
+      await axios.post(`${akkiourl}/upload`, formData)
+        .then((response) => {
+          // handleTrainData()
+          setOpen(false)
+          setConfirmLoading(false)
+        });
+    } catch (err) {
+      setConfirmLoading(false)
+      console.log(err);
+    }
+  };
+
   const handleOk = () => {
     handleUpload(file)
-    setOpen(false)
+    console.log(uploadedData)
+    handleUpload2()
   }
 
   const handleFileChange = (event) => {
@@ -81,6 +100,7 @@ const Projects = () => {
     // Uploaded Data is storing the localstorage  
     localStorage.setItem("filename", finalValue.filename)
     localStorage.setItem("file", finalValue)
+    localStorage.setItem('prepData', JSON.stringify(finalValue.data));
     navigate("/discover")
   }
   console.log(datas?.datasource, 'postgresql', postgresOpen)
@@ -102,7 +122,7 @@ const Projects = () => {
             onOk={handleOk}
             confirmLoading={confirmLoading}
             onCancel={handleCancel}
-            okText="upload"
+            okText={training ? "Training" : "upload"}
           >
 
             <input type='file' onChange={handleFileChange} />

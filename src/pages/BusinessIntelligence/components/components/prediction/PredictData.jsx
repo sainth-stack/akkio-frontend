@@ -57,32 +57,40 @@ const PredictData = () => {
     const handleSelect = (item) => {
         setSelectedField(item)
     }
-
     const handleGetData = async () => {
-        const response = await axios.get(`http://${akkiourl}/predict/${db}`);
-        if (response.status === 200) {
-            const data = response.data?.columns
-            setHeaders(data)
-            setSelectedField(data[0])
+        try {
+            const response = await axios.get(`http://${akkiourl}/predict/${db}`);
+            if (response.status === 200) {
+                const data = response.data?.columns;
+                setHeaders(data);
+                setSelectedField(data[0]);
+            }
+        } catch (error) {
+            console.error('Error fetching initial data:', error);
         }
-    }
+    };
 
     const handleGetDataFinalData = async (id) => {
-        const response = await axios.get(`${akkiourl}/predict/${db}/${id.replace(' ', '_')}`);
-        if (response.status === 200) {
-            const data = response?.data?.data
-            const finSampleData = transformData(JSON.parse(data?.sample_rows)).slice(0, 15)
-            setTotData({
-                accuracy: data.accuracy,
-                topFields: JSON.parse(data['Top Fields']),
-                sampleRows: JSON.parse(data.sample_rows),
-                finSamplerows: finSampleData,
-                plot: data.Plot,
-                headers: Object.keys(data.sample_rows),
-                metrics: data?.metrics
-            })
+        try {
+            const response = await axios.get(`${akkiourl}/predict/${db}/${id.replace(' ', '_')}`);
+            if (response.status === 200) {
+                const data = response?.data?.data;
+                const finSampleData = transformData(JSON.parse(data?.sample_rows)).slice(0, 15);
+                setTotData({
+                    accuracy: data.accuracy,
+                    topFields: JSON.parse(data['Top Fields']),
+                    sampleRows: JSON.parse(data.sample_rows),
+                    finSamplerows: finSampleData,
+                    plot: data.Plot,
+                    headers: Object.keys(data.sample_rows),
+                    metrics: data?.metrics
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching final data:', error);
         }
-    }
+    };
+
 
     useEffect(() => {
         handleGetData()

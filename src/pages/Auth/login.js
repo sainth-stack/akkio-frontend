@@ -8,35 +8,40 @@ import { LoadingIndicator } from "../../components/loader";
 import './styles.css'
 import axios from 'axios'
 import { useNavigate } from "react-router-dom";
-const baseURL = "http://localhost:5000/api/login"
+import { adminUrl } from "../../utils/const";
+import { message } from "antd";
 
 export const Login = () => {
   const [loading, setLoading] = useState(false)
   const [toggle2, setToggle2] = useState(false)
-  const [email, setEmail] = useState("info@keypulse.net")
-  const [password, setPassword] = useState('Keypulse@123')
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState('')
   const navigate = useNavigate()
-  const Login = (event) => {
-    if (email === 'info@keypulse.net' && password === 'Keypulse@123') {
-      setLoading(true)
-      navigate('/welcome')
+  const Login = async (event) => {
+    event.preventDefault();
+    try {
+      setLoading(true);
+
+
+      const response = await axios.post(`${adminUrl}/login`, {
+        email,
+        password
+      });
+      localStorage.setItem('user', JSON.stringify(response.data))
+      if (response.data) {
+        if (email === 'superadmin@gmail.com') {
+          navigate('/admin/organizations');
+          return;
+        } else {
+          navigate('/welcome');
+        }
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      message.error('Invalid email or password');
+    } finally {
+      setLoading(false);
     }
-    // event.preventDefault()
-    // axios
-    // .post(baseURL, {
-    //   email:email,
-    //   password:password
-    // })
-    // .then((response) => {
-    //   console.log(response)
-    //   setLoading(false)
-    //   navigate('/timesheet')
-    //   localStorage.setItem('token', response.data.token);
-    //   localStorage.setItem('userName', response.data.userName);
-    // })
-    // .catch((err)=>{
-    //   console.log(err)
-    // })
   }
   return (
     <div className="container-fluid row m-0 p-0 vh-100">
@@ -99,12 +104,6 @@ export const Login = () => {
                     alt="Logo"
                   />
                 </div>
-                {/* {validator.current.message(
-                    "Password",
-                    password,
-                    "required|password"
-                  )} */}
-                {/* <span className="error-message">{message}</span> */}
               </div>
               <div className="d-flex flex-row-reverse mb-4">
                 <Link to="#">
@@ -126,26 +125,12 @@ export const Login = () => {
                 {loading ? "Logging in..." : 'Login'} {loading ? <LoadingIndicator size={"1"} /> : null}
               </button>
             </form>
-            <div className="account2 mt-2">{"Don't Have An Account?"}</div>
-            <Link to="/register" className="text-decoration-none register2">
-              <span>  {"Register"}</span>
-            </Link>
           </div>
         </div>
       </div>
       <div className="col-md-6 p-0">
-        <img className="img-fluid" src={loginbg} alt="Logo" style={{height:'100vh',width:'100%',overflow:'auto'}} />
+        <img className="img-fluid" src={loginbg} alt="Logo" style={{ height: '100vh', width: '100%', overflow: 'auto' }} />
       </div>
-      {/* <div className="col-md-6 p-0 m-0 bg-biscuit text-center pt-4 pb-4 d-none d-lg-block">
-        <h5 className="text-green font-weight-bold mt-2">Welcome to Otamat Platform        </h5>
-        <h3 className="mt-3" style={{fontSize:'16px'}}>Decision-based Self-Service  data-driven GenBI-GenAI Platform" combines elements of<br/> decision support, self-service accessibility, advanced analytics, data-driven insights, and<br/> Generative Artificial intelligence to empower users to make informed decisions and<br/> optimize processes across various domains.
-        </h3>
-        <div className="d-flex justify-content-center">
-          <div className="col-md-10">
-            <img className="img-fluid p-3" src={loginbg} alt="Logo" />
-          </div>
-        </div>
-      </div> */}
     </div>
   )
 }

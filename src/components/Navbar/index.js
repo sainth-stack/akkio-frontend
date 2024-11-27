@@ -25,7 +25,6 @@ function Navbar() {
     return words[0]?.charAt(0)?.toUpperCase() + words[0]?.slice(1) + ' '
   };
   useEffect(() => {
-    console.log(location.pathname == '/gen-ai')
     if (location.pathname == '/productivity') {
       setName("Productivity")
     } else if (location.pathname === '/gen-ai2') {
@@ -33,8 +32,8 @@ function Navbar() {
     } else if (location.pathname == '/reports' || location.pathname == '/review-report') {
       setName("Reports")
     }
-    else if (location.pathname == '/business-intelligence') {
-      setName("Business Intelligence")
+    else if (location.pathname == '/projects') {
+      setName("Projects")
     }
     else if (location.pathname == '/process') {
       setName("Business KPI")

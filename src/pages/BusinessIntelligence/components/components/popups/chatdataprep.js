@@ -213,46 +213,7 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
                     }}>
                         {startChart && <div>
                             {!loading ? <div>
-                                <h2 style={{ fontSize: '30px' }}>Data Exploration</h2>
-                                <Tabs
-                                    value={currentTab}
-                                    onChange={handleTabChange}
-                                    sx={{
-                                        marginTop: '20px',
-                                        marginBottom: '20px',
-                                        '& .MuiTabs-flexContainer': {
-                                            display: 'flex',
-                                            flexDirection: 'row',
-                                        },
-                                        '& .MuiTab-root': {
-                                            textTransform: 'none',
-                                            fontSize: '16px',
-                                            fontWeight: '400',
-                                            lineHeight: '24px',
-                                            fontFamily: 'Poppins',
-                                            // borderRadius: '24px',
-                                            background: '#E6EDF5',
-                                            color: '#242424',
-                                            margin: '4px',
-                                            padding: '4px 10px',
-                                            ':hover': {
-                                                background: '#E6EDF5'
-                                            }
-                                        },
-                                        '& .Mui-selected': {
-                                            backgroundColor: '#3F8CFF !important',
-                                            color: '#fff !important',
-                                            fontWeight: 700,
-                                        },
-                                        svg: {
-                                            width: 16,
-                                            height: 16,
-                                        },
-                                    }}
-                                >
-                                    <Tab label="Text View" />
-                                    <Tab label="Graphical View" />
-                                </Tabs>
+                              
                                 <div className="explorationSection">
                                     <h2 style={{ fontSize: '30px' }}>Exploration</h2>
                                     <p>Below are the sample questions</p>
@@ -315,7 +276,7 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
                                             <button className="btn btn-primary" onClick={() => setAnswers([])}>Reset</button>
                                         </div>
                                         {answers?.map((item, index) => (
-                                            <AnswersAccordion key={index} question={item.question} answer={item.answer} loading={item?.loading} type={item.view} name={"genbi"}/>
+                                            <AnswersAccordion key={index} question={item.question} answer={item.answer} loading={item?.loading} type={item.view} name={"genbi"} />
                                         ))}
                                     </div>
                                 </div>

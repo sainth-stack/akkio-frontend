@@ -39,7 +39,7 @@ const GenAi = () => {
   
   These descriptions provide an overview of the data columns and the type of information they contain`);
 
-    const [sampleData, setSampleData] = useState(`{"Store ID":{"0":1,"1":1,"2":1,"3":1,"4":1,"5":1,"6":1,"7":1,"8":1,"9":1},"Employee Number":{"0":54,"1":57,"2":50,"3":56,"4":50,"5":56,"6":52,"7":56,"8":55,"9":58},"Area":{"0":"Asia","1":"Asia","2":"Asia","3":"Asia","4":"Asia","5":"Asia","6":"Asia","7":"Asia","8":"Asia","9":"Asia"},"Date":{"0":"2018-01-31","1":"2018-02-28","2":"2018-03-31","3":"2018-04-30","4":"2018-05-31","5":"2018-06-30","6":"2018-07-31","7":"2018-08-31","8":"2018-09-30","9":"2018-10-31"},"Sales":{"0":86586.23,"1":131181.61,"2":185833.69,"3":150538.66,"4":183421.04,"5":292656.36,"6":214964.98,"7":189526.91,"8":222308.26,"9":213762.78},"Marketing Spend":{"0":16022.68,"1":6562.93,"2":1106.61,"3":16586.79,"4":2708.69,"5":10459.98,"6":26320.18,"7":26479.09,"8":4848.86,"9":13452.72},"Electronics Sales":{"0":23312.79,"1":38738.19,"2":53601.54,"3":42062.01,"4":42276.04,"5":69192.41,"6":48065.41,"7":47851.76,"8":64556.77,"9":43525.38},"Home Sales":{"0":10991.36,"1":17000.27,"2":26926.41,"3":25817.93,"4":26700.62,"5":45898.82,"6":24049.25,"7":27550.8,"8":38468.88,"9":21181.46},"Clothes Sales":{"0":28089.66,"1":52073.81,"2":58401.37,"3":50028.65,"4":63996.07,"5":95964.42,"6":94098.8,"7":74569.68,"8":71728.8,"9":78333.69}}`);
+    const [sampleData, setSampleData] = useState(`{}`);
     const [startChart, setStartChart] = useState(false)
     const [loading, setLoading] = useState(false)
     const [currentTab, setCurrentTab] = useState(0);
@@ -54,7 +54,7 @@ const GenAi = () => {
         const csvRows = [];
 
         // Get the headers (keys of the first object)
-        const headers = Object.keys(data[0]);
+        const headers = Object?.keys(data[0]);
         csvRows.push(headers.join(','));
 
         // Loop through the data and convert each object to a CSV row
@@ -82,9 +82,11 @@ const GenAi = () => {
             await axios.post(`${akkiourl}/upload`, formData)
                 .then((response) => {
                     function sanitizeJsonData(data) {
-                        return data.replace(/NaN|Infinity/g, 'null');
+                        return data?.replace(/NaN|Infinity/g, 'null');
                     }
-                    const data = JSON.parse(sanitizeJsonData(response?.data))
+                    console.log(response?.data)
+                    const data =  response?.data
+                    console.log(data,'data')
                     setLoading(false);
                     setColumnDesc(data?.column_description);
                     setSampleData(data?.first_10_rows);
@@ -289,8 +291,8 @@ const GenAi = () => {
                                         },
                                     }}
                                 >
-                                    <Tab label="Text View" />
-                                    <Tab label="Graphical View" />
+                                    <Tab label="Insights" />
+                                    <Tab label="Visualisation" />
                                 </Tabs>
                                 <div className="explorationSection">
                                     <h2 style={{ fontSize: '30px' }}>Exploration</h2>

@@ -95,6 +95,7 @@ const GetDataApi = ({ children }) => {
     dispatch({ type: "ADD_FILE_DETAILS", payload: file })
     if (database) {
       const finalData = transformData(data)
+      console.log(finalData,'finalData')
       const value = JSON.stringify({
         filename: tableName,
         data: finalData,

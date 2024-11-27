@@ -26,10 +26,10 @@ export default function Sidebar() {
   const hasPermission = (feature) => {
     const userData = JSON.parse(localStorage.getItem('user'));
     if (!userData?.roles) return false;
-    
+
     const allPermissions = [...new Set(userData.roles.flatMap(role => role.permissions))];
-    
-    return allPermissions.some(permission => 
+
+    return allPermissions.some(permission =>
       permission.startsWith(`${feature}_read`) || permission.startsWith(`${feature}_write`)
     );
   };
@@ -38,17 +38,15 @@ export default function Sidebar() {
     { name: 'Home', icon: IoHome, path: '/welcome', id: 1, permission: 'home' },
     { name: 'Projects', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
     {
-      name: 'Gen BI', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
+      name: 'Gen AI', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
         { name: 'Connect', icon: BiSolidData, path: '/connect', permission: 'connect' },
         { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
+        { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
         { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
         { name: 'Reports', icon: TbReportSearch, path: '/reports', permission: 'reports' },
       ]
     },
-    {
-      name: 'Gen AI', icon: GiArtificialIntelligence, id: 3.2, path:'/gen-ai', permission: 'genAi'
-    },
-    { name: 'Dashboard', icon: MdDashboard, path: '/gen-dashboard', id: 4, permission: 'dashboard' },
+    // { name: 'Dashboard', icon: MdDashboard, path: '/gen-dashboard', id: 4, permission: 'dashboard' },
     { name: 'Settings', icon: IoSettingsOutline, path: '/settings/team/general', id: 5, permission: 'settings' },
   ]
 

@@ -87,26 +87,7 @@ const PostgreSql = (props) => {
 
 
     return (
-        <div className="container3">
-            {/* {
-                fetchedData.map((finalField, index) => {
-                    const finalValue = finalField ? JSON.parse(finalField) : ""
-                    return uploadedData && finalValue !== "" ? <div className="csv-files" key={index} onClick={async () => {
-                        await showContent({
-                            filename: finalValue.filename, headers: Object.keys(finalValue.data
-                            [0]), data: finalValue.data
-                        })
-
-                        // Uploaded Data is storing the localstorage  
-                        localStorage.setItem("filename", finalValue.filename)
-                        navigate("/business-intelligence")
-                    }}>
-
-                        <img src="/dataThumbnail.jpeg" alt={finalValue.filename} width={300} className='data-img' />
-                        <h5 className='filename'>{finalValue.filename}</h5>
-                    </div> : <></>
-                })
-            } */}
+        <div className="container3 mt-4">
             <div>
                 {!secondScreen && <div className="cardnew">
                     <div className="card-content">
@@ -137,7 +118,7 @@ const PostgreSql = (props) => {
                             <input type="text" id="port" onChange={handleChange} value={details.port} name='port' />
                         </div>
                         <div className='d-flex' style={{ gap: '5px' }}>
-                            <button className='btn w-100'><IoMdArrowRoundBack /> Back</button>
+                            <button className='btn w-100' onClick={() => props.setPostgresOpen(false)}><IoMdArrowRoundBack /> Back</button>
                             <button className='btn btn-primary w-100' onClick={handleConnectionCheck} disabled={loading}>
                                 {loading ? (
                                     <Spinner animation="border" size="sm" role="status" aria-hidden="true" />  // Loader

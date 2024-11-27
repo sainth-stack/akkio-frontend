@@ -1,239 +1,153 @@
-import React, { useEffect, useState } from 'react'
-import Navbar from '../Navbar'
-import { useDataAPI } from '../../contexts/GetDataApi'
-import '../../styles/predictData.scss'
-import topFactors from '../../../../../assets/svg/topFactor.svg'
-import axios from 'axios'
-import { DetailedLineGraph } from './lineGraph'
-import moment from 'moment'
-import { akkiourl } from '../../../../../utils/const'
-import { CircularProgress } from '@mui/material'
-import { toast } from 'react-toastify'
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { CircularProgress, Card, Button, TextField, Grid, InputAdornment } from '@mui/material';
+import { FaFileUpload } from 'react-icons/fa';
+import { IoMdRefresh, IoMdSend } from 'react-icons/io';
+import './index.css'; // You'll need to create this file for styling
+import { akkiourl } from '../../../../../utils/const';
+import SampleQuestion from '../../../../genAi/components/questions';
+import AnswersAccordion from '../../../../genAi/components/answers';
+
 const ForecastData = () => {
+    const [questions, setQuestions] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [file, setFile] = useState(null);
+    const [userPrompt, setUserPrompt] = useState('');
+    const [response, setResponse] = useState(null);
 
-    const [data, setData] = useState([])
-    const [headers, setLeftData] = useState([])
-    const [loading3, setLoading3] = useState(false); // Loading state for handleGetDataFinalData
-    const [training, setTraining] = useState(false)
-    const [filename, setFilename] = useState("")
-    const [totData, setTotData] = useState({
-        accuracy: 0,
-        predictData: {},
-        lables: [],
-        data3: [],
-        data4: []
-    })
-    const name = localStorage.getItem("filename").replace(/\.[^/.]+$/, '')
-    // const [file, setFile] = useState(null)
-    const [selectedField, setSelectedField] = useState('')
-    const handleSelect = (item) => {
-        setSelectedField(item)
-    }
-
-    const getLeftData = async () => {
-        let db = (name)
-
-        const response = await axios.post(`${akkiourl}/forecast/${db}`, {});
-        if (response.status === 200) {
-            setLeftData(response?.data?.columns)
-            setSelectedField(response?.data?.columns[0])
-        }
-    }
-
-    const handleGetDataFinalData = async (id) => {
+    const fetchQuestions = async () => {
         try {
-            const response = await axios.post(`${akkiourl}/forecast/${name}/${selectedField}`);
-            if (response.status === 200 && Object.keys(response?.data?.result)?.length > 0) {
-                const data = response?.data?.result;
-                const finActualData = data?.actual;
-                const finPredictData = data?.forecast;
-                const labels = [];
-                const data3 = [];
-                const data4 = [];
-
-                const date = finActualData.date;
-                const length = date.length;
-                const lastFiveKeys = date.slice(length - 12, length);
-                lastFiveKeys.map((item) => {
-                    const dateObj = new Date(item);
-                    const formattedDate = moment(dateObj).format('MMM YYYY');
-                    labels.push(formattedDate);
-                });
-
-                finPredictData?.date?.map((item, index) => {
-                    if (index < 7) {
-                        const dateObj = new Date(item);
-                        const formattedDate = moment(dateObj).format('MMM YYYY');
-                        labels.push(formattedDate);
-                    }
-                });
-
-                const values2 = finActualData.values;
-                const length2 = values2.length;
-                const lastFiveKeys2 = values2.slice(length2 - 12, length2);
-
-                lastFiveKeys2.map((item) => {
-                    data3.push(item);
-                });
-
-                finPredictData?.values?.map((item, index) => {
-                    if (index < 7) {
-                        data4.push(item);
-                    }
-                });
-                console.log({
-                    predictData: finPredictData,
-                    labels: labels,
-                    data3: data3,
-                    data4: data4
-                })
-                setTotData({
-                    predictData: finPredictData,
-                    labels: labels,
-                    data3: data3,
-                    data4: data4
-                });
-            } else {
-                setTotData({
-                    accuracy: 0,
-                    predictData: {},
-                    lables: [],
-                    data3: [],
-                    data4: []
-                })
-            }
+            setLoading(true);
+            const response = await axios.post(`${akkiourl}/regenerate_forecast_questions`);
+            const questionsText = response.data.questions;
+            const questionsList = questionsText.split('\n').slice(2); // Skip the first two lines
+            setQuestions(questionsList.filter(question => !!question));
         } catch (error) {
-            console.error('Error fetching data:', error);
+            console.error('Error fetching questions:', error);
         } finally {
-            setLoading3(false); // Stop loading
+            setLoading(false);
         }
     };
 
-    useEffect(() => {
-        if (selectedField && training) {
-            handleGetDataFinalData(selectedField)
-        }
-    }, [selectedField, training])
-
-
-    const {
-        displayContent,
-    } = useDataAPI()
-
-    const handleTrainData = async () => {
-        setLoading3(true);
-        const fileName = localStorage.getItem('filename')
+    const handleSubmit = async () => {
         try {
-            // toast.success('Training Started', {
-            //     autoClose: false
-            // });
-            toast.success('Training in process', {
-                autoClose: false
-            });
+            setLoading(true);
+            const formData = new FormData();
+            if (file) formData.append('file', file);
+            formData.append('user_prompt', userPrompt);
 
-            // Execute both requests and wait for them to complete without blocking the main thread
-            // const res = axios.post(`${akkiourl}/train/predict/${(file.name).replace(/\.[^/.]+$/, '')}`);
-            const res2 = await axios.post(`${akkiourl}/train/forecast/${(fileName).replace(/\.[^/.]+$/, '')}`);
-            console.log(res2)
-            if (res2?.data ==="Success") {
-                setTraining(true)
-                getLeftData()
-                toast.success('Training completed', {
-                    autoClose: false
-                });
-            } else{
-                setLoading3(false);
-                toast.error('Training Failed', {
-                    autoClose: false
-                });
-            }
-
+            const response = await axios.post(`${akkiourl}/forecasts`, formData);
+            setResponse(response.data);
         } catch (error) {
-            console.error('Training error:', error);
-            toast.error('Training failed');
+            console.error('Error submitting forecast:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
     useEffect(() => {
-        handleTrainData()
-    }, [])
+        fetchQuestions();
+    }, []);
 
-    useEffect(() => {
-        // console.log(displayContent)
-        // setHeaders(displayContent.headers)
-        setData(displayContent.data)
-        setFilename(localStorage.getItem("filename"))
-        setTimeout(() => {
-        }, 2000)
-    }, [displayContent])
     return (
-        <>
-            {loading3 ? <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center',height:'100vh' }}> <CircularProgress /></div> : <>
-                {<div style={{ height: '85vh', overflow: 'hidden' }}>
-                    <Navbar />
-                    <div className="professional-table ms-2">
-                        <div className="file-details" style={{ borderBottom: '1px solid #e0eaf0' }}>
-                            <p>{filename}</p>
-                            <p>{data.length} rows</p>
-                            <p>{headers.length} columns</p>
-                        </div>
-                    </div>
-                    <div className='row'>
-                        <div className='col-md-3'>
-                            <div className='predictLeftCont'>
-                                <h1 className='predictHeader'>Forecast</h1>
-                                <h2 className='predictSecondHeader'>Forecast Fields</h2>
-                                <p className='paragraphText'>
-                                    Select which numerical or categorical fields to predict and optionally ignore.
-                                </p>
-                                <div className='predictFieldsContainer'>
-                                    <div style={{ alignItems: 'center' }}>
-                                        <div className='px-2'>
-                                            <input data-v-27b19115="" placeholder="Search fields..." class="prediction-multiselect-searchbox" />
-                                        </div>
-                                        <div style={{ maxHeight: 'calc(100vh - 380px)', overflow: 'auto', scrollbarWidth: 'thin', }} className='p-3 scrollHeight'>
-                                            {headers.map((item, index) => {
-                                                return (
-                                                    <div className='d-flex p-2' style={{ cursor: 'pointer' }} onClick={() => handleSelect(item)}>
-                                                        <div className={selectedField === item ? 'checkboxContainer checkboxTick' : 'checkboxContainer'}></div>
-                                                        <h2 className='fieldText'>{item}</h2>
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className='col-md-9 rightContainer'>
-                            <div className='rightttconttt'>
-                                {/* <div className='rightHeaderText'><img src={regression} alt='imag' /> Forecast Summary</div>
-                        <h2 className='rightDesctext'>Below is the forecast chart and metrics on how well the model perfomed at predicting the future outcome.</h2>
-                        <div className='d-flex' style={{ gap: '10px', marginRight: '50px' }}>
-                            <div className='regressioncard'>
-                                <div className='regressionCardInnerContainer'>
-                                    <p className='cardFirstLineText'>Accuracy is usually within</p>
-                                    <p className='cardLargeNumberText'> ±{(totData?.accuracy)}% </p>
-                                    <p className='cardFirstLineText'> Forecasted values were on average off by ±370,100.4 compared to actual values in the most recent 20% of the dataset.</p>
-                                </div>
-                            </div>
-                        </div> */}
-                                <div>
-                                    <div className='rightHeaderText'><img src={topFactors} alt='imag' /> Forecast</div>
-                                    <h2 className='rightDesctext'> The predictions of the model, compared to the historical data and extrapolated forward.                            </h2>
-                                    <div className='regressioncard' style={{ width: '96%' }}>
-                                        <div className='regressionCardInnerContainer' style={{ minHeight: '400px', width: '100%' }}>
-                                            <DetailedLineGraph {...{ labelsNew: totData.labels, data: totData.data3, data2: totData.data4, selectedField }} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>}
-            </>}
-        </>
-    )
-}
+        <div className="explorationSection">
+            <h2 style={{ fontSize: '30px' }}>Forecast</h2>
+
+            {/* File Upload Section */}
+            <div style={{ marginBottom: '20px' }}>
+                <Button
+                    component="label"
+                    startIcon={<FaFileUpload />}
+                    sx={{
+                        background: '#f8f9fa',
+                        padding: '8px 12px',
+                        borderRadius: '5px',
+                        color: 'black'
+                    }}
+                >
+                    Upload File
+                    <input
+                        type="file"
+                        hidden
+                        onChange={(e) => setFile(e.target.files[0])}
+                        accept=".csv,.xlsx,.xls"
+                    />
+                </Button>
+                {file && <p className="file-info">Selected file: {file.name}</p>}
+            </div>
+
+            {/* Questions Section */}
+            <div className="sampleQuestions" style={{ display: 'flex', marginBottom: '20px', flexWrap: 'wrap' }}>
+                {questions.map((question, index) => (
+                    <SampleQuestion
+                        key={index}
+                        question={question.replace('**', '')}
+                        onClick={() => setUserPrompt(question.replace('**', ''))}
+                    />
+                ))}
+            </div>
+
+            <button
+                style={{
+                    background: '#f8f9fa',
+                    padding: '8px 12px',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    transition: 'background 0.3s ease',
+                    marginBottom: '20px',
+                    color: 'black'
+                }}
+                onClick={fetchQuestions}
+            >
+                <IoMdRefresh color="blue" /> Re-generate sample questions
+            </button>
+
+            {/* Input Section */}
+            <p>Type in your question below:</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '0px' }}>
+                <TextField
+                    value={userPrompt}
+                    onChange={(e) => setUserPrompt(e.target.value)}
+                    variant="outlined"
+                    sx={{
+                        width: '500px',
+                        '& .MuiOutlinedInput-root': {
+                            height: "45px"
+                        },
+                    }}
+                    placeholder="Type here to ask about forecasts............."
+                    InputProps={{
+                        endAdornment: (
+                            <InputAdornment position="end">
+                                <IoMdSend
+                                    size={24}
+                                    style={{
+                                        color: userPrompt ? "rgb(91, 71, 245)" : 'rgb(142, 139, 157)',
+                                        cursor: 'pointer'
+                                    }}
+                                    onClick={handleSubmit}
+                                />
+                            </InputAdornment>
+                        ),
+                    }}
+                />
+            </div>
+
+            {/* Response Section */}
+            {response && (
+                <div className="answersSection" style={{ marginTop: "20px" }}>
+                    <AnswersAccordion
+                        question={userPrompt}
+                        answer={response}
+                        loading={loading}
+                        type={typeof response === 'string' ? 'text' : 'image'}
+                    />
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default ForecastData;

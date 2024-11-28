@@ -1,7 +1,7 @@
 export const akkiourl = "http://54.255.151.153:3001/api";
 export const keypulseurl = "http://18.143.174.1:8000/api";
-// export const adminUrl="http://54.255.151.153:4500/api"
-export const adminUrl="http://localhost:4500/api"
+export const adminUrl="http://54.255.151.153:4500/api"
+// export const adminUrl="http://localhost:4500/api"
 export function getFinalData(uniqueArr, isDate, length) {
   // Convert values to valid Date objects or numbers
   const parsedArr = uniqueArr?.map(val => {

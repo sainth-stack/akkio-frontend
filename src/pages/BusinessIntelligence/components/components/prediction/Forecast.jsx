@@ -37,7 +37,10 @@ const ForecastData = () => {
             formData.append('user_prompt', userPrompt);
 
             const response = await axios.post(`${akkiourl}/forecasts`, formData);
-            setResponse(response.data);
+            setResponse({
+                content: response.data.content,
+                image: response.data.image_base64
+            });
         } catch (error) {
             console.error('Error submitting forecast:', error);
         } finally {
@@ -140,9 +143,11 @@ const ForecastData = () => {
                 <div className="answersSection" style={{ marginTop: "20px" }}>
                     <AnswersAccordion
                         question={userPrompt}
-                        answer={response}
+                        answer={response.image ? response.image : response.content}
                         loading={loading}
-                        type={typeof response === 'string' ? 'text' : 'image'}
+                        type={response.image ? 'image' : 'Text'}
+                        desc={response.content}
+                        isHtml={true}
                     />
                 </div>
             )}

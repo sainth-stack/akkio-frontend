@@ -94,7 +94,7 @@ const Projects = () => {
         // localStorage.setItem("file", finalValue)
         localStorage.setItem('prepData', JSON.stringify(response?.data));
         await showContent({
-          filename: finalValue, headers: Object.keys(response?.data), data: transformData(response?.data)
+          filename: finalValue, headers: Object.keys(response?.data), data: (response?.data)
         })
         navigate("/discover")
         handleUpload(null, true, response?.data, finalValue);

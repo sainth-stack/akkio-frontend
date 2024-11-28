@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styles from '../styles/AnswersAccordion.module.css';
 import { CircularProgress, Button } from '@mui/material';
 
-const AnswersAccordion = ({ question, answer, loading, type ,name='savedImages',desc}) => {
+const AnswersAccordion = ({ question, answer, loading, type, name = 'savedImages', desc, isHtml }) => {
   const [isOpen, setIsOpen] = useState(false);
   const imageUrl = answer;
   const [isSaved, setIsSaved] = useState(false); // To manage save status
@@ -39,10 +39,14 @@ const AnswersAccordion = ({ question, answer, loading, type ,name='savedImages',
           ) : (
             <div>
               {type === 'Text' ? (
-                <div>{answer}</div>
+                isHtml ? (
+                  <div dangerouslySetInnerHTML={{ __html: answer }} />
+                ) : (
+                  <div>{answer}</div>
+                )
               ) : (
                 <>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'start'}}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                     <img src={imageUrl} width={700} height={500} alt='' />
                     {!isSaved && (
                       <Button
@@ -55,7 +59,13 @@ const AnswersAccordion = ({ question, answer, loading, type ,name='savedImages',
                       </Button>
                     )}
                   </div>
-                  {desc&& <div className='mt-3'>{desc}</div>}
+                  {desc && <div className='mt-3'>
+                    {isHtml ? (
+                      <div dangerouslySetInnerHTML={{ __html: desc }} />
+                    ) : (
+                      <div>{desc}</div>
+                    )}
+                  </div>}
                   {isSaved && <div style={{ marginTop: '10px' }}>Image already to Dashboard</div>}
                 </>
               )}

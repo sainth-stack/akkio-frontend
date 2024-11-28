@@ -49,12 +49,13 @@ const GenAi = () => {
         graphQuestions: []
     })
 
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     const arrayToCSV = (data) => {
         const csvRows = [];
 
         // Get the headers (keys of the first object)
-        const headers = Object?.keys(data[0]);
+        const headers = Object?.keys(data);
         csvRows.push(headers.join(','));
 
         // Loop through the data and convert each object to a CSV row
@@ -67,37 +68,37 @@ const GenAi = () => {
     };
 
     const handleUpload = async (data, fileC) => {
+        console.log(data,'data')
         var formData = new FormData();
         if (data) {
-            const csvData = arrayToCSV(data);  // Convert data to CSV
-            const file = new Blob([csvData], { type: 'text/csv' });  // Create CSV Blob
-            formData.append('file', file, 'data.csv');  // Append CSV file to formData
+            const csvData = arrayToCSV(data);
+            const file = new Blob([csvData], { type: 'text/csv' });
+            formData.append('file', file, 'data.csv');
         } else {
-            formData.append('file', fileC);  // Append CSV file to formData
+            formData.append('file', fileC);
         }
         setLoading(true);
         setStartChart(true);
 
         try {
-            await axios.post(`${akkiourl}/upload`, formData)
-                .then((response) => {
-                    function sanitizeJsonData(data) {
-                        return data?.replace(/NaN|Infinity/g, 'null');
-                    }
-                    console.log(response?.data)
-                    const data =  response?.data
-                    console.log(data,'data')
-                    setLoading(false);
-                    setColumnDesc(data?.column_description);
-                    setSampleData(data?.first_10_rows);
-                    const textQuestions = data?.text_questions?.split('\n')?.filter(desc => desc.trim() !== '');
-                    const graphQuestions = data?.plotting_questions?.split('\n')?.filter(desc => desc.trim() !== '');
-                    setAllQuestions({
-                        textQuestions,
-                        graphQuestions
-                    });
-                    setQuestions(textQuestions);
-                });
+            const response = await axios.post(`${akkiourl}/upload`, formData);
+            // Sanitize the entire response data by converting it to string and replacing NaN
+            const sanitizedData = JSON.stringify(response.data).replace(/NaN/g, 'null');
+            const parsedData = JSON.parse(sanitizedData);
+            console.log(parsedData,'parsedData')
+            setLoading(false);
+            setColumnDesc(parsedData?.column_description || '');
+            setSampleData(parsedData?.first_10_rows || '{}');
+            
+            // Safely handle text and plotting questions
+            const textQuestions = parsedData?.text_questions?.split('\n')?.filter(desc => desc.trim() !== '') || [];
+            const graphQuestions = parsedData?.plotting_questions?.split('\n')?.filter(desc => desc.trim() !== '') || [];
+            
+            setAllQuestions({
+                textQuestions,
+                graphQuestions
+            });
+            setQuestions(textQuestions);
         } catch (err) {
             setLoading(false);
             console.log(err);
@@ -105,15 +106,17 @@ const GenAi = () => {
     };
 
     useEffect(() => {
-        const storedData = localStorage.getItem('prepData');
-        const name = localStorage.getItem('filename')
-        if (storedData) {
-            const parsedData = JSON.parse(storedData);
-
-            setFileName(name)
-            handleUpload(parsedData);
+        if (isInitialLoad) {
+            const storedData = localStorage.getItem('prepData');
+            const name = localStorage.getItem('filename');
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                setFileName(name);
+                handleUpload(parsedData);
+            }
+            setIsInitialLoad(false);
         }
-    }, []);
+    }, [isInitialLoad]);
 
     const regenerateQuestions = () => {
         if (currentTab == 0) {

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import styles from '../styles/AnswersAccordion.module.css';
 import { CircularProgress, Button } from '@mui/material';
 
-const AnswersAccordion = ({ question, answer, loading, type, name = 'savedImages', desc, isHtml }) => {
+const AnswersAccordion = ({ question, answer, loading, type, name = 'genbi', desc, isHtml }) => {
   const [isOpen, setIsOpen] = useState(false);
   const imageUrl = answer;
   const [isSaved, setIsSaved] = useState(false); // To manage save status

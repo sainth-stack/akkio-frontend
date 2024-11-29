@@ -2,7 +2,7 @@
 
 import { CircularProgress, Grid } from "@mui/material"
 import TextField from '@mui/material/TextField';
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import './Main.css'
 import ColumnDescriptions from "./components/columnDesc";
@@ -52,26 +52,41 @@ const GenAi = () => {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     const arrayToCSV = (data) => {
-        const csvRows = [];
+        // Return empty string if data is empty
+        if (!data || !data.length) return '';
 
-        // Get the headers (keys of the first object)
-        const headers = Object?.keys(data);
+        const csvRows = [];
+        
+        // Get headers from the first object
+        const headers = Object.keys(data[0]);
         csvRows.push(headers.join(','));
 
-        // Loop through the data and convert each object to a CSV row
+        // Convert each row object to CSV
         for (const row of data) {
-            const values = headers.map(header => row[header]);
+            const values = headers.map(header => {
+                const value = row[header];
+                // Handle date conversion from timestamp
+                if (header === 'Date' && typeof value === 'number') {
+                    return new Date(value).toISOString().split('T')[0];
+                }
+                // Wrap strings containing commas in quotes
+                if (typeof value === 'string' && value.includes(',')) {
+                    return `"${value}"`;
+                }
+                return value;
+            });
             csvRows.push(values.join(','));
         }
 
         return csvRows.join('\n');
     };
 
-    const handleUpload = async (data, fileC) => {
-        console.log(data,'data')
+    const handleUpload = useCallback(async (data, fileC) => {
         var formData = new FormData();
         if (data) {
+            console.log(data,'data')
             const csvData = arrayToCSV(data);
+            console.log(csvData)
             const file = new Blob([csvData], { type: 'text/csv' });
             formData.append('file', file, 'data.csv');
         } else {
@@ -82,18 +97,15 @@ const GenAi = () => {
 
         try {
             const response = await axios.post(`${akkiourl}/upload`, formData);
-            // Sanitize the entire response data by converting it to string and replacing NaN
             const sanitizedData = JSON.stringify(response.data).replace(/NaN/g, 'null');
             const parsedData = JSON.parse(sanitizedData);
-            console.log(parsedData,'parsedData')
             setLoading(false);
             setColumnDesc(parsedData?.column_description || '');
             setSampleData(parsedData?.first_10_rows || '{}');
-            
-            // Safely handle text and plotting questions
+
             const textQuestions = parsedData?.text_questions?.split('\n')?.filter(desc => desc.trim() !== '') || [];
             const graphQuestions = parsedData?.plotting_questions?.split('\n')?.filter(desc => desc.trim() !== '') || [];
-            
+
             setAllQuestions({
                 textQuestions,
                 graphQuestions
@@ -103,7 +115,7 @@ const GenAi = () => {
             setLoading(false);
             console.log(err);
         }
-    };
+    }, []);
 
     useEffect(() => {
         if (isInitialLoad) {
@@ -116,7 +128,7 @@ const GenAi = () => {
             }
             setIsInitialLoad(false);
         }
-    }, [isInitialLoad]);
+    }, [isInitialLoad, handleUpload]);
 
     const regenerateQuestions = () => {
         if (currentTab == 0) {
@@ -176,10 +188,10 @@ const GenAi = () => {
                 formData,
                 { responseType: currentTab === 1 ? 'blob' : '' }
             );
-            let res2=''
+            let res2 = ''
             if (currentTab === 1) {
                 const res1 = await axios.post(`${akkiourl}/get_description`);
-                res2=(res1?.data?.description)
+                res2 = (res1?.data?.description)
             }
             const imageUrl = currentTab === 1 ? URL.createObjectURL(res.data) : '';
             const ans = data.map((item) => {
@@ -189,7 +201,7 @@ const GenAi = () => {
                         view: currentTab === 1 ? "Graph" : "Text",
                         answer: currentTab === 1 ? imageUrl : res?.data?.answer,
                         loading: false,
-                        desc:res2
+                        desc: res2
                     }
                 } else return item;
             })

@@ -34,6 +34,7 @@ export const DataSource = () => {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('mail', JSON.parse(localStorage.getItem('user'))?.email);
+            localStorage.setItem("file", file)
 
             const response = await fetch(`${akkiourl}/upload`, {
                 method: 'POST',
@@ -60,26 +61,23 @@ export const DataSource = () => {
     };
 
     const handleNavigate = async (finalValue) => {
+        console.log(finalValue)
         await showContent({
             filename: finalValue.filename, headers: Object.keys(finalValue.data
             [0]), data: finalValue.data
         })
 
         localStorage.setItem("filename", finalValue.filename)
-        localStorage.setItem("file", finalValue)
         localStorage.setItem('prepData', JSON.stringify(finalValue.data));
         navigate("/discover")
     }
 
     useEffect(() => {
-        const updateData = uploadedData.map((item) => {
-            return item
-        })
-        setFetchedData(updateData)
         if (uploadedData.length > 0 && !open && file) {
-            handleNavigate(JSON.parse(updateData[0]))
+            handleNavigate(JSON.parse(uploadedData[0]))
         }
     }, [uploadedData, open, file])
+
 
     return <>
         {!postgresOpen && <div className="mt-1">

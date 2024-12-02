@@ -12,14 +12,21 @@ const ForecastData = () => {
     const [loading, setLoading] = useState(false);
     const [userPrompt, setUserPrompt] = useState('');
     const [responses, setResponses] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
 
     const fetchQuestions = async () => {
         try {
             setLoading(true);
             const response = await axios.post(`${akkiourl}/regenerate_forecast_questions`);
             const questionsText = response.data.questions;
-            const questionsList = questionsText.split('\n').slice(2); // Skip the first two lines
-            setQuestions(questionsList.filter(question => !!question).slice(0, 5)); // Limit to 5 questions
+            const questionsList = questionsText
+                .split('\n')
+                .slice(2) // Skip the first two lines
+                .map(q => q.trim()) // Trim whitespace
+                .filter(q => q && q.length > 0) // Remove empty strings and null values
+                .map(q => q.replace(/\*\*/g, '')) // Remove all ** markers at once
+                .slice(0, 5); // Limit to 5 questions
+            setQuestions(questionsList);
         } catch (error) {
             console.error('Error fetching questions:', error);
         } finally {
@@ -31,7 +38,7 @@ const ForecastData = () => {
         if (!userPrompt.trim()) return;
         
         try {
-            setLoading(true);
+            setSubmitting(true);
             const formData = new FormData();
             formData.append('user_prompt', userPrompt);
 
@@ -68,7 +75,7 @@ const ForecastData = () => {
                 return item;
             }));
         } finally {
-            setLoading(false);
+            setSubmitting(false);
         }
     };
 
@@ -82,13 +89,19 @@ const ForecastData = () => {
 
             {/* Questions Section */}
             <div className="sampleQuestions" style={{ display: 'flex', marginBottom: '20px', flexWrap: 'wrap' }}>
-                {questions.map((question, index) => (
-                    <SampleQuestion
-                        key={index}
-                        question={question.replace('**', '')}
-                        onClick={() => setUserPrompt(question.replace('**', ''))}
-                    />
-                ))}
+                {loading ? (
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '20px' }}>
+                        <CircularProgress />
+                    </div>
+                ) : (
+                    questions.map((question, index) => (
+                        <SampleQuestion
+                            key={index}
+                            question={question.replace('**', '')}
+                            onClick={() => setUserPrompt(question.replace('**', ''))}
+                        />
+                    ))
+                )}
             </div>
 
             <button
@@ -115,6 +128,7 @@ const ForecastData = () => {
                     value={userPrompt}
                     onChange={(e) => setUserPrompt(e.target.value)}
                     variant="outlined"
+                    disabled={submitting}
                     sx={{
                         width: '500px',
                         '& .MuiOutlinedInput-root': {
@@ -125,14 +139,18 @@ const ForecastData = () => {
                     InputProps={{
                         endAdornment: (
                             <InputAdornment position="end">
-                                <IoMdSend
-                                    size={24}
-                                    style={{
-                                        color: userPrompt ? "rgb(91, 71, 245)" : 'rgb(142, 139, 157)',
-                                        cursor: 'pointer'
-                                    }}
-                                    onClick={handleSubmit}
-                                />
+                                {submitting ? (
+                                    <CircularProgress size={20} />
+                                ) : (
+                                    <IoMdSend
+                                        size={24}
+                                        style={{
+                                            color: userPrompt ? "rgb(91, 71, 245)" : 'rgb(142, 139, 157)',
+                                            cursor: 'pointer'
+                                        }}
+                                        onClick={handleSubmit}
+                                    />
+                                )}
                             </InputAdornment>
                         ),
                     }}

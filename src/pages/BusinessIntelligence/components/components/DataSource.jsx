@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useDataAPI } from '../contexts/GetDataApi';
 import { Modal } from 'antd';
 import { adminUrl, akkiourl } from '../../../../utils/const';
+import MqttConfig from './popups/MqttConfig';
 
 export const DataSource = () => {
     const navigate = useNavigate()
@@ -22,6 +23,7 @@ export const DataSource = () => {
     const { uploadedData, handleUpload, showContent } = useDataAPI()
     const [file, setFile] = useState(null);
     const [fetchedData, setFetchedData] = useState([])
+    const [mqttOpen, setMqttOpen] = useState(false);
 
     const handleCancel = () => {
         setOpen(false);
@@ -72,6 +74,18 @@ export const DataSource = () => {
         navigate("/discover")
     }
 
+    const handleMqttData = async (mqttData) => {
+        await showContent({
+            filename: mqttData.filename,
+            headers: Object.keys(mqttData.data[0]),
+            data: mqttData.data
+        });
+
+        localStorage.setItem("filename", mqttData.filename);
+        localStorage.setItem('prepData', JSON.stringify(mqttData.data));
+        navigate("/discover");
+    };
+
     useEffect(() => {
         if (uploadedData.length > 0 && !open && file) {
             handleNavigate(JSON.parse(uploadedData[0]))
@@ -117,7 +131,7 @@ export const DataSource = () => {
                             <SiMysql size={50} />
                             <div>
                                 <span class="textHeader">MySQL</span>
-                                <span data-v-fa6956f7="" class="textDesc"> Import Only(Beta) </span>
+                                <span data-v-fa6956f7="" class="textDesc"> Import </span>
                             </div>
                         </div>
                         <div className='footerContainer'>
@@ -131,7 +145,7 @@ export const DataSource = () => {
                             <SiMongodb size={40} />
                             <div>
                                 <span class="textHeader">MongoDB</span>
-                                <span data-v-fa6956f7="" class="textDesc"> Import Only(Beta) </span>
+                                <span data-v-fa6956f7="" class="textDesc"> Import </span>
                             </div>
                         </div>
                         <div className='footerContainer'>
@@ -145,7 +159,7 @@ export const DataSource = () => {
                             <BiLogoPostgresql size={40} />
                             <div>
                                 <span class="textHeader">PostgreSQL</span>
-                                <span data-v-fa6956f7="" class="textDesc"> Import Only(Beta) </span>
+                                <span data-v-fa6956f7="" class="textDesc"> Import </span>
                             </div>
                         </div>
                         <div className='footerContainer'>
@@ -154,12 +168,12 @@ export const DataSource = () => {
                     </div>
                 </div>
                 <div className='outerContainer'>
-                    <div className='cardContainer' onClick={() => { }}>
+                    <div className='cardContainer' onClick={() => setMqttOpen(true)}>
                         <div className="stepCommonContainer">
                             <SiMqtt size={40} />
                             <div>
                                 <span class="textHeader">Mqtt</span>
-                                <span data-v-fa6956f7="" class="textDesc"> Import Only(Beta) </span>
+                                <span data-v-fa6956f7="" class="textDesc"> Import </span>
                             </div>
                         </div>
                         <div className='footerContainer'>
@@ -180,5 +194,6 @@ export const DataSource = () => {
         >
             <input type='file' onChange={handleFileChange} />
         </Modal>}
+        {mqttOpen && <MqttConfig setMqttOpen={setMqttOpen} onDataReceived={handleMqttData} />}
     </>
 }

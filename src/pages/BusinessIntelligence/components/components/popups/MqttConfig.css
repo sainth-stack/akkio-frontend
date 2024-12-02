@@ -1,0 +1,86 @@
+.mqtt-config {
+    padding: 24px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    max-width: 480px;
+    width: 100%;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1001;
+}
+
+.mqtt-config h2 {
+    margin-bottom: 24px;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.mqtt-config .ant-form-item-label>label {
+    font-weight: 500;
+    color: #4b5563;
+}
+
+.mqtt-config .ant-input,
+.mqtt-config .ant-input-password {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.mqtt-config .ant-input:hover,
+.mqtt-config .ant-input-password:hover {
+    border-color: #6b7280;
+}
+
+.mqtt-config .ant-input:focus,
+.mqtt-config .ant-input-password:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.mqtt-config .ant-btn {
+    height: 40px;
+    padding: 0 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.mqtt-config .ant-btn-primary {
+    background: #2563eb;
+    border: none;
+}
+
+.mqtt-config .ant-btn-primary:hover {
+    background: #1d4ed8;
+}
+
+.mqtt-config .ant-btn-primary:disabled {
+    background: #93c5fd;
+}
+
+.mqtt-config .ant-btn-default {
+    border: 1px solid #e5e7eb;
+    color: #4b5563;
+}
+
+.mqtt-config .ant-btn-default:hover {
+    border-color: #6b7280;
+    color: #1f2937;
+}
+
+.mqtt-config-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(107, 114, 128, 0.5);
+    /* backdrop-filter: blur(1px); */
+    z-index: 1000;
+}

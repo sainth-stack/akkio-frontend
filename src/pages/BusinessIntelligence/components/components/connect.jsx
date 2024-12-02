@@ -88,14 +88,14 @@ const Connect = (datas) => {
         <div className="upload-section">
           <div className="upload-container" onClick={showModal}>
             <AiFillPlusCircle size={45} />
-            {datas?.datasource === 'csv' ? <p>Upload Dataset</p> : <p>New Data Source</p>}
+            {datas?.datasource === 'csv' ? <p>Upload Dataset</p> : <p>Data Source</p>}
           </div>
         </div>
 
         <div className="upload-section">
           <div className="upload-container" onClick={handleSyntheticData}>
             <AiFillPlusCircle size={45} />
-            {<p>Generate Synthetic Data</p>}
+            {<p>Synthetic Data</p>}
           </div>
         </div>
       </div>}

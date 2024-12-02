@@ -52,39 +52,37 @@ const GenAi = () => {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     const arrayToCSV = (data) => {
-        // Return empty string if data is empty
-        if (!data || !data.length) return '';
-
-        const csvRows = [];
+        // Get headers (column names)
+        const headers = Object.keys(data);
         
-        // Get headers from the first object
-        const headers = Object.keys(data[0]);
-        csvRows.push(headers.join(','));
-
-        // Convert each row object to CSV
-        for (const row of data) {
-            const values = headers.map(header => {
-                const value = row[header];
-                // Handle date conversion from timestamp
-                if (header === 'Date' && typeof value === 'number') {
-                    return new Date(value).toISOString().split('T')[0];
-                }
-                // Wrap strings containing commas in quotes
+        // Get the number of rows from any column's length
+        const rowCount = Object.keys(data[headers[0]]).length;
+        
+        // Create CSV rows array starting with headers
+        const csvRows = [headers.join(',')];
+        
+        // Create a row for each index
+        for (let i = 0; i < rowCount; i++) {
+            const row = headers.map(header => {
+                // Get the value and handle special cases
+                const value = data[header][i];
+                
+                // Handle strings with commas by wrapping in quotes
                 if (typeof value === 'string' && value.includes(',')) {
                     return `"${value}"`;
                 }
                 return value;
             });
-            csvRows.push(values.join(','));
+            csvRows.push(row.join(','));
         }
-
+        
         return csvRows.join('\n');
     };
 
     const handleUpload = useCallback(async (data, fileC) => {
         var formData = new FormData();
         if (data) {
-            console.log(data,'data')
+            console.log(data, 'data')
             const csvData = arrayToCSV(data);
             console.log(csvData)
             const file = new Blob([csvData], { type: 'text/csv' });
@@ -103,8 +101,12 @@ const GenAi = () => {
             setColumnDesc(parsedData?.column_description || '');
             setSampleData(parsedData?.first_10_rows || '{}');
 
-            const textQuestions = parsedData?.text_questions?.split('\n')?.filter(desc => desc.trim() !== '') || [];
-            const graphQuestions = parsedData?.plotting_questions?.split('\n')?.filter(desc => desc.trim() !== '') || [];
+            const textQuestions = parsedData?.text_questions?.split('\n')
+                ?.filter(desc => desc.trim() !== '')
+                ?.slice(1) || [];
+            const graphQuestions = parsedData?.plotting_questions?.split('\n')
+                ?.filter(desc => desc.trim() !== '')
+                ?.slice(1) || [];
 
             setAllQuestions({
                 textQuestions,
@@ -311,7 +313,7 @@ const GenAi = () => {
                                 </Tabs>
                                 <div className="explorationSection">
                                     <h2 style={{ fontSize: '30px' }}>Exploration</h2>
-                                    <p>Below are the sample questions</p>
+                                    {/* <p>Below are the sample questions</p> */}
                                     <div className="sampleQuestions" style={{ display: 'flex', marginBottom: '20px', flexWrap: 'wrap' }}>
                                         {questions?.map((question, index) => (
                                             <SampleQuestion key={index} question={`${question}`} onClick={handleQuestionClick} />

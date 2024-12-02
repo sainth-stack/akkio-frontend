@@ -23,24 +23,24 @@ const Projects = () => {
     }
   }, [location.state])
 
-  useEffect(() => {
-    const fetchFiles = async () => {
+  const fetchFiles = async () => {
+    try {
       setIsLoading(true);
-      try {
-        const email = JSON.parse(localStorage.getItem('user'))?.email;
-        const formData = new FormData();
-        formData.append('email', email);
+      const email = JSON.parse(localStorage.getItem('user'))?.email;
+      const formData = new FormData();
+      formData.append('email', email);
 
-        const response = await axios.post(`${akkiourl}/get_user_data`, formData);
-        const filesData = response.data.result.map(file => JSON.stringify(file));
-        setFetchedData(filesData);
-      } catch (error) {
-        console.error('Error fetching files:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      const response = await axios.post(`${akkiourl}/get_user_data`, formData);
+      const filesData = response.data.result.map(file => JSON.stringify(file));
+      setFetchedData(filesData);
+    } catch (error) {
+      console.error('Error fetching files:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchFiles();
   }, []);
 

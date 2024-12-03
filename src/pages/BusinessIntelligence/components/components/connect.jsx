@@ -14,6 +14,7 @@ const Connect = (datas) => {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [userPrompt, setUserPrompt] = useState('');
+  const [selectedOption, setSelectedOption] = useState('new');
 
   // Functions
   const showModal = () => {
@@ -39,13 +40,17 @@ const Connect = (datas) => {
 
   const handleOk = async () => {
     setConfirmLoading(true);
-    
+
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('user_prompt', userPrompt);
 
     try {
-      const response = await axios.post(`${akkiourl}/synthetic_data`, formData, {
+      const endpoint = selectedOption === 'new'
+        ? `${akkiourl}/synthetic_data`
+        : `${akkiourl}/synthetic_data_extended`;
+
+      const response = await axios.post(endpoint, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -53,18 +58,18 @@ const Connect = (datas) => {
       console.log(response)
       if (response.status === 200) {
         const data = response?.data?.data;
-        
+
         // Create blob and download link
         const blob = new Blob([data], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = 'synthetic_data.csv';
-        
+
         // Trigger download
         document.body.appendChild(a);
         a.click();
-        
+
         // Cleanup
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
@@ -109,12 +114,38 @@ const Connect = (datas) => {
           onCancel={handleCancel}
           okText="Generate"
         >
+          <div style={{ marginBottom: '10px', display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <input
+                type="radio"
+                id="new"
+                name="dataType"
+                value="new"
+                checked={selectedOption === 'new'}
+                style={{ marginLeft: '15px', width: '30px' }}
+                onChange={(e) => setSelectedOption(e.target.value)}
+              />
+              <label htmlFor="new" className='p-0 m-0' style={{ marginLeft: '5px', width: '130px' }}>New Data</label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <input
+                type="radio"
+                id="extend"
+                name="dataType"
+                value="extend"
+                checked={selectedOption === 'extend'}
+                onChange={(e) => setSelectedOption(e.target.value)}
+                style={{ marginLeft: '15px', width: '30px' }}
+              />
+              <label htmlFor="extend" className='p-0 m-0' style={{ marginLeft: '5px', width: '150px' }}>Extend Data</label>
+            </div>
+          </div>
           <input type='file' onChange={handleFileChange} />
           <textarea
             placeholder="Enter your prompt for synthetic data generation..."
             value={userPrompt}
             onChange={(e) => setUserPrompt(e.target.value)}
-            style={{ width: '100%', marginTop: '10px' }}
+            style={{ width: '100%', marginTop: '10px',padding:'10px' }}
           />
         </Modal>
       )}

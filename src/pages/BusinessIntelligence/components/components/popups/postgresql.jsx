@@ -57,6 +57,32 @@ const PostgreSql = (props) => {
         }
     };
 
+    const transformData = (data) => {
+        const transformedData = [];
+
+        // Get the keys (categories)
+        const keys = Object.keys(data);
+
+        // Assuming all categories have the same number of items
+        for (let i = 0; i < Object.values(data[keys[0]]).length; i++) {
+            const item = {};
+
+            // Iterate through each category
+            keys.forEach((key) => {
+                // Get the value for the current index in each category
+                const value = data[key][i];
+
+                // Add the key-value pair to the item object
+                item[key] = value;
+            });
+
+            // Push the item object to the transformed data array
+            transformedData.push(item);
+        }
+
+        return transformedData;
+    };
+
 
     const handleGetData = async () => {
         setLoading2(true); // Start second loader
@@ -67,10 +93,16 @@ const PostgreSql = (props) => {
             const response = await axios.post(`${akkiourl}/tabledata`, formData);
             if (response.status === 200) {
                 setSecondScreen(true);
-                handleUpload(null, true, response.data, details.tableName);
-                // navigate('/business-intelligence');
                 props.setConnection(true);
                 props.setPostgresOpen(false);
+
+                localStorage.setItem("filename", details.tableName)
+                localStorage.setItem('prepData', JSON.stringify(response?.data));
+                await showContent({
+                    filename: details.tableName, headers: Object.keys(response?.data), data: transformData(response?.data)
+                })
+                navigate("/discover")
+                handleUpload(null, true, response?.data, details.tableName);
             }
         } catch (error) {
             console.error('Failed to get data', error);

@@ -17,6 +17,15 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
         };
     }, [client]);
 
+    useEffect(() => {
+        form.setFieldsValue({
+            broker: 'wss://mqtt.flespi.io:443',
+            topic: 'flespi/message/gw/devices/#',
+            username: 'axLBthbazeJkKKkpr2sVK9rAeXfFJGmH1V9k18iqaSyKqHYHzetadIyitBL15WyU',
+            password: ''
+        });
+    }, [form]);
+
     const handleDisconnect = () => {
         if (client) {
             client.end();
@@ -32,74 +41,95 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
             setIsLoading(true);
             const { broker, topic, username, password } = values;
 
-            if (!broker.startsWith('ws://') && !broker.startsWith('wss://')) {
-                throw new Error('Broker URL must start with ws:// or wss://');
-            }
-
             const mqttClient = mqtt.connect(broker, {
                 username,
                 password,
                 reconnectPeriod: 5000,
                 connectTimeout: 30000,
                 clean: true,
+                protocolVersion: 4,
+                keepalive: 60
             });
 
             mqttClient.on('connect', () => {
+                console.log('MQTT Client connected');
                 setIsConnected(true);
                 setIsLoading(false);
                 message.success('Connected to MQTT broker');
-
-                const topics = [
-                    topic,
-                    `${topic}/response`
-                ];
-
-                topics.forEach(t => {
-                    mqttClient.subscribe(t, { qos: 1 }, (err) => {
-                        if (err) {
-                            message.error(`Failed to subscribe to topic: ${err.message}`);
-                            return;
-                        }
-                        message.success(`Subscribed to topic: ${t}`);
-                    });
+                
+                mqttClient.subscribe('#', { qos: 0 }, (err) => {
+                    if (err) {
+                        console.error('Subscription error:', err);
+                        message.error(`Failed to subscribe: ${err.message}`);
+                    } else {
+                        console.log('Subscription successful');
+                        console.log('Topic:', '#');
+                        console.log('Connection options:', mqttClient.options);
+                    }
                 });
+            });
 
-                mqttClient.publish(`${topic}/request`, JSON.stringify({
-                    type: 'history',
-                    startTime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-                    endTime: new Date().toISOString()
-                }));
+            mqttClient.on('packetsend', (packet) => {
+                console.log('Packet sent:', packet);
+            });
+
+            mqttClient.on('packetreceive', (packet) => {
+                console.log('Packet received:', packet);
             });
 
             mqttClient.on('message', (receivedTopic, payload) => {
+                console.log('=== Message Handler Start ===');
+                console.log('Message received on topic:', receivedTopic);
+                console.log('Payload type:', typeof payload);
+
                 try {
-                    console.log('Received topic:', receivedTopic);
-                    console.log('Raw payload:', payload);
                     let messageStr;
-                    
-                    if (payload instanceof Buffer || payload instanceof Uint8Array) {
-                        messageStr = payload.toString('utf8');
-                        
-                        const jsonStartIndex = messageStr.indexOf('{');
-                        if (jsonStartIndex !== -1) {
-                            messageStr = messageStr.slice(jsonStartIndex);
+                    // Handle binary data
+                    if (payload instanceof Uint8Array || Buffer.isBuffer(payload)) {
+                        // First try to decode as UTF-8
+                        try {
+                            messageStr = new TextDecoder().decode(payload);
+                        } catch (e) {
+                            // If UTF-8 decoding fails, convert to hex string
+                            messageStr = Array.from(payload)
+                                .map(byte => byte.toString(16).padStart(2, '0'))
+                                .join('');
+                            console.log('Binary data converted to hex:', messageStr);
+                            message.info('Received binary data');
+                            return; // Skip JSON parsing for pure binary data
                         }
                     } else {
                         messageStr = payload.toString();
                     }
 
-                    console.log('Parsed message string:', messageStr);
-                    const data = JSON.parse(messageStr);
-                    
-                    const dataArray = Array.isArray(data) ? data : [data];
-                    console.log('Processed data array:', dataArray);
+                    // Continue with JSON parsing only if we have text data
+                    if (messageStr.trim()) {
+                        // Try to extract JSON if the message contains it
+                        const jsonStartIndex = messageStr.indexOf('{');
+                        const jsonEndIndex = messageStr.lastIndexOf('}');
+                        if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
+                            messageStr = messageStr.slice(jsonStartIndex, jsonEndIndex + 1);
+                            console.log('Extracted JSON string:', messageStr);
+                        }
 
-                    onDataReceived({
-                        filename: `mqtt_${receivedTopic.replace(/[/+]/g, '_')}`,
-                        data: dataArray,
-                    });
+                        const data = JSON.parse(messageStr);
+                        console.log('Successfully parsed JSON data:', data);
+
+                        const dataArray = Array.isArray(data) ? data : [data];
+                        
+                        onDataReceived({
+                            filename: `mqtt_${receivedTopic.replace(/[/#+]/g, '_')}`,
+                            data: dataArray,
+                        });
+                    }
                 } catch (error) {
-                    console.error('Error processing message:', error);
+                    console.error('=== Message Handler Error ===');
+                    console.error('Error details:', error);
+                    console.error('Raw payload that caused error:', 
+                        payload instanceof Uint8Array || Buffer.isBuffer(payload) ?
+                        Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join('') :
+                        payload.toString()
+                    );
                     message.error(`Invalid data format received: ${error.message}`);
                 }
             });
@@ -136,14 +166,14 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
                         name="broker"
                         rules={[{ required: true, message: 'Please enter broker URL' }]}
                     >
-                        <Input placeholder="ws://broker.example.com:8083" />
+                        <Input placeholder="wss://mqtt.flespi.io:443" />
                     </Form.Item>
                     <Form.Item
                         label="Topic"
                         name="topic"
                         rules={[{ required: true, message: 'Please enter topic' }]}
                     >
-                        <Input placeholder="flespi/state/gw/devices/+/telemetry/+" />
+                        <Input placeholder="flespi/message/gw/devices/#" />
                     </Form.Item>
                     <Form.Item label="Username" name="username">
                         <Input />

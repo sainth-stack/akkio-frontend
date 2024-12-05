@@ -20,7 +20,7 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
     useEffect(() => {
         form.setFieldsValue({
             broker: 'wss://mqtt.flespi.io:443',
-            topic: 'flespi/message/gw/devices/#',
+            topic: 'flespi/message/gw/devices/5439260',
             username: 'axLBthbazeJkKKkpr2sVK9rAeXfFJGmH1V9k18iqaSyKqHYHzetadIyitBL15WyU',
             password: ''
         });
@@ -69,14 +69,6 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
                 });
             });
 
-            mqttClient.on('packetsend', (packet) => {
-                console.log('Packet sent:', packet);
-            });
-
-            mqttClient.on('packetreceive', (packet) => {
-                console.log('Packet received:', packet);
-            });
-
             mqttClient.on('message', (receivedTopic, payload) => {
                 console.log('=== Message Handler Start ===');
                 console.log('Message received on topic:', receivedTopic);
@@ -84,19 +76,16 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
 
                 try {
                     let messageStr;
-                    // Handle binary data
                     if (payload instanceof Uint8Array || Buffer.isBuffer(payload)) {
-                        // First try to decode as UTF-8
                         try {
                             messageStr = new TextDecoder().decode(payload);
                         } catch (e) {
-                            // If UTF-8 decoding fails, convert to hex string
                             messageStr = Array.from(payload)
                                 .map(byte => byte.toString(16).padStart(2, '0'))
                                 .join('');
                             console.log('Binary data converted to hex:', messageStr);
                             message.info('Received binary data');
-                            return; // Skip JSON parsing for pure binary data
+                            return;
                         }
                     } else {
                         messageStr = payload.toString();

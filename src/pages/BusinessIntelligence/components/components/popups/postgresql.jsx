@@ -23,17 +23,18 @@ const PostgreSql = (props) => {
     };
     const [details, setDetails] = useState({
         connectionName: 'PostgreSQL',
-        hostName: 'abul.db.elephantsql.com',
-        databaseName: 'mabpfgiu',
-        userName: 'mabpfgiu',
-        password: 'vzKsrtuh2PTCsQwoExC7gympinp57ADp',
+        hostName: 'ep-yellow-recipe-a5fny139.us-east-2.aws.neon.tech',
+        databaseName: 'test',
+        userName: 'test_owner',
+        password: 'tcWI7unQ6REA',
         port: '5432',
         schemaName: 'postgres',
-        tableName: 'retail_sales_data'
+        // tableName: 'retail_sales_data'
     })
     const handleConnectionCheck = async () => {
-        setLoading(true); // Start loading
+        setLoading(true);
         try {
+            // Create form data using FormData
             const formData = new FormData();
             formData.append('username', details.userName);
             formData.append('password', details.password);
@@ -41,7 +42,12 @@ const PostgreSql = (props) => {
             formData.append('host', details.hostName);
             formData.append('port', details.port);
 
-            const response = await axios.post(`${akkiourl}/connect`, formData);
+            const response = await axios.post(`${akkiourl}/connect`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
             if (response.status === 200) {
                 setSecondScreen(true);
                 const tables = JSON.parse(response.data.tables);
@@ -53,10 +59,9 @@ const PostgreSql = (props) => {
         } catch (error) {
             console.error('Connection failed', error);
         } finally {
-            setLoading(false); // Stop loading
+            setLoading(false);
         }
     };
-
     const transformData = (data) => {
         const transformedData = [];
 

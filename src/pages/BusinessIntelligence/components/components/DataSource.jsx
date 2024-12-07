@@ -13,6 +13,7 @@ import { useDataAPI } from '../contexts/GetDataApi';
 import { Modal } from 'antd';
 import { adminUrl, akkiourl } from '../../../../utils/const';
 import MqttConfig from './popups/MqttConfig';
+import SapConfig from './popups/sap';
 
 export const DataSource = () => {
     const navigate = useNavigate()
@@ -24,6 +25,7 @@ export const DataSource = () => {
     const [file, setFile] = useState(null);
     const [fetchedData, setFetchedData] = useState([])
     const [mqttOpen, setMqttOpen] = useState(false);
+    const [sapOpen, setSapOpen] = useState(false);
 
     const handleCancel = () => {
         setOpen(false);
@@ -63,7 +65,6 @@ export const DataSource = () => {
     };
 
     const handleNavigate = async (finalValue) => {
-        console.log(finalValue)
         await showContent({
             filename: finalValue.filename, headers: Object.keys(finalValue.data
             [0]), data: finalValue.data
@@ -115,7 +116,7 @@ export const DataSource = () => {
                     </div>
                 </div>
                 <div className='outerContainer'>
-                    <div className='cardContainer' >
+                    <div className='cardContainer' onClick={() => setSapOpen(true)}>
                         <div className="stepCommonContainer">
                             <MdSettingsApplications color='blue' width={30} height={30} style={{ width: 30, height: 30, marginTop: '2px' }} src={googleSheet} class="step-tile-icon" />
                             <span class="textHeader">SAP</span>
@@ -195,5 +196,6 @@ export const DataSource = () => {
             <input type='file' onChange={handleFileChange} />
         </Modal>}
         {mqttOpen && <MqttConfig setMqttOpen={setMqttOpen} onDataReceived={handleMqttData} />}
+        {sapOpen && <SapConfig setSapOpen={setSapOpen} onDataReceived={handleNavigate} />}
     </>
 }

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import './styles.scss'; // Import CSS file for styling
 import { useDataAPI } from '../../contexts/GetDataApi'
 import { IoMdArrowRoundBack, IoMdArrowRoundForward } from 'react-icons/io'
-import { akkiourl } from '../../../../../utils/const';
+import { akkiourl, transformData } from '../../../../../utils/const';
 import { Spinner } from 'react-bootstrap';
 const PostgreSql = (props) => {
     // const {details,setDetails} = props;
@@ -61,31 +61,6 @@ const PostgreSql = (props) => {
         } finally {
             setLoading(false);
         }
-    };
-    const transformData = (data) => {
-        const transformedData = [];
-
-        // Get the keys (categories)
-        const keys = Object.keys(data);
-
-        // Assuming all categories have the same number of items
-        for (let i = 0; i < Object.values(data[keys[0]]).length; i++) {
-            const item = {};
-
-            // Iterate through each category
-            keys.forEach((key) => {
-                // Get the value for the current index in each category
-                const value = data[key][i];
-
-                // Add the key-value pair to the item object
-                item[key] = value;
-            });
-
-            // Push the item object to the transformed data array
-            transformedData.push(item);
-        }
-
-        return transformedData;
     };
 
 

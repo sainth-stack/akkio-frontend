@@ -52,16 +52,28 @@ const GenAi = () => {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     const arrayToCSV = (data) => {
-        const csvRows = [];
-
-        // Get the headers (keys of the first object)
-        const headers = Object.keys(data[0]);
-        csvRows.push(headers.join(','));
-
-        // Loop through the data and convert each object to a CSV row
-        for (const row of data) {
-            const values = headers.map(header => row[header]);
-            csvRows.push(values.join(','));
+        // Get headers (column names)
+        const headers = Object.keys(data);
+        
+        // Get the number of rows by checking length of first column's data
+        const rowCount = Object.keys(data[headers[0]]).length;
+        
+        // Create CSV rows array starting with headers
+        const csvRows = [headers.join(',')];
+        
+        // Create a row for each index
+        for (let i = 0; i < rowCount; i++) {
+            const row = headers.map(header => {
+                // Get the value for this cell
+                const value = data[header][i.toString()];
+                
+                // Handle strings with commas by wrapping in quotes
+                if (typeof value === 'string' && value.includes(',')) {
+                    return `"${value}"`;
+                }
+                return value;
+            });
+            csvRows.push(row.join(','));
         }
 
         return csvRows.join('\n');
@@ -70,6 +82,7 @@ const GenAi = () => {
     const handleUpload = useCallback(async (data, fileC) => {
         var formData = new FormData();
         if (data) {
+            console.log(data)
             const csvData = arrayToCSV(data);
             console.log(csvData)
             const file = new Blob([csvData], { type: 'text/csv' });
@@ -83,7 +96,7 @@ const GenAi = () => {
         try {
             const response = await axios.post(`${akkiourl}/upload`, formData);
             const sanitizedData = JSON.stringify(response.data).replace(/NaN/g, 'null');
-            const parsedData = JSON.parse(JSON.parse(sanitizedData));
+            const parsedData = JSON.parse(sanitizedData);
             setLoading(false);
             setColumnDesc(parsedData?.column_description || '');
             setSampleData(parsedData?.first_10_rows || '{}');

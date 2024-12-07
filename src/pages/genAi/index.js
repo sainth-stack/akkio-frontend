@@ -54,19 +54,19 @@ const GenAi = () => {
     const arrayToCSV = (data) => {
         // Get headers (column names)
         const headers = Object.keys(data);
-        
+
         // Get the number of rows by checking length of first column's data
         const rowCount = Object.keys(data[headers[0]]).length;
-        
+
         // Create CSV rows array starting with headers
         const csvRows = [headers.join(',')];
-        
+
         // Create a row for each index
         for (let i = 0; i < rowCount; i++) {
             const row = headers.map(header => {
                 // Get the value for this cell
                 const value = data[header][i.toString()];
-                
+
                 // Handle strings with commas by wrapping in quotes
                 if (typeof value === 'string' && value.includes(',')) {
                     return `"${value}"`;
@@ -97,22 +97,15 @@ const GenAi = () => {
             const response = await axios.post(`${akkiourl}/upload`, formData);
             const sanitizedData = JSON.stringify(response.data).replace(/NaN/g, 'null');
             const parsedData = JSON.parse(sanitizedData);
+            console.log(parsedData)
             setLoading(false);
             setColumnDesc(parsedData?.column_description || '');
             setSampleData(parsedData?.first_10_rows || '{}');
 
-            const textQuestions = parsedData?.text_questions
-                ?.split('\n') // Split by line breaks
-                ?.filter(desc => desc.trim() !== '') // Remove empty lines
-                ?.slice(1, -1) || []; // Remove the first and last elements
+            let textQuestions = Object.values(parsedData?.text_questions || {}) || [];
 
-            console.log(textQuestions);
-
-
-            const graphQuestions = parsedData?.plotting_questions?.split('\n')
-                ?.filter(desc => desc.trim() !== '')
-            console.log(graphQuestions)
-
+            const graphQuestions = Object.values(parsedData?.plotting_questions || {}) || []
+            console.log(textQuestions, graphQuestions)
             setAllQuestions({
                 textQuestions,
                 graphQuestions

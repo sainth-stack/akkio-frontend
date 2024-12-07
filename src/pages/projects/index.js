@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { IoArrowBackSharp } from 'react-icons/io5';
 import axios from 'axios';
@@ -23,7 +23,8 @@ const Projects = () => {
     }
   }, [location.state])
 
-  const fetchFiles = async () => {
+
+  const fetchFiles = useCallback(async () => {
     try {
       setIsLoading(true);
       const email = JSON.parse(localStorage.getItem('user'))?.email;
@@ -38,11 +39,12 @@ const Projects = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [])
 
   useEffect(() => {
-    fetchFiles();
-  }, []);
+    fetchFiles()
+  }, [])
+
 
   const handleBack = () => {
     if (datas.datasource == 'csv' || !postgresOpen) {

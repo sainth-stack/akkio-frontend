@@ -20,7 +20,7 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
     useEffect(() => {
         form.setFieldsValue({
             broker: 'wss://mqtt.flespi.io:443',
-            topic: 'flespi/message/gw/devices/5439260',
+            topic: `flespi/storage/messages/gw/devices/5439260/response`,
             username: 'axLBthbazeJkKKkpr2sVK9rAeXfFJGmH1V9k18iqaSyKqHYHzetadIyitBL15WyU',
             password: ''
         });
@@ -44,82 +44,67 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
             const mqttClient = mqtt.connect(broker, {
                 username,
                 password,
-                reconnectPeriod: 5000,
-                connectTimeout: 30000,
-                clean: true,
-                protocolVersion: 4,
-                keepalive: 60
+                clean: true
             });
 
             mqttClient.on('connect', () => {
-                console.log('MQTT Client connected');
                 setIsConnected(true);
                 setIsLoading(false);
                 message.success('Connected to MQTT broker');
+
+                const topics = [
+                    `flespi/storage/messages/gw/devices/5439260/response`,
+                    `flespi/storage/messages/gw/devices/5439260/get`
+                ];
                 
-                mqttClient.subscribe('#', { qos: 0 }, (err) => {
-                    if (err) {
-                        console.error('Subscription error:', err);
-                        message.error(`Failed to subscribe: ${err.message}`);
-                    } else {
-                        console.log('Subscription successful');
-                        console.log('Topic:', '#');
-                        console.log('Connection options:', mqttClient.options);
-                    }
+                topics.forEach(topic => {
+                    mqttClient.subscribe(topic, { qos: 0 }, (err) => {
+                        if (err) {
+                            console.error('Subscription error:', err);
+                            message.error(`Failed to subscribe to ${topic}: ${err.message}`);
+                        } else {
+                            console.log(`Successfully subscribed to ${topic}`);
+                        }
+                    });
                 });
+
+                const historyRequest = {
+                    from: Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000), // Past 24 hours
+                    to: Math.floor(Date.now() / 1000), // Current time
+                    limit: 100,
+                    fields: ['timestamp', 'position.latitude', 'position.longitude', 'position.speed']
+                };
+
+                console.log('Requesting history with:', historyRequest);
+                mqttClient.publish(
+                    `flespi/storage/messages/gw/devices/5439260/get`,
+                    JSON.stringify(historyRequest),
+                    { qos: 0 }
+                );
             });
 
             mqttClient.on('message', (receivedTopic, payload) => {
-                console.log('=== Message Handler Start ===');
                 console.log('Message received on topic:', receivedTopic);
-                console.log('Payload type:', typeof payload);
-
+                console.log('Raw payload:', payload.toString());
+                
                 try {
-                    let messageStr;
-                    if (payload instanceof Uint8Array || Buffer.isBuffer(payload)) {
-                        try {
-                            messageStr = new TextDecoder().decode(payload);
-                        } catch (e) {
-                            messageStr = Array.from(payload)
-                                .map(byte => byte.toString(16).padStart(2, '0'))
-                                .join('');
-                            console.log('Binary data converted to hex:', messageStr);
-                            message.info('Received binary data');
-                            return;
-                        }
-                    } else {
-                        messageStr = payload.toString();
+                    const messageStr = payload.toString();
+                    const data = JSON.parse(messageStr);
+                    console.log('Parsed data:', data);
+
+                    if (!data || (Array.isArray(data) && data.length === 0)) {
+                        message.warning('No historical data available for the specified time range');
+                        return;
                     }
 
-                    // Continue with JSON parsing only if we have text data
-                    if (messageStr.trim()) {
-                        // Try to extract JSON if the message contains it
-                        const jsonStartIndex = messageStr.indexOf('{');
-                        const jsonEndIndex = messageStr.lastIndexOf('}');
-                        if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
-                            messageStr = messageStr.slice(jsonStartIndex, jsonEndIndex + 1);
-                            console.log('Extracted JSON string:', messageStr);
-                        }
-
-                        const data = JSON.parse(messageStr);
-                        console.log('Successfully parsed JSON data:', data);
-
-                        const dataArray = Array.isArray(data) ? data : [data];
-                        
-                        onDataReceived({
-                            filename: `mqtt_${receivedTopic.replace(/[/#+]/g, '_')}`,
-                            data: dataArray,
-                        });
-                    }
+                    const dataArray = Array.isArray(data) ? data : [data];
+                    onDataReceived({
+                        filename: `mqtt_history_${new Date().toISOString()}`,
+                        data: dataArray,
+                    });
                 } catch (error) {
-                    console.error('=== Message Handler Error ===');
-                    console.error('Error details:', error);
-                    console.error('Raw payload that caused error:', 
-                        payload instanceof Uint8Array || Buffer.isBuffer(payload) ?
-                        Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join('') :
-                        payload.toString()
-                    );
-                    message.error(`Invalid data format received: ${error.message}`);
+                    console.error('Error processing message:', error);
+                    message.error(`Error processing message: ${error.message}`);
                 }
             });
 
@@ -162,7 +147,7 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
                         name="topic"
                         rules={[{ required: true, message: 'Please enter topic' }]}
                     >
-                        <Input placeholder="flespi/message/gw/devices/#" />
+                        <Input placeholder="flespi/storage/messages/gw/devices/5439260/response" />
                     </Form.Item>
                     <Form.Item label="Username" name="username">
                         <Input />
@@ -212,4 +197,4 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
     );
 };
 
-export default MqttConfig; 
+export default MqttConfig;

@@ -83,7 +83,12 @@ const GenAi = () => {
         var formData = new FormData();
         if (data) {
             console.log(data)
-            const csvData = arrayToCSV(data);
+            let csvData = null;
+            if (localStorage.getItem('filename') == "MQTT_HistoryData") {
+                csvData = data
+            } else {
+                csvData = arrayToCSV(data);
+            }
             console.log(csvData)
             const file = new Blob([csvData], { type: 'text/csv' });
             formData.append('file', file, 'data.csv');

@@ -173,7 +173,7 @@ export const DataSource = () => {
                         <div className="stepCommonContainer">
                             <SiMqtt size={40} />
                             <div>
-                                <span class="textHeader">Mqtt</span>
+                                <span class="textHeader">IOT</span>
                                 <span data-v-fa6956f7="" class="textDesc"> Import </span>
                             </div>
                         </div>

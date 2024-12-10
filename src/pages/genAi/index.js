@@ -52,22 +52,12 @@ const GenAi = () => {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     const arrayToCSV = (data) => {
-        // Get headers (column names)
         const headers = Object.keys(data);
-
-        // Get the number of rows by checking length of first column's data
         const rowCount = Object.keys(data[headers[0]]).length;
-
-        // Create CSV rows array starting with headers
         const csvRows = [headers.join(',')];
-
-        // Create a row for each index
         for (let i = 0; i < rowCount; i++) {
             const row = headers.map(header => {
-                // Get the value for this cell
                 const value = data[header][i.toString()];
-
-                // Handle strings with commas by wrapping in quotes
                 if (typeof value === 'string' && value.includes(',')) {
                     return `"${value}"`;
                 }

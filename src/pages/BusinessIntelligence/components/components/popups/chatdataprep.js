@@ -76,7 +76,7 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
                         width: "100%"
                     }}>
                         <div>
-                            <p>Type In your question below:</p>
+                            <p>How may Help you:</p>
                             <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '0px' }}>
                                 <TextField
                                     onChange={(e) => setSearch(e.target.value)}

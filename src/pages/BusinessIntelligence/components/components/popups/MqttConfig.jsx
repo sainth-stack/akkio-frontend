@@ -51,7 +51,7 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
             localStorage.setItem('prepData', JSON.stringify(transformedData));
             localStorage.setItem('selectedTable', "MQTT_HistoryData")
             await showContent({
-                filename: "MQTT_HistoryData", headers: Object.keys(transformedData[0]), data: transformedData
+                filename: "MQTT_HistoryData", headers: Object.keys(transformedData[0]), data: transformData(transformedData)
             })
             navigate("/discover")
             handleUpload(null, true, transformedData, "MQTT_HistoryData");
@@ -67,7 +67,7 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
     return (
         <div className="mqtt-config-backdrop">
             <div className="mqtt-config">
-                <h2>Flespi Data Configuration</h2>
+                <h2>IOT Data Configuration</h2>
                 <Form form={form} layout="vertical">
                     <Form.Item
                         label="Token"

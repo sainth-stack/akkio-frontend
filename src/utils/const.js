@@ -66,32 +66,6 @@ export function getFinalData(uniqueArr, isDate, length) {
 }
 
 
-// export const transformData = (data) => {
-//   const transformedData = [];
-
-//   // Get the keys (categories)
-//   const keys = Object.keys(data);
-
-//   // Assuming all categories have the same number of items
-//   for (let i = 0; i < Object.values(data[keys[0]]).length; i++) {
-//       const item = {};
-
-//       // Iterate through each category
-//       keys.forEach((key) => {
-//           // Get the value for the current index in each category
-//           const value = data[key][i];
-
-//           // Add the key-value pair to the item object
-//           item[key] = value;
-//       });
-
-//       // Push the item object to the transformed data array
-//       transformedData.push(item);
-//   }
-
-//   return transformedData;
-// };
-
 export const transformData = (data) => {
   const transformedData = [];
 
@@ -116,4 +90,26 @@ export const transformData = (data) => {
   }
 
   return transformedData;
+};
+
+export const transformData2 = (arrayData) => {
+    // Initialize an object to store the transformed data
+    const result = {};
+    
+    // Get all unique keys from the first object
+    const keys = Object.keys(arrayData[0] || {});
+    
+    // Initialize empty objects for each key
+    keys.forEach(key => {
+        result[key] = {};
+    });
+    
+    // Populate the data
+    arrayData.forEach((item, index) => {
+        keys.forEach(key => {
+            result[key][index.toString()] = item[key];
+        });
+    });
+    
+    return result;
 };

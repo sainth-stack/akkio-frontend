@@ -140,9 +140,9 @@ const Connect = (datas) => {
               <label htmlFor="extend" className='p-0 m-0' style={{ marginLeft: '5px', width: '150px' }}>Extend Data</label>
             </div>
           </div>
-          <input type='file' onChange={handleFileChange} />
+       {selectedOption !== 'new' &&   <input type='file' onChange={handleFileChange} />}
           <textarea
-            placeholder="Enter your prompt for synthetic data generation..."
+            placeholder={selectedOption !== 'new' ? "Enter your prompt for synthetic data extension..." : "Enter your prompt for synthetic data generation..."}
             value={userPrompt}
             onChange={(e) => setUserPrompt(e.target.value)}
             style={{ width: '100%', marginTop: '10px',padding:'10px' }}

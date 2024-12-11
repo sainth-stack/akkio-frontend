@@ -95,7 +95,7 @@ const GetDataApi = ({ children }) => {
     dispatch({ type: "ADD_FILE_DETAILS", payload: file })
     if (database) {
       const finalData = transformData(data)
-      console.log(finalData,'finalData')
+      console.log(finalData, 'finalData')
       const value = JSON.stringify({
         filename: tableName,
         data: finalData,
@@ -115,14 +115,13 @@ const GetDataApi = ({ children }) => {
             });
             return rowData;
           });
-
+          console.log(flattenedData)
           if (flattenedData !== undefined) {
             const value = JSON.stringify({
               filename: file.name,
               data: flattenedData,
             });
-
-            setUploadedData([value, ...uploadedData]);
+            setUploadedData([value]);
           }
           setLoading(false);
           getData();

@@ -11,7 +11,7 @@ import PostgreSql from './popups/postgresql';
 import { useEffect, useState } from 'react';
 import { useDataAPI } from '../contexts/GetDataApi';
 import { Modal } from 'antd';
-import { adminUrl, akkiourl } from '../../../../utils/const';
+import { adminUrl, akkiourl, transformData, transformData2 } from '../../../../utils/const';
 import MqttConfig from './popups/MqttConfig';
 import SapConfig from './popups/sap';
 
@@ -38,8 +38,6 @@ export const DataSource = () => {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('mail', JSON.parse(localStorage.getItem('user'))?.email);
-            localStorage.setItem("file", file)
-
             const response = await fetch(`${akkiourl}/upload`, {
                 method: 'POST',
                 body: formData
@@ -71,7 +69,7 @@ export const DataSource = () => {
         })
 
         localStorage.setItem("filename", finalValue.filename)
-        localStorage.setItem('prepData', JSON.stringify(finalValue.data));
+        localStorage.setItem('prepData', JSON.stringify(transformData2(finalValue.data)));
         navigate("/discover")
     }
 

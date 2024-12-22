@@ -42,7 +42,7 @@ import { AdminLayout3 } from './layout/adminLaylout';
 import Users from './pages/admin/user';
 import Roles from './pages/admin/roles';
 import Permissions from './pages/admin/permissions';
-
+import KPI from './pages/kpi';
 function App() {
   return (
     <BrowserRouter>
@@ -55,6 +55,7 @@ function App() {
           <Route path='/gen-dashboard' Component={DashboardReports} />
           <Route path='/review-report' element={<HtmlReport />} />
           <Route path='/gen-ai' element={<GenAi />} />
+          <Route path='/kpi' element={<KPI />} />
           <Route path='/projects' Component={Projects} />
           <Route path='/connect' Component={Connect} />
           <Route path='/discover' Component={DisplayData} />

@@ -19,13 +19,8 @@ const ForecastData = () => {
             setLoading(true);
             const response = await axios.post(`${akkiourl}/regenerate_forecast_questions`);
             const questionsText = response.data.questions;
-            const questionsList = questionsText
-                .split('\n')
-                .slice(2) // Skip the first two lines
-                .map(q => q.trim()) // Trim whitespace
-                .filter(q => q && q.length > 0) // Remove empty strings and null values
-                .map(q => q.replace(/\*\*/g, '')) // Remove all ** markers at once
-                .slice(0, 5); // Limit to 5 questions
+            const questionsList = Object.values(questionsText || {}) || []
+
             setQuestions(questionsList);
         } catch (error) {
             console.error('Error fetching questions:', error);
@@ -36,7 +31,7 @@ const ForecastData = () => {
 
     const handleSubmit = async () => {
         if (!userPrompt.trim()) return;
-        
+
         try {
             setSubmitting(true);
             const formData = new FormData();
@@ -48,7 +43,7 @@ const ForecastData = () => {
             }]);
 
             const response = await axios.post(`${akkiourl}/forecasts`, formData);
-            
+
             setResponses(prev => prev.map((item, index) => {
                 if (index === prev.length - 1) {
                     return {
@@ -60,7 +55,7 @@ const ForecastData = () => {
                 }
                 return item;
             }));
-            
+
             setUserPrompt('');
         } catch (error) {
             console.error('Error submitting forecast:', error);

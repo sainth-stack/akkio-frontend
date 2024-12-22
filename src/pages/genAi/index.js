@@ -138,9 +138,8 @@ const GenAi = () => {
             formData.append('tablename', fileName);
             await axios.post(`${akkiourl}/regenerate_txt_questions`, formData)
                 .then((response) => {
-                    const questions = response?.data?.questions.split('\n')
-                        .filter(desc => desc.trim() !== '')
-                        ;
+                    const questions = Object.values(response?.data?.questions || {}) || []
+
                     setAllQuestions({
                         ...allQuestions,
                         textQuestions: questions,
@@ -158,14 +157,13 @@ const GenAi = () => {
             formData.append('tablename', fileName);
             await axios.post(`${akkiourl}/regenerate_graph_questions`, formData)
                 .then((response) => {
-                    const questions = response?.data?.questions.split('\n')
-                        .filter(desc => desc.trim() !== '')
-                        .slice(1);;
+                    const graphQuestions = Object.values(response?.data?.questions || {}) || []
+
                     setAllQuestions({
                         ...allQuestions,
-                        graphQuestions: questions
+                        graphQuestions: graphQuestions
                     })
-                    setQuestions(questions)
+                    setQuestions(graphQuestions)
                 });
         } catch (err) {
             console.log(err)

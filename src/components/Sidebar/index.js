@@ -42,6 +42,8 @@ export default function Sidebar() {
         { name: 'Connect', icon: BiSolidData, path: '/connect', permission: 'connect' },
         { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
         { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
+        { name: 'KPI', icon: GiArtificialIntelligence, path: '/kpi', permission: 'kpi' },
+        { name: 'Predict', icon: MdOutlineFindInPage, path: '/predict', permission: 'predict' },
         { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
         { name: 'Reports', icon: TbReportSearch, path: '/reports', permission: 'reports' },
       ]

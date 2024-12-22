@@ -10,18 +10,29 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
     const [isLoading, setIsLoading] = useState(false);
     const { uploadedData, handleUpload, showContent } = useDataAPI()
     const navigate = useNavigate()
+
     useEffect(() => {
         // Set default form values
         form.setFieldsValue({
-            token: 'axLBthbazeJkKKkpr2sVK9rAeXfFJGmH1V9k18iqaSyKqHYHzetadIyitBL15WyU'
+            flespi_URL: 'https://flespi.io/gw/devices/5439260/messages',
+            flespi_token: 'axLBthbazeJkKKkpr2sVK9rAeXfFJGmH1V9k18iqaSyKqHYHzetadIyitBL15WyU'
         });
     }, [form]);
 
     const handleFetchData = async () => {
         try {
             setIsLoading(true);
+            const formValues = await form.validateFields();
+            
             const response = await fetch('http://54.255.151.153:3001/api/download_flespi_data', {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    flespi_URL: formValues.flespi_URL,
+                    flespi_token: formValues.flespi_token
+                })
             });
 
             const rawData = await response.json();
@@ -47,15 +58,17 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
 
                 return transformed;
             });
+
             localStorage.setItem("filename", "MQTT_HistoryData")
             localStorage.setItem('prepData', JSON.stringify(transformedData));
             localStorage.setItem('selectedTable', "MQTT_HistoryData")
             await showContent({
-                filename: "MQTT_HistoryData", headers: Object.keys(transformedData[0]), data: transformData(transformedData)
+                filename: "MQTT_HistoryData", 
+                headers: Object.keys(transformedData[0]), 
+                data: transformData(transformedData)
             })
             navigate("/discover")
             handleUpload(null, true, transformedData, "MQTT_HistoryData");
-            console.log('Transformed Data:', transformedData)
             setIsLoading(false);
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -70,8 +83,16 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
                 <h2>IOT Data Configuration</h2>
                 <Form form={form} layout="vertical">
                     <Form.Item
-                        label="Token"
-                        name="token"
+                        label="Flespi URL"
+                        name="flespi_URL"
+                        rules={[{ required: true, message: 'Please input the Flespi URL!' }]}
+                    >
+                        <Input />
+                    </Form.Item>
+                    <Form.Item
+                        label="Flespi Token"
+                        name="flespi_token"
+                        rules={[{ required: true, message: 'Please input the Flespi token!' }]}
                     >
                         <Input />
                     </Form.Item>

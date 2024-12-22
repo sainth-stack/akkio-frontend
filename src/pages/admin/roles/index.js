@@ -31,6 +31,7 @@ const Roles = () => {
         projects: ['read', 'write'],
         connect: ['read', 'write'],
         discover: ['read', 'write'],
+        kpi: ['read', 'write'],
         forecast: ['read', 'write'],
         predict: ['read', 'write'],
         reports: ['read', 'write'],

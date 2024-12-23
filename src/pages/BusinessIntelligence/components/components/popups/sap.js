@@ -93,7 +93,7 @@ const SapConfig = ({ setSapOpen, onDataReceived }) => {
                     filename: selectedTable, headers: Object.keys(data), data: transformData(data)
                 })
                 navigate("/discover")
-                handleUpload(null, true, data, selectedTable);
+                handleUpload(null, true, data, selectedTable,true);
             }
             setSapOpen(false);
         } catch (error) {

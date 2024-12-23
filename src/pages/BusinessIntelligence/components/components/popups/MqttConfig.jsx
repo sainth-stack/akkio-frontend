@@ -83,14 +83,14 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
                 <h2>IOT Data Configuration</h2>
                 <Form form={form} layout="vertical">
                     <Form.Item
-                        label="Flespi URL"
+                        label="IOT URL"
                         name="flespi_URL"
                         rules={[{ required: true, message: 'Please input the Flespi URL!' }]}
                     >
                         <Input />
                     </Form.Item>
                     <Form.Item
-                        label="Flespi Token"
+                        label="IOT Token"
                         name="flespi_token"
                         rules={[{ required: true, message: 'Please input the Flespi token!' }]}
                     >
@@ -102,7 +102,7 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
                             onClick={handleFetchData}
                             loading={isLoading}
                         >
-                            Fetch Data
+                            Connect
                         </Button>
                         <Button
                             onClick={() => setMqttOpen(false)}

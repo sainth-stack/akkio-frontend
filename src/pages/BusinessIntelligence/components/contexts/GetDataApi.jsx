@@ -32,8 +32,8 @@ const GetDataApi = ({ children }) => {
 
   const [uploadedData, setUploadedData] = useState(finalData)
   const [state, dispatch] = useReducer(reducer, initalState)
+  const [sap, setSap] = useState(false)
   const [loading, setLoading] = useState(false)
-
   useEffect(() => {
     localStorage.setItem("displayContent", JSON.stringify(state.displayContent))
   }, [state.displayContent])
@@ -90,7 +90,13 @@ const GetDataApi = ({ children }) => {
   }
 
 
-  const handleUpload = async (file, database = false, data = [], tableName = '') => {
+  const handleUpload = async (file, database = false, data = [], tableName = '', sap = false) => {
+
+    if (sap) {
+      setSap(true)
+    } else {
+      setSap(false)
+    }
     setLoading(true)
     dispatch({ type: "ADD_FILE_DETAILS", payload: file })
     if (database) {
@@ -293,7 +299,7 @@ const GetDataApi = ({ children }) => {
   }
 
   return (
-    <GetDataContext.Provider value={{ ...state, handleUpload, loadingFun, removeData, displayPopupFun, showContent, changePopup, handleCleanData, handlePrepareData, handleLogout2, key: "key" }}>
+    <GetDataContext.Provider value={{ ...state, handleUpload, loadingFun, removeData, displayPopupFun, showContent, changePopup, handleCleanData, handlePrepareData, handleLogout2, key: "key",sap }}>
       {children}
     </GetDataContext.Provider>
   )

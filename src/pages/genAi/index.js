@@ -13,8 +13,9 @@ import AnswersAccordion from "./components/answers";
 import { Tabs, Tab, InputAdornment } from '@mui/material';
 import { IoMdRefresh, IoMdSend } from 'react-icons/io';
 import { akkiourl } from "../../utils/const";
+import { useDataAPI } from "../BusinessIntelligence/components/contexts/GetDataApi";
 const GenAi = () => {
-
+    const { sap } = useDataAPI()
     const [search, setSearch] = useState('')
     const [fileName, setFileName] = useState('')
     const [questions, setQuestions] = useState([
@@ -72,7 +73,6 @@ const GenAi = () => {
     const handleUpload = useCallback(async (data, fileC) => {
         var formData = new FormData();
         if (data) {
-            console.log(data)
             let csvData = null;
             if (localStorage.getItem('filename') == "MQTT_HistoryData") {
                 csvData = data
@@ -82,6 +82,8 @@ const GenAi = () => {
             console.log(csvData)
             const file = new Blob([csvData], { type: 'text/csv' });
             formData.append('file', file, 'data.csv');
+            formData.append('mail', JSON.parse(localStorage.getItem('user'))?.email);
+
         } else {
             formData.append('file', fileC);
         }
@@ -89,10 +91,10 @@ const GenAi = () => {
         setStartChart(true);
 
         try {
+            console.log(sap)
             const response = await axios.post(`${akkiourl}/upload`, formData);
             const sanitizedData = JSON.stringify(response.data).replace(/NaN/g, 'null');
-            const parsedData = JSON.parse(sanitizedData);
-            console.log(parsedData)
+            const parsedData = sap ? JSON.parse(JSON.parse(sanitizedData)) : JSON.parse(sanitizedData);
             setLoading(false);
             setColumnDesc(parsedData?.column_description || '');
             setSampleData(parsedData?.first_10_rows || '{}');
@@ -100,7 +102,6 @@ const GenAi = () => {
             let textQuestions = Object.values(parsedData?.text_questions || {}) || [];
 
             const graphQuestions = Object.values(parsedData?.plotting_questions || {}) || []
-            console.log(textQuestions, graphQuestions)
             setAllQuestions({
                 textQuestions,
                 graphQuestions

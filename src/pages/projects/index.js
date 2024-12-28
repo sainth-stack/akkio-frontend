@@ -5,17 +5,17 @@ import axios from 'axios';
 import { useDataAPI } from '../BusinessIntelligence/components/contexts/GetDataApi';
 import { adminUrl, akkiourl, transformData } from '../../utils/const';
 import { CircularProgress } from '@mui/material';
+import { useQuery } from 'react-query';
 
 const Projects = () => {
   const { uploadedData, showContent, handleUpload } = useDataAPI()
   const [postgresOpen, setPostgresOpen] = useState(false);
-  const [fetchedData, setFetchedData] = useState([])
+  // const [fetchedData, setFetchedData] = useState([])
   const navigate = useNavigate()
   const location = useLocation()
   const [datas, setDatas] = useState({ datasource: location?.state?.datasource || '' })
-  const [isLoading, setIsLoading] = useState(false);
-  const [isTableLoading, setIsTableLoading] = useState(false);
   const [loadingCards, setLoadingCards] = useState({});
+  const email = JSON.parse(localStorage.getItem('user'))?.email;
 
   useEffect(() => {
     if (location?.state?.datasource === 'postgresql') {
@@ -24,27 +24,34 @@ const Projects = () => {
   }, [location.state])
 
 
-  const fetchFiles = useCallback(async () => {
+  const fetchFiles = async () => {
     try {
-      setIsLoading(true);
-      const email = JSON.parse(localStorage.getItem('user'))?.email;
+      if (!email) {
+        throw new Error('User email is not found in localStorage.');
+      }
+
       const formData = new FormData();
       formData.append('email', email);
 
       const response = await axios.post(`${akkiourl}/get_user_data`, formData);
-      const filesData = response.data.result.map(file => JSON.stringify(file));
-      setFetchedData(filesData);
+
+      return response.data.result.map(file => JSON.stringify(file));
     } catch (error) {
       console.error('Error fetching files:', error);
-    } finally {
-      setIsLoading(false);
+      throw error; // Ensure the error is propagated to react-query
     }
-  }, [])
+  };
 
-  useEffect(() => {
-    fetchFiles()
-  }, [])
 
+  const { data: fetchedData, isLoading, error } = useQuery(
+    ['fetchFiles', email], // Query key includes email
+    () => fetchFiles(email), // Pass the email to fetchFiles
+    {
+      enabled: !!email, // Ensures the query only runs when email exists
+      staleTime: 5 * 60 * 1000, // Cache data for 5 minutes
+      refetchOnWindowFocus: false, // Avoid refetching on window focus
+    }
+  );
 
   const handleBack = () => {
     if (datas.datasource == 'csv' || !postgresOpen) {
@@ -94,13 +101,13 @@ const Projects = () => {
           <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
             <CircularProgress />
           </div>
-        ) : fetchedData.length === 0 ? (
+        ) : fetchedData?.length === 0 ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem', flexDirection: 'column', alignItems: 'center' }}>
             <h4>No data found</h4>
             <p>Please upload data to get started</p>
           </div>
         ) : (
-          fetchedData.map((finalField, index) => {
+          fetchedData?.map((finalField, index) => {
             const finalValue = finalField ? JSON.parse(finalField) : ""
             return fetchedData && finalValue !== "" ? (
               <div className="csv-files" key={index} onClick={() => handleNavigate(finalValue)}>

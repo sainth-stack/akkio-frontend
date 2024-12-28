@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Form, Input, Button, message } from 'antd';
 import './MqttConfig.css';
-import { transformData } from '../../../../../utils/const';
+import { akkiourl, transformData, transformData2 } from '../../../../../utils/const';
 import { useDataAPI } from '../../contexts/GetDataApi';
 import { useNavigate } from 'react-router-dom';
 
@@ -23,8 +23,8 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
         try {
             setIsLoading(true);
             const formValues = await form.validateFields();
-            
-            const response = await fetch('http://54.255.151.153:3001/api/download_flespi_data', {
+
+            const response = await fetch(`${akkiourl}/download_flespi_data`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
@@ -36,36 +36,14 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
             });
 
             const rawData = await response.json();
-
-            // Transform the data
-            const transformedData = rawData?.data.map(item => {
-                const transformed = { ...item };
-
-                // Transform specific fields with units
-                const unitsMap = {
-                    'Current': { unit: 'A' },
-                    'Humidity': { unit: '%' },
-                    'Power': { unit: 'W' },
-                    'Temperature': { unit: 'C' },
-                    'Voltage': { unit: 'V' }
-                };
-
-                Object.keys(unitsMap).forEach(key => {
-                    if (key in transformed) {
-                        transformed[key] = transformed[key]?.value
-                    }
-                });
-
-                return transformed;
-            });
-
+            const transformedData = transformData2(rawData)
             localStorage.setItem("filename", "MQTT_HistoryData")
             localStorage.setItem('prepData', JSON.stringify(transformedData));
             localStorage.setItem('selectedTable', "MQTT_HistoryData")
             await showContent({
-                filename: "MQTT_HistoryData", 
-                headers: Object.keys(transformedData[0]), 
-                data: transformData(transformedData)
+                filename: "MQTT_HistoryData",
+                headers: Object.keys(rawData[0]),
+                data: rawData
             })
             navigate("/discover")
             handleUpload(null, true, transformedData, "MQTT_HistoryData");

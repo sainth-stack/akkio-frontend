@@ -10,7 +10,7 @@ import {
   SecondCardDetails,
   ThirdCardDetails,
 } from "./Data/ListItems";
-
+import './index.css'
 const Pricing = () => {
   const cardRefs = useRef([]);
   const [cardHeight, setCardHeight] = useState(0);
@@ -38,9 +38,9 @@ const Pricing = () => {
     <div
       ref={(el) => (cardRefs.current[index] = el)}
       style={{ height: cardHeight || "auto" }}
-      className="card shadow mb-4 h-100 "
+      className="card shadow mb-4 h-100 customFont"
     >
-      <div className="card-body d-flex flex-column ">
+      <div className="card-body d-flex flex-column customFont">
         <h5 className="card-title border-bottom border-light-subtle py-1 text-center text-uppercase fw-bold mb-3">
           {title}
         </h5>
@@ -77,7 +77,7 @@ const Pricing = () => {
           ))}
         </ul>
         <button
-          className="btn  text-light fw-bold btn-info w-100 mt-auto"
+          className="btn text-light fw-bold btn-info w-100 mt-auto"
           onClick={() => navigateToExternalPage(buttonLink)}
         >
           {buttonText}

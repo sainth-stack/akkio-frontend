@@ -106,7 +106,7 @@ export const PredictionAndForecast = () => {
                     <label>Model</label>
                     <select value={model} onChange={(e) => { setModel(e.target.value); setData(''); setShow(false) }} className="kpi-select">
                         <option value="">Select Model</option>
-                        <option value="K-Means">K-Means</option>
+                        {/* <option value="K-Means">K-Means</option> */}
                         <option value="Arima">Arima</option>
                         <option value="OutlierDetection">Outlier Detection</option>
                         <option value="RandomForest">Random Forest</option>

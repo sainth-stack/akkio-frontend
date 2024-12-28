@@ -74,11 +74,7 @@ const GenAi = () => {
         var formData = new FormData();
         if (data) {
             let csvData = null;
-            if (localStorage.getItem('filename') == "MQTT_HistoryData") {
-                csvData = data
-            } else {
-                csvData = arrayToCSV(data);
-            }
+            csvData = arrayToCSV(data);
             console.log(csvData)
             const file = new Blob([csvData], { type: 'text/csv' });
             formData.append('file', file, 'data.csv');
@@ -91,7 +87,6 @@ const GenAi = () => {
         setStartChart(true);
 
         try {
-            console.log(sap)
             const response = await axios.post(`${akkiourl}/upload`, formData);
             const sanitizedData = JSON.stringify(response.data).replace(/NaN/g, 'null');
             const parsedData = sap ? JSON.parse(JSON.parse(sanitizedData)) : JSON.parse(sanitizedData);
@@ -214,8 +209,6 @@ const GenAi = () => {
         }
     }
 
-    // const columnDescriptions = response?.data?.col_desc;
-    // const sampleData = response?.data["sample data"]
 
     const handleQuestionClick = async (question) => {
         const data = [...answers, { question, answer: "", loading: true }]
@@ -303,32 +296,8 @@ const GenAi = () => {
                                     <Tab label="Insights" />
                                     <Tab label="Visualisation" />
                                 </Tabs>
-                                <div className="explorationSection">
+                                <div className="explorationSection2">
                                     <h2 style={{ fontSize: '30px' }}>Exploration</h2>
-                                    {/* <p>Below are the sample questions</p> */}
-                                    <div className="sampleQuestions" style={{ display: 'flex', marginBottom: '20px', flexWrap: 'wrap' }}>
-                                        {questions?.map((question, index) => (
-                                            <SampleQuestion key={index} question={`${question}`} onClick={handleQuestionClick} />
-                                        ))}
-                                    </div>
-                                    <button
-                                        style={{
-                                            background: '#f8f9fa',
-                                            padding: '8px 12px',
-                                            border: 'none',
-                                            borderRadius: '5px',
-                                            cursor: 'pointer',
-                                            fontSize: '16px',
-                                            // fontWeight: 'bold',
-                                            transition: 'background 0.3s ease',
-                                            marginBottom: '20px',
-                                            color: 'black'
-                                        }}
-                                        onClick={regenerateQuestions}
-                                    >
-                                        <IoMdRefresh color="blue" />  Re-generate sample questions
-                                    </button>
-                                    <p>Type In your question below:</p>
                                     <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '0px' }}>
                                         <TextField
                                             onChange={(e) => setSearch(e.target.value)}
@@ -358,6 +327,31 @@ const GenAi = () => {
                                                 ),
                                             }}
                                         />
+                                    </div>
+                                    <button
+                                        style={{
+                                            background: '#f8f9fa',
+                                            padding: '8px 12px',
+                                            border: 'none',
+                                            marginTop: '18px',
+                                            borderRadius: '5px',
+                                            cursor: 'pointer',
+                                            fontSize: '16px',
+                                            // fontWeight: 'bold',
+                                            transition: 'background 0.3s ease',
+                                            marginBottom: '20px',
+                                            color: 'black'
+                                        }}
+                                        onClick={regenerateQuestions}
+                                    >
+                                        <IoMdRefresh color="blue" />  Re-generate sample questions
+                                    </button>
+                                    <div className="sampleQuestions" style={{ marginBottom: '20px' }}>
+                                        {questions?.map((question, index) => (
+                                            <div className="question-item">
+                                                <SampleQuestion key={index} question={`${question}`} onClick={handleQuestionClick} />
+                                            </div>
+                                        ))}
                                     </div>
                                     <div className="answersSection" style={{ marginTop: "20px" }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>

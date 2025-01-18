@@ -36,9 +36,9 @@ export default function Sidebar() {
 
   const finData = [
     { name: 'Home', icon: IoHome, path: '/welcome', id: 1, permission: 'home' },
-    { name: 'Projects', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
     {
       name: 'Gen AI', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
+        { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
         { name: 'Connect', icon: BiSolidData, path: '/connect', permission: 'connect' },
         { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
         { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },

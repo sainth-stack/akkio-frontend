@@ -33,7 +33,7 @@ function Navbar() {
       setName("Reports")
     }
     else if (location.pathname == '/projects') {
-      setName("Projects")
+      setName("Workspace")
     }
     else if (location.pathname == '/process') {
       setName("Business KPI")

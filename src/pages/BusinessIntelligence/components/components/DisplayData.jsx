@@ -1,75 +1,85 @@
-import React, { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import Navbar from './Navbar'
-import BarGraph from './BarGraph'
-import { useDataAPI } from '../contexts/GetDataApi'
-import EndPopup from './EndPopup'
-import { Button } from '@mui/material'
-import { Spin, Modal, Input, Progress } from 'antd'
-import { AiOutlineClear } from "react-icons/ai"
-import { BsStars } from 'react-icons/bs'
-import { PivotView } from './popups/pivotVIew'
-import ChatDataPrep from './popups/chatdataprep'
-import { getFinalData } from '../../../../utils/const'
-import '../styles/discover.scss'
-import { CleanDataPopup } from './popups/cleandata'
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import Navbar from "./Navbar";
+import BarGraph from "./BarGraph";
+import { useDataAPI } from "../contexts/GetDataApi";
+import EndPopup from "./EndPopup";
+import { Button } from "@mui/material";
+import { Spin, Modal, Input, Progress } from "antd";
+import { AiOutlineClear } from "react-icons/ai";
+import { BsStars } from "react-icons/bs";
+import { PivotView } from "./popups/pivotVIew";
+import ChatDataPrep from "./popups/chatdataprep";
+import { getFinalData } from "../../../../utils/const";
+import "../styles/discover.scss";
+import { CleanDataPopup } from "./popups/cleandata";
+import { Insights } from "./insights";
+import { Tabs, Tab, Box } from "@mui/material";
+
 const DisplayData = () => {
-  const [data, setData] = useState([])
-  const [headers, setHeaders] = useState([])
+  const [data, setData] = useState([]);
+  const [headers, setHeaders] = useState([]);
   const [hoveredRowIndex, setHoveredRowIndex] = useState(-1);
-  const [displaypopup, setDisplaypopup] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [popup, setPopup] = useState(displaypopup)
-  const [prepData, setPrepData] = useState("")
-  const [filename, setFilename] = useState("")
+  const [displaypopup, setDisplaypopup] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [popup, setPopup] = useState(displaypopup);
+  const [prepData, setPrepData] = useState("");
+  const [filename, setFilename] = useState("");
   const [open, setOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [view, setView] = useState(false)
-  const [showModel, setShowModel] = useState(false)
+  const [view, setView] = useState(false);
+  const [showModel, setShowModel] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
+  const [showIn, setShowIn] = useState(false);
+  const [value, setValue] = useState(0); // Default selected tab (General View)
+
+  const handleChange = (event, newValue) => {
+    setValue(newValue);
+  };
 
   const handleCleanButtonClick = () => {
     setShowPopup(!showPopup);
   };
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const {
     displayPopupFun,
     displayContent,
     handleCleanData,
     handlePrepareData,
-    files
-  } = useDataAPI()
+    files,
+  } = useDataAPI();
 
   function removeDuplicates(arr) {
     return [...new Set(arr)];
   }
 
   function count(arr, value) {
-    if (isNaN(value) && typeof (value) == 'number') {
-      return arr.filter(value => isNaN(value) && typeof (value) == 'number').length;
+    if (isNaN(value) && typeof value == "number") {
+      return arr.filter((value) => isNaN(value) && typeof value == "number")
+        .length;
     } else {
       return arr.reduce((count, currtElm) => {
         if (value === currtElm) {
-          count++
+          count++;
         }
-        return count
-      }, 0)
+        return count;
+      }, 0);
     }
   }
 
   const handleChatprepData = () => {
-    localStorage.setItem('prepData', JSON.stringify(data));
+    localStorage.setItem("prepData", JSON.stringify(data));
     setShowModel(true);
-  }
+  };
   const handleOk = async () => {
     // setModalText('The modal will be closed after two seconds');
     // setPrepData(e.)
-    setConfirmLoading(true)
-    await handlePrepareData(prepData)
+    setConfirmLoading(true);
+    await handlePrepareData(prepData);
     setTimeout(() => {
-      setConfirmLoading(false)
-    }, 2000)
-    setOpen(false)
+      setConfirmLoading(false);
+    }, 2000);
+    setOpen(false);
   };
 
   const handleRowHover = (index) => {
@@ -79,31 +89,31 @@ const DisplayData = () => {
   const convertToCSV = (data, headers) => {
     const csvContent = [];
     const header = Object.keys(data[0]);
-    csvContent.push(headers.join(','));
+    csvContent.push(headers.join(","));
 
     data.forEach((item) => {
       const row = header.map((key) => item[key]);
-      csvContent.push(row.join(','));
+      csvContent.push(row.join(","));
     });
 
-    return csvContent.join('\n');
+    return csvContent.join("\n");
   };
 
   const downloadCSV = () => {
     const filteredData = data.map((field) => {
       return headers.map((header) => {
-        return field[header]
-      })
-    })
+        return field[header];
+      });
+    });
 
     const csvData = convertToCSV(filteredData, headers);
-    const blob = new Blob([csvData], { type: 'text/csv' });
+    const blob = new Blob([csvData], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
 
-    const a = document.createElement('a');
-    a.style.display = 'none';
+    const a = document.createElement("a");
+    a.style.display = "none";
     a.href = url;
-    a.download = 'data.csv';
+    a.download = "data.csv";
 
     document.body.appendChild(a);
     a.click();
@@ -112,28 +122,23 @@ const DisplayData = () => {
     URL.revokeObjectURL(url);
   };
 
-
-
   useEffect(() => {
-    setLoading(true)
-    setHeaders(displayContent.headers)
-    setData(displayContent.data)
-    setFilename(localStorage.getItem("filename"))
+    setLoading(true);
+    setHeaders(displayContent.headers);
+    setData(displayContent.data);
+    setFilename(localStorage.getItem("filename"));
 
     setTimeout(() => {
-      setLoading(false)
-    }, 2000)
-
-  }, [displayContent])
+      setLoading(false);
+    }, 2000);
+  }, [displayContent]);
 
   useEffect(() => {
-    setPopup(displaypopup)
-  }, [displaypopup])
+    setPopup(displaypopup);
+  }, [displaypopup]);
 
-
-  console.log(showPopup)
   return (
-    <div style={{ minHeight: '90vh', overflow: 'auto' }}>
+    <div style={{ minHeight: "90vh", overflow: "auto" }}>
       <Navbar />
       <div className="professional-table">
         <div className="file-details ms-2">
@@ -143,240 +148,437 @@ const DisplayData = () => {
           <p>{filename}</p>
           <p>{data.length} rows</p>
           <p>{headers.length} columns</p>
-
         </div>
         <div className="filterData ms-2">
-          <Button variant="outlined" onClick={() => {
-            handleChatprepData()
-          }}>Chat Data Prep</Button>
-          <div className="clean-section" onClick={() => {
-            handleCleanButtonClick()
-          }}>
+          <Tabs
+            value={value}
+            onChange={handleChange}
+            indicatorColor="primary"
+            textColor="primary"
+            centered
+            sx={
+              {
+                // backgroundColor: "#f5f5f5", // light background for the tab bar
+                // borderBottom: "2px solid #e0e0e0", // subtle border between tab and content
+                // boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)", // soft shadow for a modern feel
+                // borderRadius: "8px 8px 0 0", // rounded corners on top
+              }
+            }
+          >
+            <Tab
+              label="Discover"
+              sx={{
+                textTransform: "none",
+                fontWeight: "500",
+                fontSize: "14px",
+                "&:hover": {
+                  backgroundColor: "#f1f1f1", // light hover effect
+                },
+                "&.Mui-selected": {
+                  color: "#1976d2", // selected tab color
+                  fontWeight: "bold", // bold text for selected tab
+                },
+              }}
+            />
+            <Tab
+              label="General View"
+              sx={{
+                textTransform: "none",
+                fontWeight: "500",
+                fontSize: "14px",
+                "&:hover": {
+                  backgroundColor: "#f1f1f1", // light hover effect
+                },
+                "&.Mui-selected": {
+                  color: "#1976d2", // selected tab color
+                  fontWeight: "bold", // bold text for selected tab
+                },
+              }}
+            />
+            <Tab
+              label="Data View"
+              sx={{
+                textTransform: "none",
+                fontWeight: "500",
+                fontSize: "14px",
+                "&:hover": {
+                  backgroundColor: "#f1f1f1", // light hover effect
+                },
+                "&.Mui-selected": {
+                  color: "#1976d2", // selected tab color
+                  fontWeight: "bold", // bold text for selected tab
+                },
+              }}
+            />
+          </Tabs>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              handleChatprepData();
+            }}
+          >
+            Chat Data Prep
+          </Button>
+          <div
+            className="clean-section"
+            onClick={() => {
+              handleCleanButtonClick();
+            }}
+          >
             <AiOutlineClear size={25} />
             <span>Clean</span>
           </div>
 
-          <button className='btn btn-success' onClick={downloadCSV}>Download CSV</button>
-          <button className='btn btn-transparent' style={{ border: '1px solid grey' }} onClick={() => setView(!view)}>{!view ? 'General View' : 'Data View'}</button>
+          <button className="btn btn-success" onClick={downloadCSV}>
+            Download CSV
+          </button>
         </div>
 
-        {loading ? <Spin className='spinner' size={'large'} /> :
-          <div className=''>
-            {!view ? <table style={{ border: 'none' }} className='discover-table'>
-              <thead>
-                <tr style={{ zIndex: 9999999 }}>
-                  {
-                    headers.map((header, index) => {
-                      return <th key={index}>{header}</th>
-                    })
-                  }
-                </tr>
-                <tr>
-                  {
-                    headers.map((header, index) => {
-                      const timePattern = /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
-                      const updatedArray = data.map((value) => {
-                        const timePattern = /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
-                        if (!isNaN(value[header])) {
-                          return parseInt(value[header])
-                        }
-                        else if (!isNaN(Date.parse(value[header]))) {
-                          const date = new Date(value[header])
-                          return date.getDate()
-                        }
-                        else if (timePattern.test(value[header])) {
-                          return parseInt(value[header].slice(0, 3))
-                        }
-                        else {
-                          return value[header]
-                        }
-                      })
-
-                      let uniqueArr = removeDuplicates(updatedArray)
-
-                      if (!isNaN(data[0][header])) {
-                        return <td key={index}><span className="badge rounded-pill" style={{ background: '#27ae60' }}>Number</span> </td>
-                      }
-                      else if (!isNaN(Date.parse(data[0][header]))) {
-                        return <td key={index}><span className="badge rounded-pill bg-secondary">Date</span></td>
-                      }
-                      else if (timePattern.test(data[0][header])) {
-                        return <td key={index}><span className="badge rounded-pill bg-danger">Time</span></td>
-                      }
-                      else if (uniqueArr.length < 10 && isNaN(data[0][header])) {
-                        return <td key={index}><span className="badge rounded-pill" style={{ background: 'hsl(10.1, 87.6%, 58.8%)' }}>Category</span> </td>
-                      }
-                      else if (isNaN(data[0][header])) {
-                        return <td key={index}><span className="badge rounded-pill bg-primary">Text</span></td>
-                      }
-
-                    })
-                  }
-
-                </tr>
-                <tr>
-                  {
-                    headers.map((header, id) => {
-                      const updatedArray = data.map((value) => {
-                        const timePattern = /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
-                        if (!isNaN(value[header])) {
-                          return parseFloat(value[header])
-                        }
-                        else if (!isNaN(Date.parse(value[header]))) {
-                          const date = new Date(value[header])
-                          return date
-                        }
-                        else if (timePattern.test(value[header])) {
-                          return parseFloat(value[header].slice(0, 3))
-                        }
-                        else {
-                          return value[header]
-                        }
-                      })
-                      // console.log(updatedArray)
-
-                      let uniqueArr = removeDuplicates(updatedArray)
-                      if (!isNaN(Date.parse(data[0][header])) || !isNaN(data[0][header])) {
-                        const isDate = isNaN(data[0][header]);
-                        const updatedData = uniqueArr.map((uniVal) => {
-                          return {
-                            value: uniVal,
-                            count: count(updatedArray, uniVal)
+        {loading ? (
+          <Spin className="spinner" size={"large"} />
+        ) : (
+          <div className="">
+            <>
+              {value == 1 && (
+                <table style={{ border: "none" }} className="discover-table">
+                  <thead>
+                    <tr style={{ zIndex: 9999999 }}>
+                      {headers.map((header, index) => {
+                        return <th key={index}>{header}</th>;
+                      })}
+                    </tr>
+                    <tr>
+                      {headers.map((header, index) => {
+                        const timePattern =
+                          /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
+                        const updatedArray = data.map((value) => {
+                          const timePattern =
+                            /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
+                          if (!isNaN(value[header])) {
+                            return parseInt(value[header]);
+                          } else if (!isNaN(Date.parse(value[header]))) {
+                            const date = new Date(value[header]);
+                            return date.getDate();
+                          } else if (timePattern.test(value[header])) {
+                            return parseInt(value[header].slice(0, 3));
+                          } else {
+                            return value[header];
                           }
-                        })
-                        if (isDate) {
-                          // console.log(updatedData)
-                        }
-                        const finalData = getFinalData(updatedArray, isDate, 6)
-                        return (
-                          <td className='firstRow' style={{ overflowX: "hidden", cursor: "pointer" }} key={id}
-                            onClick={() => {
-                              displayPopupFun({
-                                rows: data.length,
-                                uniqueValues: uniqueArr.length,
-                                uniqueArr: uniqueArr,
-                                updatedData: updatedData,
-                                updatedArray: updatedArray,
-                                title: header,
-                                progress: false,
-                                totData: data,
-                                category: false,
-                                isDate: isDate
-                              })
-                              setPopup(displaypopup)
-                              setDisplaypopup(true)
-                            }}
-                          >
-                            {/* <p>{uniqueArr.length} Unique Values</p> */}
-                            <BarGraph data={finalData} strokeColor={'rgba(0, 163, 255, 1)'} width={180} className="graph" cursor={'pointer'} header={header} />
-                          </td>)
-                      }
-                      else {
-                        const filteredArr = uniqueArr.filter((uniqueVal) => {
-                          return uniqueVal !== undefined && uniqueVal !== "";
                         });
-                        const arr = filteredArr.map((uniqueVal, index) => {
-                          let value = count(updatedArray, uniqueVal)
-                          let percent = parseFloat((value / (updatedArray.length)) * 100).toFixed(1)
-                          return percent
-                        })
-                        if (arr.includes("0.00")) {
-                          const index = arr.indexOf("0.00")
-                          arr.splice(index, 1)
+
+                        let uniqueArr = removeDuplicates(updatedArray);
+
+                        if (!isNaN(data[0][header])) {
+                          return (
+                            <td key={index}>
+                              <span
+                                className="badge rounded-pill"
+                                style={{ background: "#27ae60" }}
+                              >
+                                Number
+                              </span>{" "}
+                            </td>
+                          );
+                        } else if (!isNaN(Date.parse(data[0][header]))) {
+                          return (
+                            <td key={index}>
+                              <span className="badge rounded-pill bg-secondary">
+                                Date
+                              </span>
+                            </td>
+                          );
+                        } else if (timePattern.test(data[0][header])) {
+                          return (
+                            <td key={index}>
+                              <span className="badge rounded-pill bg-danger">
+                                Time
+                              </span>
+                            </td>
+                          );
+                        } else if (
+                          uniqueArr.length < 10 &&
+                          isNaN(data[0][header])
+                        ) {
+                          return (
+                            <td key={index}>
+                              <span
+                                className="badge rounded-pill"
+                                style={{
+                                  background: "hsl(10.1, 87.6%, 58.8%)",
+                                }}
+                              >
+                                Category
+                              </span>{" "}
+                            </td>
+                          );
+                        } else if (isNaN(data[0][header])) {
+                          return (
+                            <td key={index}>
+                              <span className="badge rounded-pill bg-primary">
+                                Text
+                              </span>
+                            </td>
+                          );
                         }
-                        return <td className='firstRow' style={{ overflowX: "auto", cursor: "pointer" }} key={id}
-                          onClick={() => {
-                            displayPopupFun({
-                              rows: data.length,
-                              uniqueValues: uniqueArr.length,
-                              uniqueArr: uniqueArr,
-                              updatedData: arr,
-                              title: header,
-                              progress: true,
-                              totData: data,
-                              correlations: uniqueArr.length < 10,
-                            })
-                            setPopup(displaypopup)
-                            setDisplaypopup(true)
-                          }}
+                      })}
+                    </tr>
+                    <tr>
+                      {headers.map((header, id) => {
+                        const updatedArray = data.map((value) => {
+                          const timePattern =
+                            /^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/;
+                          if (!isNaN(value[header])) {
+                            return parseFloat(value[header]);
+                          } else if (!isNaN(Date.parse(value[header]))) {
+                            const date = new Date(value[header]);
+                            return date;
+                          } else if (timePattern.test(value[header])) {
+                            return parseFloat(value[header].slice(0, 3));
+                          } else {
+                            return value[header];
+                          }
+                        });
+                        // console.log(updatedArray)
+
+                        let uniqueArr = removeDuplicates(updatedArray);
+                        if (
+                          !isNaN(Date.parse(data[0][header])) ||
+                          !isNaN(data[0][header])
+                        ) {
+                          const isDate = isNaN(data[0][header]);
+                          const updatedData = uniqueArr.map((uniVal) => {
+                            return {
+                              value: uniVal,
+                              count: count(updatedArray, uniVal),
+                            };
+                          });
+                          if (isDate) {
+                            // console.log(updatedData)
+                          }
+                          const finalData = getFinalData(
+                            updatedArray,
+                            isDate,
+                            6
+                          );
+                          return (
+                            <td
+                              className="firstRow"
+                              style={{
+                                overflowX: "hidden",
+                                cursor: "pointer",
+                              }}
+                              key={id}
+                              onClick={() => {
+                                displayPopupFun({
+                                  rows: data.length,
+                                  uniqueValues: uniqueArr.length,
+                                  uniqueArr: uniqueArr,
+                                  updatedData: updatedData,
+                                  updatedArray: updatedArray,
+                                  title: header,
+                                  progress: false,
+                                  totData: data,
+                                  category: false,
+                                  isDate: isDate,
+                                });
+                                setPopup(displaypopup);
+                                setDisplaypopup(true);
+                              }}
+                            >
+                              {/* <p>{uniqueArr.length} Unique Values</p> */}
+                              <BarGraph
+                                data={finalData}
+                                strokeColor={"rgba(0, 163, 255, 1)"}
+                                width={180}
+                                className="graph"
+                                cursor={"pointer"}
+                                header={header}
+                              />
+                            </td>
+                          );
+                        } else {
+                          const filteredArr = uniqueArr.filter((uniqueVal) => {
+                            return uniqueVal !== undefined && uniqueVal !== "";
+                          });
+                          const arr = filteredArr.map((uniqueVal, index) => {
+                            let value = count(updatedArray, uniqueVal);
+                            let percent = parseFloat(
+                              (value / updatedArray.length) * 100
+                            ).toFixed(1);
+                            return percent;
+                          });
+                          if (arr.includes("0.00")) {
+                            const index = arr.indexOf("0.00");
+                            arr.splice(index, 1);
+                          }
+                          return (
+                            <td
+                              className="firstRow"
+                              style={{ overflowX: "auto", cursor: "pointer" }}
+                              key={id}
+                              onClick={() => {
+                                displayPopupFun({
+                                  rows: data.length,
+                                  uniqueValues: uniqueArr.length,
+                                  uniqueArr: uniqueArr,
+                                  updatedData: arr,
+                                  title: header,
+                                  progress: true,
+                                  totData: data,
+                                  correlations: uniqueArr.length < 10,
+                                });
+                                setPopup(displaypopup);
+                                setDisplaypopup(true);
+                              }}
+                            >
+                              <div className="first-container">
+                                {/* <span>{arr.length} Unique Values</span> */}
+                                {arr.map((percentValue, index) => {
+                                  if (index < 2) {
+                                    let name =
+                                      typeof uniqueArr[index] === "number" &&
+                                      isNaN(uniqueArr[index])
+                                        ? "blank"
+                                        : uniqueArr[index];
+                                    return (
+                                      <div
+                                        className="progress-container"
+                                        key={index}
+                                      >
+                                        <div
+                                          style={{
+                                            width: "220px",
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "start",
+                                          }}
+                                        >
+                                          <p
+                                            title={name}
+                                            style={{
+                                              width: "130px",
+                                              overflow: "hidden",
+                                              whiteSpace: "nowrap",
+                                              display: "flex",
+                                              justifyContent: "start",
+                                            }}
+                                          >
+                                            <span
+                                              style={{
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                              }}
+                                            >
+                                              {name}
+                                            </span>
+                                          </p>
+                                          <p>{percentValue}%</p>
+                                        </div>
+                                        <Progress
+                                          style={{ width: "220px" }}
+                                          strokeColor={"#00a3f"}
+                                          size="small"
+                                          showInfo={false}
+                                          percent={percentValue}
+                                          status="active"
+                                        />
+                                      </div>
+                                    );
+                                  } else if (index === 2) {
+                                    // Calculate the total of the remaining values in arr
+                                    let totalPercent =
+                                      100 -
+                                      arr
+                                        .slice(0, 2)
+                                        .reduce(
+                                          (acc, curr) => acc + parseFloat(curr),
+                                          0
+                                        );
+                                    return (
+                                      <div
+                                        className="progress-container"
+                                        key={index}
+                                      >
+                                        <div
+                                          style={{
+                                            width: "220px",
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "start",
+                                          }}
+                                        >
+                                          <p
+                                            style={{
+                                              width: "130px",
+                                              display: "flex",
+                                              justifyContent: "start",
+                                            }}
+                                          >
+                                            others
+                                          </p>
+                                          <p>{totalPercent.toFixed(1)}%</p>
+                                        </div>
+                                        <Progress
+                                          style={{ width: "220px" }}
+                                          strokeColor={"#00a3f"}
+                                          size="small"
+                                          showInfo={false}
+                                          percent={totalPercent}
+                                          status="active"
+                                        />
+                                      </div>
+                                    );
+                                  }
+                                })}
+                              </div>
+                            </td>
+                          );
+                        }
+                      })}
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {data.map((row, index) => {
+                      return (
+                        <tr
+                          key={index}
+                          className={index === hoveredRowIndex ? "hovered" : ""}
+                          onMouseEnter={() => handleRowHover(index)}
+                          onMouseLeave={() => handleRowHover(-1)}
                         >
-                          <div className="first-container">
-                            {/* <span>{arr.length} Unique Values</span> */}
-                            {arr.map((percentValue, index) => {
-                              if (index < 2) {
-                                let name = (typeof uniqueArr[index] === 'number' && isNaN(uniqueArr[index])) ? 'blank' : uniqueArr[index];
-                                return (
-                                  <div className="progress-container" key={index}>
-                                    <div style={{ width: '220px', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                      <p title={name} style={{ width: '130px', overflow: 'hidden', whiteSpace: 'nowrap', display: 'flex', justifyContent: 'start' }}>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                          {name}
-                                        </span>
-                                      </p>
-                                      <p>{percentValue}%</p>
-                                    </div>
-                                    <Progress style={{ width: "220px" }} strokeColor={'#00a3f'} size="small" showInfo={false} percent={percentValue} status="active" />
-                                  </div>
-                                );
-                              } else if (index === 2) {
-                                // Calculate the total of the remaining values in arr
-                                let totalPercent = 100 - arr.slice(0, 2).reduce((acc, curr) => acc + parseFloat(curr), 0);
-                                return (
-                                  <div className="progress-container" key={index}>
-                                    <div style={{ width: '220px', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                                      <p style={{ width: '130px', display: 'flex', justifyContent: 'start' }}>others</p>
-                                      <p>{totalPercent.toFixed(1)}%</p>
-                                    </div>
-                                    <Progress style={{ width: "220px" }} strokeColor={'#00a3f'} size="small" showInfo={false} percent={totalPercent} status="active" />
-                                  </div>
-                                );
-                              }
-                            })}
+                          {headers.map((head, index) => {
+                            return <td key={index}>{row[head]}</td>;
+                          })}
 
-                          </div>
-                        </td>
-                      }
+                          {/* Add more data columns as needed */}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+              {value == 2 && (
+                <div>
+                  <PivotView {...{ headers, data, removeDuplicates }} />
+                </div>
+              )}
+            </>
 
-                    })
-
-                  }
-                </tr>
-              </thead>
-
-              <tbody>
-                {data.map((row, index) => {
-                  return <tr
-                    key={index}
-                    className={index === hoveredRowIndex ? 'hovered' : ''}
-                    onMouseEnter={() => handleRowHover(index)}
-                    onMouseLeave={() => handleRowHover(-1)}
-                  >
-                    {
-                      headers.map((head, index) => {
-                        return <td key={index} >{row[head]}</td>
-                      })
-                    }
-
-                    {/* Add more data columns as needed */}
-                  </tr>
-                })}
-              </tbody>
-            </table> : <div>
-              <PivotView {...{ headers, data, removeDuplicates }} />
-            </div>}
+            {value == 0 && <Insights />}
           </div>
-        }
+        )}
       </div>
-      {
-        displaypopup ? <EndPopup setDisplaypopup={setDisplaypopup} popup={popup} /> : <></>
-      }
-
-
+      {displaypopup ? (
+        <EndPopup setDisplaypopup={setDisplaypopup} popup={popup} />
+      ) : (
+        <></>
+      )}
 
       <Modal
         title=""
         open={open}
-        style={{ top: '40%', zIndex: 99999 }}
+        style={{ top: "40%", zIndex: 99999 }}
         onCancel={() => setOpen(false)}
         footer={[
           <button
@@ -385,27 +587,42 @@ const DisplayData = () => {
             type="primary"
             loading={loading}
             onClick={handleOk}
-            style={{ width: '100%' }}
-            className='btn btn-primary'
+            style={{ width: "100%" }}
+            className="btn btn-primary"
           >
             Upgrade Plan
           </button>,
         ]}
       >
         {/* <Input size='large' onChange={(e) => handleEvent(e)} value={prepData} type="text" placeholder="e.g. Filter out all columns except the first 2" /> */}
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-          <BsStars size={24} color='blue' style={{ marginTop: '20px', marginBottom: '10px' }} />
-          <p style={{ fontSize: '18px', fontWeight: '500' }}>This feature is not available for the view only plan.</p>
-          <p style={{ fontSize: '14px', fontWeight: '400' }}>Please Upgrade your plan to use this feature</p>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <BsStars
+            size={24}
+            color="blue"
+            style={{ marginTop: "20px", marginBottom: "10px" }}
+          />
+          <p style={{ fontSize: "18px", fontWeight: "500" }}>
+            This feature is not available for the view only plan.
+          </p>
+          <p style={{ fontSize: "14px", fontWeight: "400" }}>
+            Please Upgrade your plan to use this feature
+          </p>
         </div>
       </Modal>
-      <>
-      </>
+      <></>
       <ChatDataPrep {...{ showModel, setShowModel }} />
-      {showPopup &&
+      {showPopup && (
         <CleanDataPopup
           {...{
-            showModal:showPopup, setShowModal:setShowPopup,
+            showModal: showPopup,
+            setShowModal: setShowPopup,
           }}
           onClose={() => setShowPopup(false)}
           onCleanData={(options) => {
@@ -413,9 +630,9 @@ const DisplayData = () => {
             setShowPopup(false);
           }}
         />
-      }
+      )}
     </div>
-  )
-}
+  );
+};
 
-export default DisplayData
+export default DisplayData;

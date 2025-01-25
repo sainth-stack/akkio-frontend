@@ -74,10 +74,10 @@ const Users = () => {
         try {
 
             if (editingId) {
-                await axios.put(`${adminUrl}/user/${editingId}`, values);
+                await axios.put(`${adminUrl}/user/${editingId}`, {...values,app:'akkio'});
                 message.success('User updated successfully');
             } else {
-                await axios.post(`${adminUrl}/register`, values);
+                await axios.post(`${adminUrl}/register`, {...values,app:'akkio'});
                 message.success('User created successfully');
             }
             setIsModalOpen(false);
@@ -139,8 +139,8 @@ const Users = () => {
                             setEditingId(record._id);
                             form.setFieldsValue({
                                 name: record.name,
-                                email: record.email,
-                                organization: record.organization._id,
+                                email: record?.email,
+                                organization: record?.organization?._id,
                                 roles: record.roles.map(role => role._id)
                             });
                             setIsModalOpen(true);

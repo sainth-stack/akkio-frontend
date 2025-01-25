@@ -23,7 +23,8 @@ export const Register =()=>{
       .post(baseURL, {
         email:email,
         userName:userName,
-        password:password
+        password:password,
+        app:'akkio'
       })
       .then((response) => {
         setLoading(false)

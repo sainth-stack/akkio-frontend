@@ -1,30 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { Modal } from 'antd';
-import { AiFillPlusCircle } from "react-icons/ai"
-import { useNavigate } from 'react-router-dom';
-import { IoArrowBackSharp } from 'react-icons/io5';
-import { akkiourl } from '../../../../utils/const';
-import axios from 'axios';
-
-
+import React, { useEffect, useState } from "react";
+import { Modal } from "antd";
+import { AiFillPlusCircle } from "react-icons/ai";
+import { useNavigate } from "react-router-dom";
+import { IoArrowBackSharp } from "react-icons/io5";
+import { akkiourl } from "../../../../utils/const";
+import axios from "axios";
 
 const Connect = (datas) => {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [userPrompt, setUserPrompt] = useState('');
-  const [selectedOption, setSelectedOption] = useState('new');
+  const [userPrompt, setUserPrompt] = useState("");
+  const [selectedOption, setSelectedOption] = useState("new");
 
   // Functions
   const showModal = () => {
-    navigate('/data-source')
+    navigate("/data-source");
   };
 
-
   const handleBack = () => {
-    navigate('/data-source')
-  }
+    navigate("/data-source");
+  };
 
   const handleSyntheticData = () => {
     setOpen(true);
@@ -42,29 +39,30 @@ const Connect = (datas) => {
     setConfirmLoading(true);
 
     const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('user_prompt', userPrompt);
+    formData.append("file", selectedFile);
+    formData.append("user_prompt", userPrompt);
 
     try {
-      const endpoint = selectedOption === 'new'
-        ? `${akkiourl}/synthetic_data`
-        : `${akkiourl}/synthetic_data_extended`;
+      const endpoint =
+        selectedOption === "new"
+          ? `${akkiourl}/synthetic_data`
+          : `${akkiourl}/synthetic_data_extended`;
 
       const response = await axios.post(endpoint, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       });
-      console.log(response)
+      console.log(response);
       if (response.status === 200) {
         const data = response?.data?.data;
 
         // Create blob and download link
-        const blob = new Blob([data], { type: 'text/csv' });
+        const blob = new Blob([data], { type: "text/csv" });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
-        a.download = 'synthetic_data.csv';
+        a.download = "synthetic_data.csv";
 
         // Trigger download
         document.body.appendChild(a);
@@ -73,11 +71,11 @@ const Connect = (datas) => {
         // Cleanup
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        setUserPrompt('')
+        setUserPrompt("");
         setOpen(false);
       }
     } catch (error) {
-      console.error('Error uploading file:', error);
+      console.error("Error uploading file:", error);
     } finally {
       setConfirmLoading(false);
     }
@@ -86,24 +84,32 @@ const Connect = (datas) => {
   return (
     <>
       {/* <Navbar /> */}
-      <div className='p-3'>
-        <button className='btn ' onClick={() => handleBack()}><IoArrowBackSharp /> Back</button>
+      <div className="p-3">
+        <button className="btn " onClick={() => handleBack()}>
+          <IoArrowBackSharp /> Back
+        </button>
       </div>
-      {<div className="container">
-        <div className="upload-section">
-          <div className="upload-container" onClick={showModal}>
-            <AiFillPlusCircle size={45} />
-            {datas?.datasource === 'csv' ? <p>Upload Dataset</p> : <p>Data Source</p>}
+      {
+        <div className="container">
+          <div className="upload-section">
+            <div className="upload-container" onClick={showModal}>
+              <AiFillPlusCircle size={45} />
+              {datas?.datasource === "csv" ? (
+                <p>Upload Dataset</p>
+              ) : (
+                <p>Data Source</p>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="upload-section">
-          <div className="upload-container" onClick={handleSyntheticData}>
-            <AiFillPlusCircle size={45} />
-            {<p>Synthetic Data</p>}
+          <div className="upload-section">
+            <div className="upload-container" onClick={handleSyntheticData}>
+              <AiFillPlusCircle size={45} />
+              {<p>Synthetic Data</p>}
+            </div>
           </div>
         </div>
-      </div>}
+      }
 
       {open && (
         <Modal
@@ -114,43 +120,67 @@ const Connect = (datas) => {
           onCancel={handleCancel}
           okText="Generate"
         >
-          <div style={{ marginBottom: '10px', display: 'flex', gap: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ marginBottom: "10px", display: "flex", gap: "10px" }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
               <input
                 type="radio"
                 id="new"
                 name="dataType"
                 value="new"
-                checked={selectedOption === 'new'}
-                style={{ marginLeft: '15px', width: '30px' }}
+                checked={selectedOption === "new"}
+                style={{ marginLeft: "15px", width: "30px" }}
                 onChange={(e) => setSelectedOption(e.target.value)}
               />
-              <label htmlFor="new" className='p-0 m-0' style={{ marginLeft: '5px', width: '130px' }}>New Data</label>
+              <label
+                htmlFor="new"
+                className="p-0 m-0"
+                style={{ marginLeft: "5px", width: "130px" }}
+              >
+                New Data
+              </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
               <input
                 type="radio"
                 id="extend"
                 name="dataType"
                 value="extend"
-                checked={selectedOption === 'extend'}
+                checked={selectedOption === "extend"}
                 onChange={(e) => setSelectedOption(e.target.value)}
-                style={{ marginLeft: '15px', width: '30px' }}
+                style={{ marginLeft: "15px", width: "30px" }}
               />
-              <label htmlFor="extend" className='p-0 m-0' style={{ marginLeft: '5px', width: '150px' }}>Extend Data</label>
+              <label
+                htmlFor="extend"
+                className="p-0 m-0"
+                style={{ marginLeft: "5px", width: "150px" }}
+              >
+                Extend Data
+              </label>
             </div>
           </div>
-       {selectedOption !== 'new' &&   <input type='file' onChange={handleFileChange} />}
+          {selectedOption !== "new" && (
+            <input type="file" onChange={handleFileChange} />
+          )}
           <textarea
-            placeholder={selectedOption !== 'new' ? "Enter your prompt for synthetic data extension..." : "Enter your prompt for synthetic data generation..."}
+            placeholder={
+              selectedOption !== "new"
+                ? "Enter your prompt for synthetic data extension..."
+                : "Enter your prompt for synthetic data generation..."
+            }
             value={userPrompt}
             onChange={(e) => setUserPrompt(e.target.value)}
-            style={{ width: '100%', marginTop: '10px',padding:'10px' }}
+            style={{ width: "100%", marginTop: "10px", padding: "10px" }}
           />
+          <div style={{fontSize: "10px"}}>
+            <strong>Example:</strong> Create 100 rows for <em>sales_orders</em>{" "}
+            with column names <strong>Sales Order Number</strong>,{" "}
+            <strong>Sales Order Type</strong>, and{" "}
+            <strong>Sales Order Description</strong>.
+          </div>
         </Modal>
       )}
     </>
   );
-}
+};
 
-export default Connect
+export default Connect;

@@ -21,11 +21,10 @@ export const Login = () => {
     event.preventDefault();
     try {
       setLoading(true);
-
-
       const response = await axios.post(`${adminUrl}/login`, {
         email,
-        password
+        password,
+        app:'akkio'
       });
       localStorage.setItem('user', JSON.stringify(response.data))
       if (response.data) {

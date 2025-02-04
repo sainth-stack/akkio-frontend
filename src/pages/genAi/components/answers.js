@@ -1,20 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import styles from '../styles/AnswersAccordion.module.css';
-import { CircularProgress, Button } from '@mui/material';
+import React, { useEffect, useState } from "react";
+import styles from "../styles/AnswersAccordion.module.css"; // New CSS file for styling chat messages
+import { CircularProgress, Button } from "@mui/material";
 
-const AnswersAccordion = ({ question, answer, loading, type ,name='savedImages'}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const imageUrl = answer;
+const AnswersChat = ({
+  question,
+  answer,
+  loading,
+  type,
+  name = "savedImages",
+}) => {
   const [isSaved, setIsSaved] = useState(false); // To manage save status
+  const imageUrl = answer;
 
   useEffect(() => {
     // Check if the image is already saved in localStorage
-    const savedImages = JSON.parse(localStorage.getItem(name) || '[]');
+    const savedImages = JSON.parse(localStorage.getItem(name) || "[]");
     setIsSaved(savedImages.includes(imageUrl));
   }, [imageUrl]);
 
   const saveImage = () => {
-    let savedImages = JSON.parse(localStorage.getItem(name) || '[]');
+    let savedImages = JSON.parse(localStorage.getItem(name) || "[]");
 
     // Add the new image URL if it doesn't already exist
     if (!savedImages.includes(imageUrl)) {
@@ -25,40 +30,54 @@ const AnswersAccordion = ({ question, answer, loading, type ,name='savedImages'}
   };
 
   return (
-    <div className={styles.accordionItem}>
-      <div className={styles.accordionHeader} onClick={() => setIsOpen(!isOpen)}>
-        <span>{question}</span>
-        <span>{isOpen ? '-' : '+'}</span>
+    <div className={styles.chatContainer}>
+      {/* Question Bubble */}
+      <div
+        className={styles.chatMessage}
+        style={{ backgroundColor: "#f1f1f1", textAlign: "left" }}
+      >
+        <strong>{question}</strong>
       </div>
-      {isOpen && (
-        <div className={styles.accordionContent}>
-          {loading ? (
-            <div style={{ display: 'flex', width: '100%', justifyContent: 'center' }}>
-              <CircularProgress size={24} />
-            </div>
+
+      {/* Answer Bubble */}
+      {loading ? (
+        <div
+          style={{ display: "flex", width: "100%", justifyContent: "center" }}
+        >
+          <CircularProgress size={24} />
+        </div>
+      ) : (
+        <div className={styles.answerBubble}>
+          {type === "Text" ? (
+            <div>{answer}</div>
           ) : (
-            <div>
-              {type === 'Text' ? (
-                <div>{answer}</div>
-              ) : (
-                <>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'start'}}>
-                    <img src={imageUrl} width={700} height={500} alt='' />
-                    {!isSaved && (
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={saveImage}
-                        style={{ marginTop: '10px' }}
-                      >
-                        Save Image
-                      </Button>
-                    )}
-                  </div>
-                  {isSaved && <div style={{ marginTop: '10px' }}>Image already to Dashboard</div>}
-                </>
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-start",
+                      alignItems: "center",
+                  flexDirection:"column"
+                }}
+              >
+                <img src={imageUrl} width={200} height={150} alt="" />
+                {!isSaved && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={saveImage}
+                    style={{ marginTop: "10px" }}
+                  >
+                    Save Image
+                  </Button>
+                )}
+              </div>
+              {isSaved && (
+                <div style={{ marginTop: "10px" }}>
+                  Image already saved to Dashboard
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
       )}
@@ -66,4 +85,4 @@ const AnswersAccordion = ({ question, answer, loading, type ,name='savedImages'}
   );
 };
 
-export default AnswersAccordion;
+export default AnswersChat;

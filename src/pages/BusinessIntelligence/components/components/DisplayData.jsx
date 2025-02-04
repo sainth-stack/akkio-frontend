@@ -4,7 +4,7 @@ import Navbar from "./Navbar";
 //import BarGraph from './BarGraph'
 import { useDataAPI } from "../contexts/GetDataApi";
 import EndPopup from "./EndPopup";
-import { Button } from "@mui/material";
+import { Button, Drawer } from "@mui/material";
 import { Spin, Modal, Input, Progress } from "antd";
 import { AiOutlineClear } from "react-icons/ai";
 import { BsStars } from "react-icons/bs";
@@ -541,7 +541,12 @@ const DisplayData = () => {
         </div>
       </Modal>
       <></>
-      <ChatDataPrep {...{ showModel, setShowModel }} />
+
+      
+
+      <div style={{ padding: "16px", overflowY: "auto", height: "100%" }}>
+        <ChatDataPrep {...{ showModel, setShowModel }} />
+      </div>
       {showPopup && (
         <CleanDataPopup
           {...{

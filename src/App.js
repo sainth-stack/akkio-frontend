@@ -36,17 +36,10 @@ import ForecastData from './pages/BusinessIntelligence/components/components/pre
 import NewDeploymentData from './pages/BusinessIntelligence/components/deployments/newDeployment';
 import { PredictionAndForecast } from './pages/BusinessIntelligence/components/components/prediction';
 import Projects from './pages/projects';
-import { ToastContainer } from 'react-toastify';
-import Organization from './pages/admin/organization';
-import { AdminLayout3 } from './layout/adminLaylout';
-import Users from './pages/admin/user';
-import Roles from './pages/admin/roles';
-import Permissions from './pages/admin/permissions';
-import KPI from './pages/kpi';
+
 function App() {
   return (
     <BrowserRouter>
-      <ToastContainer />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/new-deployment" element={<NewDeploymentData />} />
@@ -55,7 +48,6 @@ function App() {
           <Route path='/gen-dashboard' Component={DashboardReports} />
           <Route path='/review-report' element={<HtmlReport />} />
           <Route path='/gen-ai' element={<GenAi />} />
-          <Route path='/kpi' element={<KPI />} />
           <Route path='/projects' Component={Projects} />
           <Route path='/connect' Component={Connect} />
           <Route path='/discover' Component={DisplayData} />
@@ -81,14 +73,6 @@ function App() {
           <Route path='/settings/account/legal' element={<Legal />} />
           <Route path='/settings/account/general' element={<GeneralAccount />} />
         </Route>
-
-        <Route path="/" element={<AdminLayout3 />}>
-          <Route path='/admin/organizations' element={<Organization />} />
-          <Route path='/admin/users' element={<Users />} />
-          <Route path='/admin/roles' element={<Roles />} />
-          <Route path='/admin/permissions' element={<Permissions />} />
-        </Route>
-
         <Route path="/terms" element={<TermsConst />} />
         <Route path="/legal" element={<LegalConst />} />
         <Route path="/login" element={<Login />} />

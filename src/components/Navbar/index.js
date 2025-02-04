@@ -10,7 +10,7 @@ import { useDataAPI } from "../../pages/BusinessIntelligence/components/contexts
 function Navbar() {
   const navigate = useNavigate()
   const [name, setName] = useState("Dashboard")
-  const { handleLogout2, displayContent } = useDataAPI()
+  const {handleLogout2,displayContent} = useDataAPI()
   console.log(displayContent)
   const handleLogout = () => {
     localStorage.clear()
@@ -22,24 +22,26 @@ function Navbar() {
     console.log(name)
     const nameWithoutExtension = name.split('.')[0];  // Remove the extension
     const words = nameWithoutExtension.split('_');  // Split by underscore
-    return words[0]?.charAt(0)?.toUpperCase() + words[0]?.slice(1) + ' '
+    return words[0]?.charAt(0)?.toUpperCase() + words[0]?.slice(1) + ' ' +
+           words[1]?.charAt(0)?.toUpperCase() + words[1]?.slice(1);  // Capitalize and join
   };
   useEffect(() => {
+    console.log(location.pathname == '/gen-ai')
     if (location.pathname == '/productivity') {
       setName("Productivity")
-    } else if (location.pathname === '/gen-ai2') {
+    } else if (location.pathname === '/gen-ai') {
       setName("Generative AI")
     } else if (location.pathname == '/reports' || location.pathname == '/review-report') {
       setName("Reports")
     }
-    else if (location.pathname == '/projects') {
-      setName("Workspace")
+    else if (location.pathname == '/business-intelligence') {
+      setName("Business Intelligence")
     }
     else if (location.pathname == '/process') {
       setName("Business KPI")
     }
     else {
-      setName(displayContent?.filename ? formatname(displayContent?.filename || '') : '')
+      setName(displayContent?.filename ?formatname(displayContent?.filename || '') :'')
     }
   }, [location.pathname])
 
@@ -91,26 +93,13 @@ function Navbar() {
             style={{ textDecoration: 'none', color: 'black' }}
           >
             <span className="ml-2 fs14 text-dark" title={"Admin"}>
-              {JSON.parse(localStorage.getItem("user"))?.name || "admin"}
+              {localStorage.getItem("userName") || "admin"}
             </span>
             <i class="bi bi-caret-down-fill"></i>
           </a>
           <div class="dropdown-menu" aria-labelledby="navbarDropdown" style={{ position: "absolute", left: "-60px", top: "30px" }}>
-            <div className="dropdown-item user-info" style={{
-              padding: "10px 15px",
-              borderBottom: "1px solid #eee"
-            }}>
-              <div style={{ fontWeight: "500" }}>
-                {JSON.parse(localStorage.getItem("user"))?.name || "Admin"}
-              </div>
-              {/* <div style={{ fontSize: "0.9em", color: "#666" }}>
-                {JSON.parse(localStorage.getItem("user"))?.email || "admin@example.com"}
-              </div>
-              <div style={{ fontSize: "0.9em", color: "#666" }}>
-                {JSON.parse(localStorage.getItem("user"))?.organization?.name || "Organization"}
-              </div> */}
-            </div>
-            <span class="dropdown-item " style={{ cursor: 'pointer' }} onClick={() => handleLogout()}>Logout</span>
+            <span class="dropdown-item">Action</span>
+            <span class="dropdown-item" onClick={() => handleLogout()}>Logout</span>
           </div>
         </div>
       </nav>

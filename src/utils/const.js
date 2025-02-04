@@ -1,13 +1,7 @@
-export const akkiourl = "https://otamat.com/api2";
-export const keypulseurl = "http://18.143.174.1:8000/api";
-export const adminUrl="https://otamat.com/api"
-// export const adminUrl="http://localhost:4500/api"
-export function getFinalData(uniqueArr, isDate, length) {
-  // Add early return if input array is empty or undefined
-  if (!uniqueArr || uniqueArr.length === 0) {
-    return [];
-  }
+export const akkiourl = "http://54.255.151.153:3001/api"
+export const keypulseurl = "http://18.143.174.1:8000/api"
 
+export function getFinalData(uniqueArr, isDate, length) {
   // Convert values to valid Date objects or numbers
   const parsedArr = uniqueArr?.map(val => {
     if (isDate) {
@@ -17,99 +11,55 @@ export function getFinalData(uniqueArr, isDate, length) {
     return !isNaN(val) ? Number(val) : null; // Convert valid numbers
   }).filter(val => val !== null); // Filter out invalid values
 
-  // Sort the array and add safety check
-  const sortedArr = parsedArr?.sort((a, b) => a - b);
-  if (!sortedArr || sortedArr.length === 0) {
-    return [];
-  }
+  // Sort the array
+  const sortedArr = parsedArr?.sort((a, b) => a - b); // Sorting works for both dates and numbers in JavaScript
+
+  // Make chunk size dynamic based on the 'length' argument
+  const chunkSize = Math.floor(sortedArr?.length / length); // Base size for each chunk
+  const remainder = sortedArr?.length % length; // Handle remainder that cannot be evenly divided into 'length'
 
   const finalData = [];
+  let index = 0;
 
-  // Helper function to format dates
-  const formatDate = date => {
-    if (isDate) {
-      const d = new Date(date);
-      return d.toLocaleDateString('en-US'); // Use 'en-US' or any preferred locale
+  for (let i = 0; i < length; i++) {
+    // Each chunk takes an extra item if there are remaining items from the division
+    const currentChunkSize = i < remainder ? chunkSize + 1 : chunkSize;
+
+    // Get the current chunk
+    const chunk = sortedArr?.slice(index, index + currentChunkSize);
+
+    if (chunk?.length > 0) {
+      const minValue = chunk[0]; // First value (min) in sorted chunk
+      const nextChunk = sortedArr?.slice(index + currentChunkSize); // Look ahead to the next chunk
+      const nextMinValue = nextChunk?.length > 0 ? nextChunk[0] : chunk[chunk?.length - 1]; // Avoid duplicates by always taking the next distinct value
+
+      // Format dates properly if isDate is true
+      const formatDate = date => {
+        if (isDate) {
+          const d = new Date(date);
+          return d.toLocaleDateString('en-US'); // Use 'en-US' or any preferred locale
+        }
+        return date; // For numbers, return as is
+      };
+
+      // Ensure there's no duplicate label by checking if the nextMinValue is greater than the current minValue
+      const countInRange = sortedArr?.filter(val => val >= minValue && val < nextMinValue).length;
+
+      finalData.push({
+        value: isDate ? `${formatDate(minValue)}` : `${minValue}`, // Use formatted date or number
+        count: countInRange // Count of items between minValue and nextMinValue
+      });
     }
-    return date; // For numbers, return as is
-  };
 
-  // Calculate the size of each segment and ensure it's at least 1
-  const segmentSize = Math.max(1, Math.ceil(sortedArr.length / length));
-  
-  // Adjust length if necessary to prevent empty segments
-  const actualLength = Math.min(length, sortedArr.length);
-
-  // Update the loop to use actualLength
-  for (let i = 0; i < actualLength; i++) {
-    const segmentStart = i * segmentSize;
-    const segmentEnd = Math.min((i + 1) * segmentSize, sortedArr.length);
-
-    const segmentValues = sortedArr.slice(segmentStart, segmentEnd);
-    if (segmentValues.length === 0) continue;  // Skip empty segments
-
-    const middleIndex = Math.floor(segmentValues.length / 2);
-    const minValue = segmentValues[middleIndex];
-
-    // Count occurrences in this segment range
-    const countInRange = sortedArr.filter(
-      val => val >= segmentValues[0] && val <= segmentValues[segmentValues.length - 1]
-    ).length;
-
-    finalData.push({
-      value: isDate ? `${formatDate(minValue)}` : `${minValue}`,
-      count: countInRange
-    });
+    index += currentChunkSize; // Move the index forward
   }
 
   return finalData;
 }
 
 
-export const transformData = (data) => {
-  const transformedData = [];
 
-  // Get the keys (categories)
-  const keys = Object.keys(data);
 
-  // Assuming all categories have the same number of items
-  for (let i = 0; i < Object.values(data[keys[0]]).length; i++) {
-    const item = {};
 
-    // Iterate through each category
-    keys.forEach((key) => {
-      // Get the value for the current index in each category
-      const value = data[key][i];
 
-      // Add the key-value pair to the item object
-      item[key] = value;
-    });
 
-    // Push the item object to the transformed data array
-    transformedData.push(item);
-  }
-
-  return transformedData;
-};
-
-export const transformData2 = (arrayData) => {
-    // Initialize an object to store the transformed data
-    const result = {};
-    
-    // Get all unique keys from the first object
-    const keys = Object.keys(arrayData[0] || {});
-    
-    // Initialize empty objects for each key
-    keys.forEach(key => {
-        result[key] = {};
-    });
-    
-    // Populate the data
-    arrayData.forEach((item, index) => {
-        keys.forEach(key => {
-            result[key][index.toString()] = item[key];
-        });
-    });
-    
-    return result;
-};

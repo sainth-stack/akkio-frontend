@@ -1,20 +1,16 @@
 import React, { useEffect, useState } from "react";
-import styles from "../styles/AnswersAccordion.module.css";
+import styles from "../styles/AnswersAccordion.module.css"; // New CSS file for styling chat messages
 import { CircularProgress, Button } from "@mui/material";
-import Plot from "react-plotly.js";
-
-const AnswersAccordion = ({
+import botImage from "../../../assets/images/ChatbotImg.jpg"
+const AnswersChat = ({
   question,
   answer,
   loading,
   type,
-  name = "genbi",
-  desc,
-  isHtml,
+  name = "savedImages",
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const imageUrl = answer;
   const [isSaved, setIsSaved] = useState(false); // To manage save status
+  const imageUrl = answer;
 
   useEffect(() => {
     // Check if the image is already saved in localStorage
@@ -34,89 +30,77 @@ const AnswersAccordion = ({
   };
 
   return (
-    <div className={styles.accordionItem}>
+    <div className={styles.chatContainer}>
+      {/* Question Bubble */}
       <div
-        className={styles.accordionHeader}
-        onClick={() => setIsOpen(!isOpen)}
+        className={styles.chatMessage}
+        style={{
+          backgroundColor: "#f5f5f5",
+          textAlign: "left",
+          padding: ".3rem",
+          marginBottom: ".3rem",
+          borderRadius: "10px",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+          maxWidth: "80%",
+        }}
       >
-        <span>{question}</span>
-        <span>{isOpen ? "-" : "+"}</span>
+        <img
+          src={botImage}
+          width={30} // Adjusted size for better appearance
+          height={30}
+          alt="Bot"
+          style={{
+            borderRadius: "50%", // Makes the image circular
+            background: "none", // Removes any background
+          }}
+        />
+        <div>
+          <strong>{question}</strong>
+        </div>
       </div>
-      {isOpen && (
-        <div className={styles.accordionContent}>
-          {loading ? (
-            <div
-              style={{
-                display: "flex",
-                width: "100%",
-                justifyContent: "center",
-              }}
-            >
-              <CircularProgress size={24} />
-            </div>
-          ) : (
-            <div>
-              {type === "Text" ? (
-                answer.chartData ? (
-                  <div dangerouslySetInnerHTML={{ __html: answer }} />
-                ) : (
-                  <div>{answer}</div>
-                )
-              ) : (
-                <>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "start",
-                    }}
-                  >
-                    {
-                      <div style={{ marginBottom: "20px",width: "100%" }}>
-                        <Plot
-                          data={imageUrl?.chartData?.data}
-                          layout={imageUrl?.chartData?.layout}
-                          config={{ responsive: true }}
-                          style={{
-                            width: "100%",
-                            height: "60vh",
-                            padding: "15px",
-                            backgroundColor: "#ffffff",
-                            borderRadius: "12px",
-                          }}
-                          className="plot-container"
-                        />
-                      </div>
-                    }
 
-                    {!isSaved && (
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={saveImage}
-                        style={{ marginTop: "10px" }}
-                      >
-                        Save
-                      </Button>
-                    )}
-                  </div>
-                  {desc && (
-                    <div className="mt-3">
-                      {isHtml ? (
-                        <div dangerouslySetInnerHTML={{ __html: desc }} />
-                      ) : (
-                        <div>{desc}</div>
-                      )}
-                    </div>
-                  )}
-                  {isSaved && (
-                    <div style={{ marginTop: "10px" }}>
-                      Image already to Dashboard
-                    </div>
-                  )}
-                </>
+      {/* Answer Bubble */}
+      {loading ? (
+        <div
+          style={{ display: "flex", width: "100%", justifyContent: "center" }}
+        >
+          <CircularProgress size={24} />
+        </div>
+      ) : (
+        <div className={styles.answerBubble}>
+          {type === "Text" ? (
+            <div>{answer}</div>
+          ) : (
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-start",
+                  alignItems: "center",
+                  flexDirection: "column",
+                }}
+              >
+                <img src={imageUrl} width={200} height={150} alt="" />
+                {!isSaved && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={saveImage}
+                    style={{ marginTop: "10px" }}
+                  >
+                    Save Image
+                  </Button>
+                )}
+              </div>
+              {isSaved && (
+                <div style={{ marginTop: "10px" }}>
+                  Image already saved to Dashboard
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
       )}
@@ -124,4 +108,4 @@ const AnswersAccordion = ({
   );
 };
 
-export default AnswersAccordion;
+export default AnswersChat;

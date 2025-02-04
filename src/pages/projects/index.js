@@ -1,207 +1,130 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { IoArrowBackSharp } from "react-icons/io5";
-import axios from "axios";
-import { useDataAPI } from "../BusinessIntelligence/components/contexts/GetDataApi";
-import { adminUrl, akkiourl, transformData } from "../../utils/const";
-import { CircularProgress } from "@mui/material";
-import { useQuery } from "react-query";
-import { MdDelete } from "react-icons/md";
+import React, { useEffect, useState } from 'react';
+import { Modal } from 'antd';
+import { AiFillPlusCircle } from "react-icons/ai"
+import { useLocation, useNavigate } from 'react-router-dom';
+import { IoArrowBackSharp } from 'react-icons/io5';
+import { useDataAPI } from '../BusinessIntelligence/components/contexts/GetDataApi';
+import PostgreSql from '../BusinessIntelligence/components/components/popups/postgresql';
+
+
 
 const Projects = () => {
-  const { uploadedData, showContent, handleUpload } = useDataAPI();
+  const { uploadedData, handleUpload, showContent } = useDataAPI()
+  const [open, setOpen] = useState(false);
   const [postgresOpen, setPostgresOpen] = useState(false);
-  // const [fetchedData, setFetchedData] = useState([])
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [datas, setDatas] = useState({
-    datasource: location?.state?.datasource || "",
-  });
-  const [loadingCards, setLoadingCards] = useState({});
-  const email = JSON.parse(localStorage.getItem("user"))?.email;
-const [fetchedData,setFetchedData] = useState([])
-const [isLoading,setIsLoading]= useState(false)
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [fetchedData, setFetchedData] = useState([])
+  const [connection, setConnection] = useState(false)
+  const [file, setFile] = useState(null);
+  const navigate = useNavigate()
+  const location = useLocation()
+  console.log(location)
+  const [datas, setDatas] = useState({ datasource: location?.state?.datasource || '' })
+
+
   useEffect(() => {
-    if (location?.state?.datasource === "postgresql") {
-      setPostgresOpen(true);
+    if (location?.state?.datasource === 'postgresql') {
+      setPostgresOpen(true)
     }
-  }, [location.state]);
+  }, [location.state])
 
-  const fetchFiles = async () => {
-    setIsLoading(true)
-    try {
-      if (!email) {
-        throw new Error("User email is not found in localStorage.");
-      }
-
-      const formData = new FormData();
-      formData.append("email", email);
-
-      const response = await axios.post(`${akkiourl}/get_user_data`, formData);
-      setFetchedData(response.data.result.map((file) => JSON.stringify(file)))
-      setIsLoading(false)
-    } catch (error) {
-      setIsLoading(false)
-      console.error("Error fetching files:", error);
-      throw error; // Ensure the error is propagated to react-query
+  // useEffects Hooks
+  useEffect(() => {
+    const updateData = uploadedData.map((item) => {
+      return item
+    })
+    setFetchedData(updateData)
+    if (datas?.datasource !== 'csv' && uploadedData.length > 0 && connection) {
+      handleNavigate(JSON.parse(updateData[0]))
     }
-  };
+  }, [uploadedData])
 
 
-  useEffect(()=>{
-    fetchFiles()
-  },[])
-
-  const handleBack = () => {
-    if (datas.datasource == "csv" || !postgresOpen) {
-      navigate("/data-source");
+  // Functions
+  const showModal = (csv) => {
+    if (csv) {
+      setOpen(true)
     } else {
-      setPostgresOpen(false);
-      navigate("/projects");
+      navigate('/data-source')
     }
   };
+
+  const handleCancel = () => {
+    setOpen(false);
+  };
+
+  const handleOk = () => {
+    handleUpload(file)
+    setOpen(false)
+  }
+
+  const handleFileChange = (event) => {
+    const selectedFile = event.target.files[0];
+    setFile(selectedFile);
+  };
+  const handleBack = () => {
+    if (datas.datasource == 'csv' || !postgresOpen) {
+      navigate('/data-source')
+    } else {
+      setPostgresOpen(false)
+      navigate('/projects')
+    }
+  }
+
 
   const handleNavigate = async (finalValue) => {
-    await handleGetData(finalValue);
-  };
+    await showContent({
+      filename: finalValue.filename, headers: Object.keys(finalValue.data
+      [0]), data: finalValue.data
+    })
 
-  const handleGetData = async (finalValue) => {
-    setLoadingCards((prev) => ({ ...prev, [finalValue]: true }));
-    try {
-      const formData = new FormData();
-      formData.append("tablename", finalValue);
-      formData.append("schemaname", "postgres");
-      const response = await axios.post(`${akkiourl}/tabledata`, formData);
-      if (response.status === 200) {
-        localStorage.setItem("filename", finalValue);
-        // localStorage.setItem("file", finalValue)
-        localStorage.setItem("prepData", JSON.stringify(response?.data));
-        await showContent({
-          filename: finalValue,
-          headers: Object.keys(response?.data),
-          data: transformData(response?.data),
-        });
-        navigate("/discover");
-        handleUpload(null, true, response?.data, finalValue);
-      }
-    } catch (error) {
-      console.error("Failed to get data", error);
-    } finally {
-      setLoadingCards((prev) => ({ ...prev, [finalValue]: false }));
-    }
-  };
-
-  const handleDelete = async (e, email, tableNames) => {
-    e.stopPropagation();
-    try {
-      const formData = new FormData();
-      formData.append("email", email);
-      formData.append("table_names", tableNames);
-      const response = await axios.post(
-        "http://54.169.213.200:3001/api/delete_selected_tables",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      if (response.status === 200) {
-        console.log(response.data.message);
-        fetchFiles(email);
-      } else {
-        console.error("Failed to delete the tables");
-      }
-    } catch (error) {
-      console.error("Error deleting the tables:", error);
-    }
-  };
-
+    // Uploaded Data is storing the localstorage  
+    localStorage.setItem("filename", finalValue.filename)
+    localStorage.setItem("file", finalValue)
+    navigate("/discover")
+  }
+  console.log(datas?.datasource, 'postgresql', postgresOpen)
   return (
     <>
-      <div className="p-3">
-        <button className="btn " onClick={() => handleBack()}>
-          <IoArrowBackSharp />
-          Back
-        </button>
+      {/* <Navbar /> */}
+      <div className='p-3'>
+        <button className='btn ' onClick={() => handleBack()}><IoArrowBackSharp /> Back</button>
       </div>
-      <div className="container">
-        {isLoading ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: "2rem",
-            }}
-          >
-            <CircularProgress />
+      {!postgresOpen && <div className="container">
+        <div className="upload-section">
+          <div className="upload-container" onClick={() => showModal(datas?.datasource === 'csv')}>
+            <AiFillPlusCircle size={45} />
+            {datas?.datasource === 'csv' ? <p>Upload Dataset</p> : <p>New Data Source</p>}
           </div>
-        ) : fetchedData?.length === 0 ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: "2rem",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
+          {datas?.datasource === 'csv' && open && <Modal
+            title=""
+            open={open}
+            onOk={handleOk}
+            confirmLoading={confirmLoading}
+            onCancel={handleCancel}
+            okText="upload"
           >
-            <h4>No data found</h4>
-            <p>Please upload data to get started</p>
-          </div>
-        ) : (
-          fetchedData?.map((finalField, index) => {
-            const finalValue = finalField ? JSON.parse(finalField) : "";
-            return fetchedData && finalValue !== "" ? (
-              <div
-                className="csv-files"
-                key={index}
-                onClick={() => handleNavigate(finalValue)}
-              >
-                {loadingCards[finalValue] ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      padding: "2rem",
-                    }}
-                  >
-                    <CircularProgress />
-                  </div>
-                ) : (
-                  <>
-                    <img
-                      src="/dataThumbnail.jpeg"
-                      alt={finalValue}
-                      width={300}
-                      className="data-img"
-                    />
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        width: "100%",
-                        alignItems: "center",
-                      }}
-                    >
-                      <h5 className="filename">{finalValue}</h5>
-                      <MdDelete
-                        width={20}
-                        onClick={(e) => handleDelete(e, email, finalValue)}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <></>
-            );
+
+            <input type='file' onChange={handleFileChange} />
+          </Modal>}
+        </div>
+
+        {/* FetchedData is map to get an JSON format of the Data */}
+        {
+          fetchedData.map((finalField, index) => {
+            const finalValue = finalField ? JSON.parse(finalField) : ""
+            return uploadedData && finalValue !== "" ? <div className="csv-files" key={index} onClick={() => handleNavigate(finalValue)}>
+
+              <img src="/dataThumbnail.jpeg" alt={finalValue.filename} width={300} className='data-img' />
+              <h5 className='filename'>{finalValue.filename}</h5>
+            </div> : <></>
           })
-        )}
-      </div>
+        }
+      </div>}
+
+      {datas?.datasource === 'postgresql' && postgresOpen && <PostgreSql setPostgresOpen={setPostgresOpen} setConnection={setConnection} />}
     </>
   );
-};
+}
 
-export default Projects;
+export default Projects

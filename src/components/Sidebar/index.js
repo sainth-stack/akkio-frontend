@@ -22,51 +22,25 @@ export default function Sidebar() {
     expand2: false,
     expand3: false
   })
-
-  const hasPermission = (feature) => {
-    const userData = JSON.parse(localStorage.getItem('user'));
-    if (!userData?.roles) return false;
-
-    const allPermissions = [...new Set(userData.roles.flatMap(role => role.permissions))];
-
-    return allPermissions.some(permission =>
-      permission.startsWith(`${feature}_read`) || permission.startsWith(`${feature}_write`)
-    );
-  };
-
   const finData = [
-    { name: 'Home', icon: IoHome, path: '/welcome', id: 1, permission: 'home' },
+    { name: 'Home', icon: IoHome, path: '/welcome', id: 1 },
+    { name: 'Projects', icon: GoProjectRoadmap, path: '/projects', id: 2 },
     {
-      name: 'Gen AI', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
-        { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
-        { name: 'Connect', icon: BiSolidData, path: '/connect', permission: 'connect' },
-        { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
-        { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
-        { name: 'KPI', icon: GiArtificialIntelligence, path: '/kpi', permission: 'kpi' },
-        { name: 'Predict', icon: MdOutlineFindInPage, path: '/predict', permission: 'predict' },
-        { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
-        { name: 'Reports', icon: TbReportSearch, path: '/reports', permission: 'reports' },
+      name: 'Gen BI', icon: GiArtificialIntelligence, id: 3, children: [
+        { name: 'Connect', icon: BiSolidData, path: '/connect', },
+        { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', },
+        { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast' },
+        { name: 'Predict', icon: MdOutlineFindInPage, path: '/deployment' },
+        { name: 'Reports', icon: TbReportSearch, path: '/reports' },
       ]
     },
-    // { name: 'Dashboard', icon: MdDashboard, path: '/gen-dashboard', id: 4, permission: 'dashboard' },
-    { name: 'Settings', icon: IoSettingsOutline, path: '/settings/team/general', id: 5, permission: 'settings' },
+    {
+      name: 'Gen AI', icon: GiArtificialIntelligence, id: 3.2,path:'/gen-ai'
+    },
+    { name: 'Dashboard', icon: MdDashboard, path: '/gen-dashboard', id: 4 },
+    { name: 'Settings', icon: IoSettingsOutline, path: '/settings/team/general', id: 5 },
   ]
-
-  const filteredData = finData.map(item => {
-    if (item.children) {
-      return {
-        ...item,
-        children: item.children.filter(child => hasPermission(child.permission)),
-        show: item.children.some(child => hasPermission(child.permission))
-      };
-    }
-    return {
-      ...item,
-      show: hasPermission(item.permission)
-    };
-  }).filter(item => item.show);
-
-  const [data, setData] = useState(filteredData)
+  const [data, setData] = useState(finData)
 
   const handleClickExpand = (id) => {
     if (id === 2) {
@@ -86,6 +60,13 @@ export default function Sidebar() {
   return (
     <>
       <div class="shadow sidebar-scroll sticky-top mt-2" style={{ overflow: 'auto', width: '220px', position: "fixed", left: 0, top: 60, background: '#000', zIndex: 10, height: '92vh' }}>
+        {/* <div style={{ padding: '8px', paddingTop: '24px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <IoLocationSharp size={30} style={{ color: 'white' }} />
+          <div>
+            <h2 style={{ fontSize: '14px', fontWeight: 500, color: 'white' }}>Digital Twin</h2>
+            <h2 style={{ fontSize: '12px', fontWeight: 400, color: 'white' }}>U.S</h2>
+          </div>
+        </div> */}
         <hr style={{ border: '1px solid white', padding: 0, margin: 0, marginTop: '0px' }} />
         <ul class="sidebar-list-items pt-2" id="menu">
           {data.map((item) => {
@@ -122,8 +103,8 @@ export default function Sidebar() {
               </div>
             )
           })}
-        </ul>
-      </div>
+        </ul >
+      </div >
     </>
   );
 }

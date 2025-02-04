@@ -1,211 +1,204 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import {
-  CircularProgress,
-  Card,
-  Button,
-  TextField,
-  Grid,
-  InputAdornment,
-} from "@mui/material";
-import { IoMdRefresh, IoMdSend } from "react-icons/io";
-import "./index.css"; // You'll need to create this file for styling
-import { akkiourl } from "../../../../../utils/const";
-import SampleQuestion from "../../../../genAi/components/questions";
-import AnswersAccordion from "../../../../genAi/components/answers";
-
+import React, { useEffect, useState } from 'react'
+import Navbar from '../Navbar'
+import { useDataAPI } from '../../contexts/GetDataApi'
+import '../../styles/predictData.scss'
+import topFactors from '../../../../../assets/svg/topFactor.svg'
+import axios from 'axios'
+import { DetailedLineGraph } from './lineGraph'
+import moment from 'moment'
+import { akkiourl } from '../../../../../utils/const'
+import { CircularProgress } from '@mui/material'
 const ForecastData = () => {
-  const [questions, setQuestions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [userPrompt, setUserPrompt] = useState("");
-  const [responses, setResponses] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
 
-  const fetchQuestions = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.post(
-        `${akkiourl}/regenerate_forecast_questions`
-      );
-      const questionsText = response.data.questions;
-      const questionsList = Object.values(questionsText || {}) || [];
-      setQuestions(questionsList);
-    } catch (error) {
-      console.error("Error fetching questions:", error);
-    } finally {
-      setLoading(false);
+    const [data, setData] = useState([])
+    const [headers, setLeftData] = useState([])
+    const [loading3, setLoading3] = useState(false); // Loading state for handleGetDataFinalData
+
+    const [filename, setFilename] = useState("")
+    const [totData, setTotData] = useState({
+        accuracy: 0,
+        predictData: {},
+        lables: [],
+        data3: [],
+        data4: []
+    })
+    const name = localStorage.getItem("filename").replace(/\.[^/.]+$/, '')
+    // const [file, setFile] = useState(null)
+    const [selectedField, setSelectedField] = useState('')
+
+    const handleSelect = (item) => {
+        setSelectedField(item)
     }
-  };
 
-  const handleSubmit = async () => {
-    if (!userPrompt.trim()) return;
+    const getLeftData = async () => {
+        let db = (name)
 
-    try {
-      setSubmitting(true);
-      const formData = new FormData();
-      formData.append("user_prompt", userPrompt);
-
-      setResponses((prev) => [
-        ...prev,
-        {
-          question: userPrompt,
-          loading: true,
-        },
-      ]);
-
-      const response = await axios.post(`${akkiourl}/forecasts`, formData);
-
-      setResponses((prev) =>
-        prev.map((item, index) => {
-          if (index === prev.length - 1) {
-            return {
-              question: userPrompt,
-              content: response.data.content,
-              image: response.data.image_base64
-                ? `data:image/png;base64,${response.data.image_base64}`
-                : null,
-              loading: false,
-            };
-          }
-          return item;
-        })
-      );
-
-      setUserPrompt("");
-    } catch (error) {
-      console.error("Error submitting forecast:", error);
-      setResponses((prev) =>
-        prev.map((item, index) => {
-          if (index === prev.length - 1) {
-            return {
-              question: userPrompt,
-              content: "Error occurred while fetching response.",
-              loading: false,
-            };
-          }
-          return item;
-        })
-      );
-    } finally {
-      setSubmitting(false);
+        const response = await axios.post(`${akkiourl}/predict/${db}`, {});
+        if (response.status === 200) {
+            setLeftData(response?.data?.columns)
+            setSelectedField([response?.data?.columns[0]])
+        }
     }
-  };
 
-  useEffect(() => {
-    fetchQuestions();
-  }, []);
-  const name = localStorage.getItem("filename");
+    const handleGetDataFinalData = async (id) => {
+        setLoading3(true); // Start loading
+        try {
+            const response = await axios.post(`${akkiourl}/forecast/${name}/${selectedField}`);
+            if (response.status === 200 && Object.keys(response?.data?.result)?.length > 0) {
+                const data = response?.data?.result;
+                const finActualData = data?.Actual;
+                const finPredictData = data?.prediction;
+                const labels = [];
+                const data3 = [];
+                const data4 = [];
 
-  return (
-    <>
-    {name ? <div className="explorationSection">
-      <h2 style={{ fontSize: "30px" }}>Forecast</h2>
+                const date = finActualData.date;
+                const length = date.length;
+                const lastFiveKeys = date.slice(length - 12, length);
+                lastFiveKeys.map((item) => {
+                    const dateObj = new Date(item);
+                    const formattedDate = moment(dateObj).format('MMM YYYY');
+                    labels.push(formattedDate);
+                });
 
-      {/* Questions Section */}
-      <div
-        className="sampleQuestions"
-        style={{ display: "flex", marginBottom: "20px", flexWrap: "wrap" }}
-      >
-        {loading ? (
-          <div
-            style={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "center",
-              padding: "20px",
-            }}
-          >
-            <CircularProgress />
-          </div>
-        ) : (
-          questions.map((question, index) => (
-            <SampleQuestion
-              key={index}
-              question={question.replace("**", "")}
-              onClick={() => setUserPrompt(question.replace("**", ""))}
-            />
-          ))
-        )}
-      </div>
+                finPredictData?.date?.map((item, index) => {
+                    if (index < 7) {
+                        const dateObj = new Date(item);
+                        const formattedDate = moment(dateObj).format('MMM YYYY');
+                        labels.push(formattedDate);
+                    }
+                });
 
-      <button
-        style={{
-          background: "#f8f9fa",
-          padding: "8px 12px",
-          border: "none",
-          borderRadius: "5px",
-          cursor: "pointer",
-          fontSize: "16px",
-          transition: "background 0.3s ease",
-          marginBottom: "20px",
-          color: "black",
-        }}
-        onClick={fetchQuestions}
-      >
-        <IoMdRefresh color="blue" /> Re-generate sample questions
-      </button>
+                const values2 = finActualData.values;
+                const length2 = values2.length;
+                const lastFiveKeys2 = values2.slice(length2 - 12, length2);
 
-      {/* Input Section */}
-      <p>Type in your question below:</p>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-start",
-          marginTop: "0px",
-        }}
-      >
-        <TextField
-          value={userPrompt}
-          onChange={(e) => setUserPrompt(e.target.value)}
-          variant="outlined"
-          disabled={submitting}
-          sx={{
-            width: "500px",
-            "& .MuiOutlinedInput-root": {
-              height: "45px",
-            },
-          }}
-          placeholder="Type here to ask about forecasts............."
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                {submitting ? (
-                  <CircularProgress size={20} />
-                ) : (
-                  <IoMdSend
-                    size={24}
-                    style={{
-                      color: userPrompt
-                        ? "rgb(91, 71, 245)"
-                        : "rgb(142, 139, 157)",
-                      cursor: "pointer",
-                    }}
-                    onClick={handleSubmit}
-                  />
-                )}
-              </InputAdornment>
-            ),
-          }}
-        />
-      </div>
+                lastFiveKeys2.map((item) => {
+                    data3.push(item);
+                });
 
-      {/* Response Section */}
-      <div className="answersSection" style={{ marginTop: "20px" }}>
-        {responses.map((response, index) => (
-          <AnswersAccordion
-            key={index}
-            question={response.question}
-            answer={response.image || response.content}
-            loading={response.loading}
-            type={response.image ? "image" : "Text"}
-            desc={response.content}
-            isHtml={true}
-          />
-        ))}
-      </div>
-    </div> : <div style={{display:"flex",justifyContent:"center",fontSize:'20px'}}>No File Uploaded</div>}
-    </>
-  );
-};
+                finPredictData?.values?.map((item, index) => {
+                    if (index < 7) {
+                        data4.push(item);
+                    }
+                });
+                console.log({
+                    predictData: finPredictData,
+                    labels: labels,
+                    data3: data3,
+                    data4: data4
+                })
+                setTotData({
+                    predictData: finPredictData,
+                    labels: labels,
+                    data3: data3,
+                    data4: data4
+                });
+            } else {
+                setTotData({
+                    accuracy: 0,
+                    predictData: {},
+                    lables: [],
+                    data3: [],
+                    data4: []
+                })
+            }
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        } finally {
+            setLoading3(false); // Stop loading
+        }
+    };
+
+    useEffect(() => {
+        if (selectedField) {
+            handleGetDataFinalData(selectedField)
+        }
+    }, [selectedField])
+    const {
+        displayContent,
+    } = useDataAPI()
+
+
+    useEffect(() => {
+        // console.log(displayContent)
+        // setHeaders(displayContent.headers)
+        setData(displayContent.data)
+        setFilename(localStorage.getItem("filename"))
+        setTimeout(() => {
+        }, 2000)
+        getLeftData()
+    }, [displayContent])
+    const fileName = localStorage.getItem('filename')
+    console.log(totData)
+    return (
+        <>
+            {loading3 ? <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}> <CircularProgress /></div> : <>
+                {<div style={{ height: '85vh', overflow: 'hidden' }}>
+                    <Navbar />
+                    <div className="professional-table ms-2">
+                        <div className="file-details" style={{ borderBottom: '1px solid #e0eaf0' }}>
+                            <p>{filename}</p>
+                            <p>{data.length} rows</p>
+                            <p>{headers.length} columns</p>
+                        </div>
+                    </div>
+                    <div className='row'>
+                        <div className='col-md-3'>
+                            <div className='predictLeftCont'>
+                                <h1 className='predictHeader'>Forecast</h1>
+                                <h2 className='predictSecondHeader'>Forecast Fields</h2>
+                                <p className='paragraphText'>
+                                    Select which numerical or categorical fields to predict and optionally ignore.
+                                </p>
+                                <div className='predictFieldsContainer'>
+                                    <div style={{ alignItems: 'center' }}>
+                                        <div className='px-2'>
+                                            <input data-v-27b19115="" placeholder="Search fields..." class="prediction-multiselect-searchbox" />
+                                        </div>
+                                        <div style={{ maxHeight: 'calc(100vh - 380px)', overflow: 'auto', scrollbarWidth: 'thin', }} className='p-3 scrollHeight'>
+                                            {headers.map((item, index) => {
+                                                return (
+                                                    <div className='d-flex p-2' style={{ cursor: 'pointer' }} onClick={() => handleSelect(item)}>
+                                                        <div className={selectedField === item ? 'checkboxContainer checkboxTick' : 'checkboxContainer'}></div>
+                                                        <h2 className='fieldText'>{item}</h2>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className='col-md-9 rightContainer'>
+                            <div className='rightttconttt'>
+                                {/* <div className='rightHeaderText'><img src={regression} alt='imag' /> Forecast Summary</div>
+                        <h2 className='rightDesctext'>Below is the forecast chart and metrics on how well the model perfomed at predicting the future outcome.</h2>
+                        <div className='d-flex' style={{ gap: '10px', marginRight: '50px' }}>
+                            <div className='regressioncard'>
+                                <div className='regressionCardInnerContainer'>
+                                    <p className='cardFirstLineText'>Accuracy is usually within</p>
+                                    <p className='cardLargeNumberText'> ±{(totData?.accuracy)}% </p>
+                                    <p className='cardFirstLineText'> Forecasted values were on average off by ±370,100.4 compared to actual values in the most recent 20% of the dataset.</p>
+                                </div>
+                            </div>
+                        </div> */}
+                                <div>
+                                    <div className='rightHeaderText'><img src={topFactors} alt='imag' /> Forecast</div>
+                                    <h2 className='rightDesctext'> The predictions of the model, compared to the historical data and extrapolated forward.                            </h2>
+                                    <div className='regressioncard' style={{ width: '96%' }}>
+                                        <div className='regressionCardInnerContainer' style={{ minHeight: '400px', width: '100%' }}>
+                                            <DetailedLineGraph {...{ labelsNew: totData.labels, data: totData.data3, data2: totData.data4, selectedField }} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>}
+            </>}
+        </>
+    )
+}
 
 export default ForecastData;

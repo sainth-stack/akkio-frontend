@@ -32,8 +32,8 @@ const GetDataApi = ({ children }) => {
 
   const [uploadedData, setUploadedData] = useState(finalData)
   const [state, dispatch] = useReducer(reducer, initalState)
-  const [sap, setSap] = useState(false)
   const [loading, setLoading] = useState(false)
+
   useEffect(() => {
     localStorage.setItem("displayContent", JSON.stringify(state.displayContent))
   }, [state.displayContent])
@@ -90,18 +90,12 @@ const GetDataApi = ({ children }) => {
   }
 
 
-  const handleUpload = async (file, database = false, data = [], tableName = '', sap = false) => {
-
-    if (sap) {
-      setSap(true)
-    } else {
-      setSap(false)
-    }
+  const handleUpload = async (file, database = false, data = [], tableName = '') => {
     setLoading(true)
     dispatch({ type: "ADD_FILE_DETAILS", payload: file })
     if (database) {
       const finalData = transformData(data)
-      console.log(finalData, 'finalData')
+      console.log(finalData)
       const value = JSON.stringify({
         filename: tableName,
         data: finalData,
@@ -121,13 +115,14 @@ const GetDataApi = ({ children }) => {
             });
             return rowData;
           });
-          console.log(flattenedData)
+
           if (flattenedData !== undefined) {
             const value = JSON.stringify({
               filename: file.name,
               data: flattenedData,
             });
-            setUploadedData([value]);
+
+            setUploadedData([value, ...uploadedData]);
           }
           setLoading(false);
           getData();
@@ -299,7 +294,7 @@ const GetDataApi = ({ children }) => {
   }
 
   return (
-    <GetDataContext.Provider value={{ ...state, handleUpload, loadingFun, removeData, displayPopupFun, showContent, changePopup, handleCleanData, handlePrepareData, handleLogout2, key: "key",sap }}>
+    <GetDataContext.Provider value={{ ...state, handleUpload, loadingFun, removeData, displayPopupFun, showContent, changePopup, handleCleanData, handlePrepareData, handleLogout2, key: "key" }}>
       {children}
     </GetDataContext.Provider>
   )

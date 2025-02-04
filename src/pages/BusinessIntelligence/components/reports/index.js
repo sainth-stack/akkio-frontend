@@ -30,23 +30,13 @@ export const ReportsGenBI = () => {
     setSelectedImage(null);
   };
 
-  const handleDownloadImage = (imageUrl, index) => {
-    // Create a temporary anchor element
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = `report-image-${index + 1}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <div style={{ padding: '20px' }}>
       <Typography variant="h4" gutterBottom>
-        Reports
+        Image Reports
       </Typography>
       {savedImages.length === 0 ? (
-        <Typography variant="body1">No reports saved yet.</Typography>
+        <Typography variant="body1">No images saved yet.</Typography>
       ) : (
         <Grid container spacing={2}>
           {savedImages.map((imageUrl, index) => (
@@ -62,26 +52,16 @@ export const ReportsGenBI = () => {
                 />
                 <CardContent style={{ padding: '16px', textAlign: 'center' }}>
                   <Typography variant="h6" gutterBottom>
-                    {/* Report Image {index + 1} */}
+                    Report Image {index + 1}
                   </Typography>
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      onClick={() => handleRemoveImage(index)}
-                      style={{ marginTop: '10px' }}
-                    >
-                      Remove
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={() => handleDownloadImage(imageUrl, index)}
-                      style={{ marginTop: '10px' }}
-                    >
-                      Download
-                    </Button>
-                  </div>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => handleRemoveImage(index)}
+                    style={{ marginTop: '10px' }}
+                  >
+                    Remove
+                  </Button>
                 </CardContent>
               </Card>
             </Grid>

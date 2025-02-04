@@ -23,18 +23,17 @@ const PostgreSql = (props) => {
     };
     const [details, setDetails] = useState({
         connectionName: 'PostgreSQL',
-        hostName: 'ep-yellow-recipe-a5fny139.us-east-2.aws.neon.tech',
-        databaseName: 'test',
-        userName: 'test_owner',
-        password: 'tcWI7unQ6REA',
+        hostName: 'abul.db.elephantsql.com',
+        databaseName: 'mabpfgiu',
+        userName: 'mabpfgiu',
+        password: 'vzKsrtuh2PTCsQwoExC7gympinp57ADp',
         port: '5432',
         schemaName: 'postgres',
-        // tableName: 'retail_sales_data'
+        tableName: 'retail_sales_data'
     })
     const handleConnectionCheck = async () => {
-        setLoading(true);
+        setLoading(true); // Start loading
         try {
-            // Create form data using FormData
             const formData = new FormData();
             formData.append('username', details.userName);
             formData.append('password', details.password);
@@ -42,12 +41,7 @@ const PostgreSql = (props) => {
             formData.append('host', details.hostName);
             formData.append('port', details.port);
 
-            const response = await axios.post(`${akkiourl}/connect`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
-
+            const response = await axios.post(`${akkiourl}/connect`, formData);
             if (response.status === 200) {
                 setSecondScreen(true);
                 const tables = JSON.parse(response.data.tables);
@@ -59,33 +53,8 @@ const PostgreSql = (props) => {
         } catch (error) {
             console.error('Connection failed', error);
         } finally {
-            setLoading(false);
+            setLoading(false); // Stop loading
         }
-    };
-    const transformData = (data) => {
-        const transformedData = [];
-
-        // Get the keys (categories)
-        const keys = Object.keys(data);
-
-        // Assuming all categories have the same number of items
-        for (let i = 0; i < Object.values(data[keys[0]]).length; i++) {
-            const item = {};
-
-            // Iterate through each category
-            keys.forEach((key) => {
-                // Get the value for the current index in each category
-                const value = data[key][i];
-
-                // Add the key-value pair to the item object
-                item[key] = value;
-            });
-
-            // Push the item object to the transformed data array
-            transformedData.push(item);
-        }
-
-        return transformedData;
     };
 
 
@@ -98,16 +67,10 @@ const PostgreSql = (props) => {
             const response = await axios.post(`${akkiourl}/tabledata`, formData);
             if (response.status === 200) {
                 setSecondScreen(true);
+                handleUpload(null, true, response.data, details.tableName);
+                // navigate('/business-intelligence');
                 props.setConnection(true);
                 props.setPostgresOpen(false);
-
-                localStorage.setItem("filename", details.tableName)
-                localStorage.setItem('prepData', JSON.stringify(response?.data));
-                await showContent({
-                    filename: details.tableName, headers: Object.keys(response?.data), data: transformData(response?.data)
-                })
-                navigate("/discover")
-                handleUpload(null, true, response?.data, details.tableName);
             }
         } catch (error) {
             console.error('Failed to get data', error);
@@ -124,7 +87,26 @@ const PostgreSql = (props) => {
 
 
     return (
-        <div className="container3 mt-4">
+        <div className="container3">
+            {/* {
+                fetchedData.map((finalField, index) => {
+                    const finalValue = finalField ? JSON.parse(finalField) : ""
+                    return uploadedData && finalValue !== "" ? <div className="csv-files" key={index} onClick={async () => {
+                        await showContent({
+                            filename: finalValue.filename, headers: Object.keys(finalValue.data
+                            [0]), data: finalValue.data
+                        })
+
+                        // Uploaded Data is storing the localstorage  
+                        localStorage.setItem("filename", finalValue.filename)
+                        navigate("/business-intelligence")
+                    }}>
+
+                        <img src="/dataThumbnail.jpeg" alt={finalValue.filename} width={300} className='data-img' />
+                        <h5 className='filename'>{finalValue.filename}</h5>
+                    </div> : <></>
+                })
+            } */}
             <div>
                 {!secondScreen && <div className="cardnew">
                     <div className="card-content">
@@ -155,7 +137,7 @@ const PostgreSql = (props) => {
                             <input type="text" id="port" onChange={handleChange} value={details.port} name='port' />
                         </div>
                         <div className='d-flex' style={{ gap: '5px' }}>
-                            <button className='btn w-100' onClick={() => props.setPostgresOpen(false)}><IoMdArrowRoundBack /> Back</button>
+                            <button className='btn w-100'><IoMdArrowRoundBack /> Back</button>
                             <button className='btn btn-primary w-100' onClick={handleConnectionCheck} disabled={loading}>
                                 {loading ? (
                                     <Spinner animation="border" size="sm" role="status" aria-hidden="true" />  // Loader

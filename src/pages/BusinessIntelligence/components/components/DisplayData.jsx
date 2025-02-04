@@ -328,7 +328,9 @@ const DisplayData = () => {
         </div>
       </Modal>
       <></>
-      <ChatDataPrep {...{ showModel, setShowModel }} />
+      <div style={{ padding: "16px", overflowY: "auto", height: "100%" }}>
+        <ChatDataPrep {...{ showModel, setShowModel }} />
+      </div>
       {showPopup && (
         <CleanDataPopup
           {...{

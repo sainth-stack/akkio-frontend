@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Form, Input, Button, message } from 'antd';
 import './MqttConfig.css';
-import { akkiourl, transformData, transformData2 } from '../../../../../utils/const';
+import { akkiourl, arrayToCSV, transformData, transformData2 } from '../../../../../utils/const';
 import { useDataAPI } from '../../contexts/GetDataApi';
 import { useNavigate } from 'react-router-dom';
+import { useFileUpload } from '../useApi';
 
 const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
     const [form] = Form.useForm();
     const [isLoading, setIsLoading] = useState(false);
     const { uploadedData, handleUpload, showContent } = useDataAPI()
     const navigate = useNavigate()
+    const { uploadFile } = useFileUpload();
 
     useEffect(() => {
         // Set default form values
@@ -45,8 +47,25 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
                 headers: Object.keys(rawData[0]),
                 data: rawData
             })
-            navigate("/discover")
-            handleUpload(null, true, transformedData, "MQTT_HistoryData");
+            // handleUpload(null, true, transformedData, "MQTT_HistoryData");
+            const csvData = arrayToCSV(transformedData);
+            console.log(csvData,'csvgg')
+            const BOM = "\uFEFF";
+            const blob = new Blob([BOM + csvData], { 
+              type: "text/csv;charset=utf-8-sig"
+            });
+            
+            // Create a File object from the Blob with .csv extension
+            const file = new File([blob], `${"MQTT_HistoryData"}.csv`, { type: "text/csv;charset=utf-8-sig" });
+            const result = await uploadFile(file, handleUpload, {
+              file: file,  // Use the File object instead of blob
+              database: true,
+              data: response?.data,
+              tableName: "MQTT_HistoryData",
+              sap: false
+            });
+            navigate("/discover");
+
             setIsLoading(false);
         } catch (error) {
             console.error('Error fetching data:', error);

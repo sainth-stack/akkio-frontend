@@ -30,32 +30,65 @@ export const Insights = () => {
   if (!chartData) return <div>No data available</div>; // Handle no data case
 
   return (
-    <div style={{ padding: "12px" }}>
+    <div style={{ padding: "12px", maxWidth: "100%", overflow: "hidden" }}>
       {/* <h1>Insights</h1> */}
       {chartData?.length > 0 ? (
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 600px), 1fr))",
             gap: "20px",
+            width: "100%",
+            overflow: "hidden",
           }}
         >
           {chartData.map((item, index) => (
-            <div key={index} style={{ marginBottom: "20px" }}>
-              {/* <h2>{item.layout?.title?.text || `Chart ${index + 1}`}</h2> */}
+            <div key={index} style={{
+              marginBottom: "20px",
+              borderRadius: "12px",
+              border: "1px solid #e0e0e0",
+              width: "100%",
+              overflow: "hidden",
+            }}>
               <Plot
-                data={item.data}
-                layout={item.layout}
-                config={{ responsive: true }}
+                data={item.data.map(trace => ({
+                  ...trace,
+                  showlegend: false
+                }))}
+                layout={{
+                  ...item.layout,
+                  showlegend: false,
+                  autosize: true,
+                  margin: { l: 0, r: 50, t: 100, b: 40 },
+                  title: {
+                    ...(item.layout.title || {}),
+                    text: item.layout.title?.text || '',
+                    font: {
+                      size: 18,
+                      family: 'Arial, sans-serif'
+                    },
+                    wrap: true,
+                    xref: 'paper',
+                    y: 1.1,
+                    xanchor: 'left',
+                    pad: { t: 20 },
+                    width: '95%'
+                  },
+                  width: undefined,
+                  height: undefined,
+                }}
+                config={{
+                  responsive: true,
+                  displayModeBar: false
+                }}
                 style={{
                   width: "100%",
-                  height: "60vh",
-                  padding: "15px",
+                  height: "400px", // Reduced height for better responsiveness
+                  padding: "10px",
                   backgroundColor: "#ffffff",
                   borderRadius: "12px",
-                  // boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
-                  // transition: "box-shadow 0.3s ease",
                 }}
+                useResizeHandler={true}
                 className="plot-container"
               />
             </div>

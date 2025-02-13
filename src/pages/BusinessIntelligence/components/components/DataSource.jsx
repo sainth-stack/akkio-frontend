@@ -19,6 +19,7 @@ import {
 } from "../../../../utils/const";
 import MqttConfig from "./popups/MqttConfig";
 import SapConfig from "./popups/sap";
+import { useFileUpload } from './useApi';
 
 export const DataSource = () => {
   const navigate = useNavigate();
@@ -31,34 +32,38 @@ export const DataSource = () => {
   const [fetchedData, setFetchedData] = useState([]);
   const [mqttOpen, setMqttOpen] = useState(false);
   const [sapOpen, setSapOpen] = useState(false);
-
+  const { uploadFile, isLoading } = useFileUpload();
+  const [uploadError, setUploadError] = useState(null);
+  const [changed, setChanged] = useState(false);
   const handleCancel = () => {
     setOpen(false);
   };
 
   const handleOk = async () => {
-    try {
-      setConfirmLoading(true);
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("mail", JSON.parse(localStorage.getItem("user"))?.email);
-      const response = await fetch(`${akkiourl}/upload`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("File upload failed");
-      }
-
-      await handleUpload(file, false, [], "", true);
-      setOpen(false);
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      // You might want to show an error message to the user here
-    } finally {
-      setConfirmLoading(false);
+    if (!file) {
+      setUploadError('Please select a file to upload');
+      return;
     }
+
+    setUploadError(null);
+    setConfirmLoading(true);
+    
+    const result = await uploadFile(file,handleUpload,{
+      file:file,
+      database: false,
+        data: [],
+        tableName: '',
+        sap: false
+    });
+    
+    if (result.success) {
+      setChanged(!changed)
+      setOpen(false);
+    } else {
+      setUploadError(result.error?.message || 'Failed to upload file. Please try again.');
+    }
+    
+    setConfirmLoading(false);
   };
 
   const handleFileChange = (event) => {
@@ -94,10 +99,11 @@ export const DataSource = () => {
   };
 
   useEffect(() => {
-    if (uploadedData.length > 0 && !open && file) {
+    console.log(uploadedData , !open , file?.name)
+    if (uploadedData.length > 0 && !open && file?.name) {
       handleNavigate(JSON.parse(uploadedData[0]));
     }
-  }, [uploadedData, open, file]);
+  }, [uploadedData]);
 
   return (
     <>
@@ -230,14 +236,17 @@ export const DataSource = () => {
       )}
       {open && (
         <Modal
-          title=""
+          title="Upload File"
           open={open}
           onOk={handleOk}
-          confirmLoading={confirmLoading}
+          confirmLoading={confirmLoading || isLoading}
           onCancel={handleCancel}
-          okText="upload"
+          okText="Upload"
         >
           <input type="file" onChange={handleFileChange} />
+          {uploadError && (
+            <div style={{ color: 'red', marginTop: '8px' }}>{uploadError}</div>
+          )}
         </Modal>
       )}
       {mqttOpen && (

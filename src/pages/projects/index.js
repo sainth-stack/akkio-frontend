@@ -3,10 +3,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { IoArrowBackSharp } from "react-icons/io5";
 import axios from "axios";
 import { useDataAPI } from "../BusinessIntelligence/components/contexts/GetDataApi";
-import { adminUrl, akkiourl, transformData } from "../../utils/const";
+import { adminUrl, akkiourl, arrayToCSV, transformData } from "../../utils/const";
 import { CircularProgress } from "@mui/material";
 import { useQuery } from "react-query";
 import { MdDelete } from "react-icons/md";
+import { useFileUpload } from "../BusinessIntelligence/components/components/useApi";
 
 const Projects = () => {
   const { uploadedData, showContent, handleUpload } = useDataAPI();
@@ -17,6 +18,7 @@ const Projects = () => {
   const [datas, setDatas] = useState({
     datasource: location?.state?.datasource || "",
   });
+  const { uploadFile } = useFileUpload();
   const [loadingCards, setLoadingCards] = useState({});
   const email = JSON.parse(localStorage.getItem("user"))?.email;
 const [fetchedData,setFetchedData] = useState([])
@@ -74,15 +76,32 @@ const [isLoading,setIsLoading]= useState(false)
       const response = await axios.post(`${akkiourl}/tabledata`, formData);
       if (response.status === 200) {
         localStorage.setItem("filename", finalValue);
-        // localStorage.setItem("file", finalValue)
         localStorage.setItem("prepData", JSON.stringify(response?.data));
         await showContent({
           filename: finalValue,
           headers: Object.keys(response?.data),
           data: transformData(response?.data),
         });
+        
+        const csvData = arrayToCSV(response?.data);
+        console.log(csvData)
+        // Create the Blob with proper line endings and BOM for Excel compatibility
+        const BOM = "\uFEFF";
+        const blob = new Blob([BOM + csvData], { 
+          type: "text/csv;charset=utf-8-sig"
+        });
+        
+        // Create a File object from the Blob with .csv extension
+        const file = new File([blob], `${finalValue}.csv`, { type: "text/csv;charset=utf-8-sig" });
+        
         navigate("/discover");
-        handleUpload(null, true, response?.data, finalValue);
+        const result = await uploadFile(file, handleUpload, {
+          file: file,  // Use the File object instead of blob
+          database: true,
+          data: response?.data,
+          tableName: finalValue,
+          sap: false
+        });
       }
     } catch (error) {
       console.error("Failed to get data", error);

@@ -11,6 +11,7 @@ import { IoMdClose, IoMdRefresh, IoMdSend } from 'react-icons/io';
 import { Modal } from "antd";
 import { akkiourl } from "../../../../../utils/const";
 import AnswersChat from "../../../../genAi/components/answers";
+import AnswersChat2 from "./answers";
 const ChatDataPrep = ({ showModel, setShowModel }) => {
     const fileName = localStorage.getItem('filename')?.replace(/\.[^/.]+$/, '');
     const [search, setSearch] = useState('')
@@ -63,176 +64,125 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
           title=""
           sx={{
             position: "fixed",
-            bottom: "2rem",
-            right: "2rem",
-            maxWidth: "35vw",
-            maxHeight: "80vh",
+            top: "69%",
+            right: "1rem",
+            transform: "translateY(-50%)",
+            width: "550px",
+            height: "60vh",
             background: "#fff",
-            borderRadius: "8px",
-            boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
-            overflow: "scroll",
+            borderRadius: "12px",
+            boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.15)",
+            overflow: "hidden",
             zIndex: 1300,
+            display: "flex",
+            flexDirection: "column"
           }}
-          onCancel={() => setShowModel(false)}
-          width={"110vh"}
-          footer={null}
         >
-          <IconButton
-            onClick={() => setShowModel(false)}
-            sx={{
-              position: "absolute",
-              top: "10px",
-              right: "10px",
-              color: "white",
-              backgroundColor: "rgba(0, 0, 0, 0.3)",
-              borderRadius: "50%",
-              padding: "5px",
-              "&:hover": {
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-              },
-            }}
-          >
-            <IoMdClose size={24} />
-          </IconButton>
-          <Grid item md={10} padding={"10px"} sx={{ width: "100%" }}>
-            <Grid sx={{ background: "#FFF", width: "100%" }}>
-              <Grid
-                sx={{
-                  padding: "20px 10px 10px 10px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "30px",
-                  overflow: "auto",
-                  width: "100%",
-                }}
-              >
-                <div>
-                  <p>How may Help you:</p>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-start",
-                      marginTop: "0px",
-                    }}
-                  >
-                    <TextField
-                      onChange={(e) => setSearch(e.target.value)}
-                      variant="outlined"
-                      value={search}
+          {/* Header */}
+          <Box sx={{
+            padding: "16px",
+            borderBottom: "1px solid #e0e0e0",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between"
+          }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <span style={{ fontWeight: 600 }}>Chat Data Prep</span>
+            </Box>
+            <IconButton
+              onClick={() => setShowModel(false)}
+              sx={{ color: "#666" }}
+            >
+              <IoMdClose size={20} />
+            </IconButton>
+          </Box>
+
+          {/* Chat Messages Area */}
+          <Box sx={{
+            flex: 1,
+            overflow: "auto",
+            padding: "16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px"
+          }}>
+            {answers?.map((item, index) => (
+              <div key={index} style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px"
+              }}>
+                {/* User Message */}
+                <Box sx={{
+                  alignSelf: "flex-end",
+                  maxWidth: "80%",
+                  backgroundColor: "#f0f0f0",
+                  padding: "12px",
+                  borderRadius: "12px 12px 0 12px",
+                }}>
+                  {item.question}
+                </Box>
+
+                {/* AI Response */}
+                <Box sx={{
+                  alignSelf: "flex-start",
+                  maxWidth: "80%",
+                  backgroundColor: "#fff",
+                  padding: "12px",
+                  borderRadius: "12px 12px 12px 0",
+                  // border: "1px solid #e0e0e0",
+                }}>
+                  <AnswersChat2
+                    question={item.question}
+                    answer={item.answer}
+                    loading={item?.loading}
+                    type={item.view}
+                    name={"genbi"}
+                  />
+                </Box>
+              </div>
+            ))}
+          </Box>
+
+          {/* Input Area */}
+          <Box sx={{
+            padding: "16px",
+            borderTop: "1px solid #e0e0e0",
+            backgroundColor: "#fff"
+          }}>
+            <TextField
+              fullWidth
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Type your message here..."
+              variant="outlined"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "24px",
+                  backgroundColor: "#f5f5f5",
+                }
+              }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => {
+                        if (search.trim()) {
+                          handleQuestionClick(search);
+                          setSearch("");
+                        }
+                      }}
                       sx={{
-                        width: "500px",
-                        "& .MuiOutlinedInput-root:hover fieldset": {
-                          borderColor: "rgb(69, 69, 69)",
-                        },
-                        "& .MuiOutlinedInput-root.Mui-focused fieldset": {
-                          outline: "none",
-                          boxShadow: "none",
-                          border: search
-                            ? "1px solid rgb(48, 36, 139)"
-                            : "1px solid rgb(69, 69, 69)",
-                        },
-                        "& .MuiOutlinedInput-root": {
-                          paddingRight: "10px",
-                          height: "45px",
-                        },
-                      }}
-                      placeholder="Type here to ask Gen AI............."
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IoMdSend
-                              size={24}
-                              style={{
-                                color: search
-                                  ? "rgb(91, 71, 245)"
-                                  : "rgb(142, 139, 157)",
-                                cursor: "pointer",
-                              }}
-                              onClick={() => {
-                                handleQuestionClick(search);
-                                setSearch("");
-                              }}
-                            />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </div>
-                  <div className="answersSection" style={{ marginTop: "20px" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: "10px",
+                        color: search ? "primary.main" : "#bbb"
                       }}
                     >
-                      <h2 style={{ fontSize: "30px" }}>Answers</h2>
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => setAnswers([])}
-                      >
-                        Reset
-                      </button>
-                    </div>
-                    {answers?.map((item, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          flexDirection: "row",
-                          alignItems: "flex-start",
-                          marginBottom: ".5rem",
-                        }}
-                      >
-                        <div
-                          style={{
-                            maxWidth: "60%",
-                            marginRight: "20px",
-                            backgroundColor: "#f1f1f1",
-                            borderRadius: "8px",
-                            padding: ".2rem",
-                          }}
-                        >
-                          <AnswersChat
-                            question={item.question}
-                            answer={item.answer}
-                            loading={item?.loading}
-                            type={item.view}
-                            name={"genbi"}
-                          />
-                        </div>
-                        <div
-                          style={{
-                            maxWidth: "30%",
-                            backgroundColor: "#e6e6e6",
-                            borderRadius: "8px",
-                            padding: ".15rem",
-                          }}
-                        >
-                          <div
-                            style={{
-                              textAlign: "right",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "0.3rem",
-                              padding: "0.2rem",
-                              backgroundColor: "#f9f9f9",
-                              border: "1px solid #e0e0e0",
-                              borderRadius: "12px",
-                              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                            }}
-                          >
-                            {item.question}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Grid>
-            </Grid>
-          </Grid>
+                      <IoMdSend />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
         </Box>
       )
     );

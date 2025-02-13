@@ -91,7 +91,6 @@ const GetDataApi = ({ children }) => {
 
 
   const handleUpload = async (file, database = false, data = [], tableName = '', sap = false) => {
-
     if (sap) {
       setSap(true)
     } else {
@@ -106,7 +105,7 @@ const GetDataApi = ({ children }) => {
         filename: tableName,
         data: finalData,
       });
-      setUploadedData([value, ...uploadedData]);
+      setUploadedData([value]);
       getData();
     }
     else if (file?.type === "text/csv") {
@@ -157,7 +156,7 @@ const GetDataApi = ({ children }) => {
             filename: file.name,
             data: flattenedData,
           });
-          setUploadedData([value, ...uploadedData]);
+          setUploadedData([value]);
         }
         setLoading(false);
         getData();
@@ -175,7 +174,7 @@ const GetDataApi = ({ children }) => {
             data: jsonData,
           });
 
-          setUploadedData([value, ...uploadedData]);
+          setUploadedData([value]);
         }
         setLoading(false);
         getData();

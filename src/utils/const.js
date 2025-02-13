@@ -113,3 +113,21 @@ export const transformData2 = (arrayData) => {
     
     return result;
 };
+
+export const arrayToCSV = (data) => {
+  const headers = Object.keys(data);
+  const rowCount = Object.keys(data[headers[0]]).length;
+  const csvRows = [headers.join(",")];
+  for (let i = 0; i < rowCount; i++) {
+    const row = headers.map((header) => {
+      const value = data[header][i.toString()];
+      if (typeof value === "string" && value.includes(",")) {
+        return `"${value}"`;
+      }
+      return value;
+    });
+    csvRows.push(row.join(","));
+  }
+
+  return csvRows.join("\n");
+};

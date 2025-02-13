@@ -1,78 +1,120 @@
 import React, { useEffect, useState } from "react";
-import styles from "../styles/AnswersAccordion.module.css"; // CSS for professional styling
+import styles from "../styles/AnswersAccordion.module.css";
 import { CircularProgress, Button } from "@mui/material";
+import Plot from "react-plotly.js";
 
-import botImage from "../../../assets/images/botImage.jpg"
-const AnswersChat = ({
+const AnswersAccordion = ({
   question,
   answer,
   loading,
   type,
-  name = "savedImages",
+  name = "genbi",
+  desc,
+  isHtml,
 }) => {
-  const [isSaved, setIsSaved] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const imageUrl = answer;
+  const [isSaved, setIsSaved] = useState(false); // To manage save status
 
   useEffect(() => {
+    // Check if the image is already saved in localStorage
     const savedImages = JSON.parse(localStorage.getItem(name) || "[]");
     setIsSaved(savedImages.includes(imageUrl));
-  }, [imageUrl, name]);
+  }, [imageUrl]);
 
   const saveImage = () => {
     let savedImages = JSON.parse(localStorage.getItem(name) || "[]");
+
+    // Add the new image URL if it doesn't already exist
     if (!savedImages.includes(imageUrl)) {
       savedImages.push(imageUrl);
       localStorage.setItem(name, JSON.stringify(savedImages));
-      setIsSaved(true);
+      setIsSaved(true); // Mark the image as saved
     }
   };
 
   return (
-    <div className={styles.chatContainer}>
-      {/* Question Section */}
-      {/* <div className={`${styles.chatMessage} ${styles.question}`}>
-        <strong>{question}</strong>
-      </div> */}
-
-      {/* Answer Section */}
-      
-
-      {loading ? (
-        <div className={styles.loadingContainer}>
-          <CircularProgress size={32} color="primary" />
-        </div>
-      ) : (
-        <div className={`${styles.chatMessage} ${styles.answer}`}>
-          {type === "Text" ? (
-            <div>
-              <img
-                src={botImage}
-                width={30} // Adjusted size for better appearance
-                height={30}
-                alt="Bot"
-                style={{
-                  borderRadius: "50%", // Makes the image circular
-                  background: "none",
-                  margin: ".3rem",
-                  boxShadow:"1px gray"// Removes any background
-                }}
-              />
-              {answer}
+    <div className={styles.accordionItem}>
+      <div
+        className={styles.accordionHeader}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span>{question}</span>
+        <span>{isOpen ? "-" : "+"}</span>
+      </div>
+      {isOpen && (
+        <div className={styles.accordionContent}>
+          {loading ? (
+            <div
+              style={{
+                display: "flex",
+                width: "100%",
+                justifyContent: "center",
+              }}
+            >
+              <CircularProgress size={24} />
             </div>
           ) : (
-            <div className={styles.imageContainer}>
-              <img src={imageUrl} alt="Generated" className={styles.image} />
-              {!isSaved ? (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={saveImage}
-                  className={styles.saveButton}
-                >
-                  Save Image
-                </Button>
+            <div>
+              {type === "Text" ? (
+                answer.chartData ? (
+                  <div dangerouslySetInnerHTML={{ __html: answer }} />
+                ) : (
+                  <div>{answer}</div>
+                )
               ) : (
-                <div className={styles.savedText}>✅ Image already saved</div>
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "start",
+                    }}
+                  >
+                    {
+                      <div style={{ marginBottom: "20px",width: "100%" }}>
+                        <Plot
+                          data={imageUrl?.chartData?.data}
+                          layout={imageUrl?.chartData?.layout}
+                          config={{ responsive: true }}
+                          style={{
+                            width: "100%",
+                            height: "60vh",
+                            padding: "15px",
+                            backgroundColor: "#ffffff",
+                            borderRadius: "12px",
+                          }}
+                          className="plot-container"
+                        />
+                      </div>
+                    }
+
+                    {!isSaved && (
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={saveImage}
+                        style={{ marginTop: "10px" }}
+                      >
+                        Save
+                      </Button>
+                    )}
+                  </div>
+                  {desc && (
+                    <div className="mt-3">
+                      {isHtml ? (
+                        <div dangerouslySetInnerHTML={{ __html: desc }} />
+                      ) : (
+                        <div>{desc}</div>
+                      )}
+                    </div>
+                  )}
+                  {isSaved && (
+                    <div style={{ marginTop: "10px" }}>
+                      Image already to Dashboard
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -82,4 +124,4 @@ const AnswersChat = ({
   );
 };
 
-export default AnswersChat;
+export default AnswersAccordion;

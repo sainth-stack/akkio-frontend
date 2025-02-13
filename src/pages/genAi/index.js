@@ -44,7 +44,7 @@ const GenAi = () => {
   const [sampleData, setSampleData] = useState(`{}`);
   const [startChart, setStartChart] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [currentTab, setCurrentTab] = useState(0);
+  const [currentTab, setCurrentTab] = useState(1);
   const [imageSrc, setImageSrc] = useState(null);
   const [allQuestions, setAllQuestions] = useState({
     textQuestions: [],
@@ -67,7 +67,6 @@ const GenAi = () => {
       });
       csvRows.push(row.join(","));
     }
-
     return csvRows.join("\n");
   };
 
@@ -78,8 +77,8 @@ const GenAi = () => {
       csvData = arrayToCSV(data);
       console.log(csvData);
       const file = new Blob([csvData], { type: "text/csv" });
-      formData.append("file", file, "data.csv");
-      formData.append("mail", JSON.parse(localStorage.getItem("user"))?.email);
+      // formData.append("file", file, "data.csv");
+      // formData.append("mail", JSON.parse(localStorage.getItem("user"))?.email);
     } else {
       formData.append("file", fileC);
     }
@@ -98,16 +97,15 @@ const GenAi = () => {
       setLoading(false);
       setColumnDesc(parsedData?.column_description || "");
       setSampleData(parsedData?.first_10_rows || "{}");
-
+console.log(sap)
       let textQuestions = Object.values(parsedData?.text_questions || {}) || [];
-
+      // console.log(JSON.parse(parsedData))
       const graphQuestions =
         Object.values(parsedData?.plotting_questions || {}) || [];
       setAllQuestions({
-        textQuestions,
         graphQuestions,
       });
-      setQuestions(textQuestions);
+      setQuestions(graphQuestions);
     } catch (err) {
       setLoading(false);
       console.log(err);
@@ -289,7 +287,7 @@ const GenAi = () => {
                     <Accordion title="See Raw Data">
                       <SampleDataTable data={sampleData} />
                     </Accordion>
-                    <Tabs
+                    {/* <Tabs
                       value={currentTab}
                       onChange={handleTabChange}
                       sx={{
@@ -327,7 +325,7 @@ const GenAi = () => {
                     >
                       <Tab label="Insights" />
                       <Tab label="Visualisation" />
-                    </Tabs>
+                    </Tabs> */}
                     <div className="explorationSection2">
                       <h2 style={{ fontSize: "30px" }}>Exploration</h2>
                       <div

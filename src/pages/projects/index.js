@@ -82,7 +82,7 @@ const [isLoading,setIsLoading]= useState(false)
           headers: Object.keys(response?.data),
           data: transformData(response?.data),
         });
-        
+        console.log(response?.data,'response?.data')
         const csvData = arrayToCSV(response?.data);
         console.log(csvData)
         // Create the Blob with proper line endings and BOM for Excel compatibility

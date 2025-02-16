@@ -91,9 +91,21 @@ const GenAi = () => {
         /NaN/g,
         "null"
       );
-      const parsedData = sap
-        ? JSON.parse(JSON.parse(sanitizedData))
-        : JSON.parse(sanitizedData);
+      
+      let parsedData;
+      try {
+        // Try double parsing first
+        parsedData = JSON.parse(JSON.parse(sanitizedData));
+      } catch (parseError) {
+        // If double parsing fails, try single parsing
+        try {
+          parsedData = JSON.parse(sanitizedData);
+        } catch (singleParseError) {
+          console.error('Error parsing response data:', singleParseError);
+          throw new Error('Invalid response format');
+        }
+      }
+
       setLoading(false);
       setColumnDesc(parsedData?.column_description || "");
       setSampleData(parsedData?.first_10_rows || "{}");

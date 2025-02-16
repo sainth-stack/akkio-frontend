@@ -48,6 +48,7 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
                 data: rawData
             })
             // handleUpload(null, true, transformedData, "MQTT_HistoryData");
+            console.log(transformedData,'transformedData')
             const csvData = arrayToCSV(transformedData);
             console.log(csvData,'csvgg')
             const BOM = "\uFEFF";
@@ -60,7 +61,7 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
             const result = await uploadFile(file, handleUpload, {
               file: file,  // Use the File object instead of blob
               database: true,
-              data: response?.data,
+              data: transformedData,
               tableName: "MQTT_HistoryData",
               sap: false
             });

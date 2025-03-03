@@ -41,10 +41,11 @@ export default function Sidebar() {
         { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
         { name: 'Connect', icon: BiSolidData, path: '/connect', permission: 'connect' },
         { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
-        { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
+        // { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
+        { name: 'AI Agents', icon: GiArtificialIntelligence, path: '/ai-agents', permission: 'genAi' },
         { name: 'KPI', icon: GiArtificialIntelligence, path: '/kpi', permission: 'kpi' },
-        { name: 'Predict', icon: MdOutlineFindInPage, path: '/predict', permission: 'predict' },
-        { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
+        // { name: 'Predict', icon: MdOutlineFindInPage, path: '/predict', permission: 'predict' },
+        // { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
         { name: 'Reports', icon: TbReportSearch, path: '/reports', permission: 'reports' },
       ]
     },
@@ -92,14 +93,14 @@ export default function Sidebar() {
             let NewIcon = (item.id === 2 && expand.expand1) || (item.id === 3 && expand.expand2) || (item.id === 5 && expand.expand3) ? FaAngleDown : FaAngleRight
             return (
               <div>
-                <li class={`sidebar-list-item cursor-pointer p-2 mt-1 ${location.pathname === item.path ? 'backgroundSelected' : ''}`} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <li class={`sidebar-list-item cursor-pointer p-2 mt-1 ${location.pathname === item.path ? 'backgroundSelected' : ''}`} onClick={() => handleClickExpand(item.id)} style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Link to={item?.children?.length > 0 ? '#' : item.path} onClick={() => item?.children?.length > 0 ? () => { } : handleClickExpand(item.id)} class="nav-link align-middle px-2 nav-item" >
                     <div>
                       <item.icon size={20} style={{ color: location.pathname === item.path ? 'black' : 'white' }} />
                       <span class="ms-1 d-none d-sm-inline link-text px-1" style={{ color: location.pathname === item.path ? 'black' : 'white' }}>{item.name}</span>
                     </div>
                   </Link>
-                  {item?.children?.length > 0 && <NewIcon size={20} style={{ color: 'white', cursor: 'pointer' }} onClick={() => handleClickExpand(item.id)} />}
+                  {item?.children?.length > 0 && <NewIcon size={20} style={{ color: 'white', cursor: 'pointer' }} />}
                 </li>
                 {
                   ((item.id === 2 && expand.expand1) || (item.id === 3 && expand.expand2) || (item.id === 5 && expand.expand3)) && <>

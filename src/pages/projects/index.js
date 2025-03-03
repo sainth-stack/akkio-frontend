@@ -29,30 +29,30 @@ const [isLoading,setIsLoading]= useState(false)
     }
   }, [location.state]);
 
-  const fetchFiles = async () => {
-    setIsLoading(true)
+  const fetchFiles = useCallback(async () => {
+    setIsLoading(true);
     try {
       if (!email) {
         throw new Error("User email is not found in localStorage.");
       }
-
+  
       const formData = new FormData();
       formData.append("email", email);
-
+  
       const response = await axios.post(`${akkiourl}/get_user_data`, formData);
-      setFetchedData(response.data.result.map((file) => JSON.stringify(file)))
-      setIsLoading(false)
+      const result = response.data.result || []; // Ensure it's an array
+      setFetchedData(result.map((file) => JSON.stringify(file)));
     } catch (error) {
-      setIsLoading(false)
       console.error("Error fetching files:", error);
-      throw error; // Ensure the error is propagated to react-query
+    } finally {
+      setIsLoading(false); // Ensures loading state resets on success or failure
     }
-  };
-
-
-  useEffect(()=>{
-    fetchFiles()
-  },[])
+  }, [email]); // Dependencies ensure function re-creation only when email changes
+  
+  useEffect(() => {
+    fetchFiles();
+  }, [fetchFiles]); // Dependency ensures useEffect only runs when fetchFiles changes
+  
 
   const handleBack = () => {
     if (datas.datasource == "csv" || !postgresOpen) {

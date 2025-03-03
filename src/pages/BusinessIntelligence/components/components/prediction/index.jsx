@@ -11,7 +11,7 @@ export const PredictionAndForecast = () => {
     const [targetOptions, setTargetOptions] = useState([])
     const [loading, setLoading] = useState(false)
     const [data, setData] = useState('')
-
+    const [result, setResult] = useState('')
     const [formData, setFormData] = useState({});
 
     const [show, setShow] = useState(false)
@@ -80,9 +80,10 @@ export const PredictionAndForecast = () => {
                 formDataToSend.append(key, value);
             });
 
-            const response = await axios.post(`http://54.255.151.153:3001/model_predict`, formDataToSend);
+            const response = await axios.post(`${akkiourl}/model_predict`, formDataToSend);
             setLoading(false);
             // Handle the response as needed
+            setResult(response.data);
             console.log(response.data);
         } catch (error) {
             setLoading(false);
@@ -200,6 +201,11 @@ export const PredictionAndForecast = () => {
                                     </div>
                                     <button type="submit" className="btn btn-primary" style={{ marginTop: '10px' }}>Submit</button>
                                 </form>
+
+                              { result && <div>
+                                    <h3>Result</h3>
+                                    <p>{result?.prediction}</p>
+                                </div>}
                             </div>
                         )}
                     </div>}

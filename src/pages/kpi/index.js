@@ -5,7 +5,7 @@ import CustomizedKPIs from './customized/index';
 import './index.css';
 
 const KPI = () => {
-    const [selectedSection, setSelectedSection] = useState(null);
+    const [selectedSection, setSelectedSection] = useState("customized");
 
     const handleCardClick = (section) => {
         setSelectedSection(section);
@@ -18,9 +18,9 @@ const KPI = () => {
     if (selectedSection) {
         return (
             <div className="" style={{ padding: '2rem' }}>
-                <button className="backButton" onClick={handleBack}>
+                {/* <button className="backButton" onClick={handleBack}>
                     ← Back
-                </button>
+                </button> */}
                 <div className="">
                     {selectedSection === 'default' ? <DefaultKPIs /> : <CustomizedKPIs />}
                 </div>

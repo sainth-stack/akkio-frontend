@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import BarGraph from "./BarGraph";
@@ -10,12 +10,14 @@ import { AiOutlineClear } from "react-icons/ai";
 import { BsStars } from "react-icons/bs";
 import { PivotView } from "./popups/pivotVIew";
 import ChatDataPrep from "./popups/chatdataprep";
-import { getFinalData } from "../../../../utils/const";
+import { akkiourl, getFinalData } from "../../../../utils/const";
 import "../styles/discover.scss";
 import { CleanDataPopup } from "./popups/cleandata";
 import { Insights } from "./insights";
 import { Tabs, Tab, Box } from "@mui/material";
-
+import { FaRobot } from "react-icons/fa";
+import { IconButton } from "@mui/material";
+import axios from 'axios'
 const DisplayData = () => {
   const [data, setData] = useState([]);
   const [headers, setHeaders] = useState([]);
@@ -31,11 +33,57 @@ const DisplayData = () => {
   const [showModel, setShowModel] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [showIn, setShowIn] = useState(false);
-  const [value, setValue] = useState(0); // Default selected tab (General View)
-
-  const handleChange = (event, newValue) => {
+  const [value, setValue] = useState(0); 
+  const [columnsView,setColumnsView] = useState('')
+  const [chartData, setChartData] = useState(null); 
+  const [disLoadinf,setDisLoading] = useState(false)
+const[columnsLoading,setColumnsLoad] = useState(false)
+  const handleChange = async(event, newValue) => {
     setValue(newValue);
+    console.log(newValue)
+    if(newValue ===3){
+      setColumnsLoad(true)
+      const res=await axios.post(`${akkiourl}/getting_column_description`)
+      setColumnsLoad(false)
+       console.log(res?.data?.Column_description)
+       setColumnsView(res?.data?.Column_description)
+    } else if(newValue ==0){
+      fetchChartData()
+    }
   };
+
+  const useDebounce = (callback, delay) => {
+    const timer = useRef(null);
+  
+    return (...args) => {
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => {
+        callback(...args);
+      }, delay);
+    };
+  };
+  
+
+  const fetchChartData = async () => {
+    setDisLoading(true); // Start loading
+    try {
+      const response = await axios.post(`${akkiourl}/dashboard`);
+      console.log(response.data);
+      setChartData(response.data.charts); // Set the charts data
+    } catch (err) {
+      // setError(err.message); // Handle any error
+    } finally {
+      setDisLoading(false); // Stop loading
+    }
+  };
+
+  const debouncedFetchChartData = useDebounce(fetchChartData, 500);
+
+  useEffect(()=>{
+    if(value==0){
+      debouncedFetchChartData();
+    }
+  },[])
 
   const handleCleanButtonClick = () => {
     setShowPopup(!showPopup);
@@ -210,15 +258,30 @@ const DisplayData = () => {
                 },
               }}
             />
+            <Tab
+              label="Columns Overview"
+              sx={{
+                textTransform: "none",
+                fontWeight: "500",
+                fontSize: "14px",
+                "&:hover": {
+                  backgroundColor: "#f1f1f1", // light hover effect
+                },
+                "&.Mui-selected": {
+                  color: "#1976d2", // selected tab color
+                  fontWeight: "bold", // bold text for selected tab
+                },
+              }}
+            />
           </Tabs>
-          <Button
+          {/* <Button
             variant="outlined"
             onClick={() => {
               handleChatprepData();
             }}
           >
             Chat Data Prep
-          </Button>
+          </Button> */}
           <div
             className="clean-section"
             onClick={() => {
@@ -235,7 +298,9 @@ const DisplayData = () => {
         </div>
 
         {loading ? (
-          <Spin className="spinner" size={"large"} />
+          <div style={{display:'flex',justifyContent:'center',width:'100%'}}>
+            <Spin className="spinner" size={"large"} />
+          </div>
         ) : (
           <div className="">
             <>
@@ -274,9 +339,53 @@ const DisplayData = () => {
                   <PivotView {...{ headers, data, removeDuplicates }} />
                 </div>
               )}
+              {value ==3 && <div>
+                {columnsLoading ?     <div style={{display:'flex',justifyContent:'center',width:'100%'}}>
+            <Spin className="spinner" size={"large"} />
+          </div>: 
+          <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            padding: "16px",
+            borderRadius: "8px",
+            backgroundColor: "#f8f9fa",
+            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+            fontFamily: "Arial, sans-serif",
+            color: "#333",
+            maxWidth: "850px",
+            margin: "20px auto",
+          }}
+        >
+          <h2
+            style={{
+              textAlign: "center",
+              fontSize: "20px",
+              fontWeight: "bold",
+              color: "#007bff",
+              marginBottom: "12px",
+            }}
+          >
+            Component Data Overview
+          </h2>
+          <div
+                                          dangerouslySetInnerHTML={{ __html: columnsView }}
+
+            style={{
+              // display: "grid",
+              // gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "10px",
+            }}
+          >
+          </div>
+        </div>
+        
+          }
+                </div>}
             </>
 
-            {value == 0 && <Insights />}
+            {value == 0 && <Insights {...{chartData,loading:disLoadinf}}/>}
           </div>
         )}
       </div>
@@ -331,6 +440,27 @@ const DisplayData = () => {
       <div style={{ padding: "16px", overflowY: "auto", height: "100%" }}>
         <ChatDataPrep {...{ showModel, setShowModel }} />
       </div>
+      <IconButton
+      onClick={handleChatprepData}
+      sx={{
+        position: "fixed",
+        bottom: 24,
+        right: 24,
+        backgroundColor: "#1976d2",
+        color: "white",
+        width: 56,
+        height: 56,
+        borderRadius: "50%",
+        boxShadow: 4,
+        transition: "background-color 0.3s, transform 0.2s",
+        '&:hover': {
+          backgroundColor: "#1565c0",
+          transform: "scale(1.1)"
+        }
+      }}
+    >
+      <FaRobot size={28} />
+    </IconButton>
       {showPopup && (
         <CleanDataPopup
           {...{

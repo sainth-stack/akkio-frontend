@@ -3,27 +3,27 @@ import axios from "axios";
 import Plot from "react-plotly.js";
 import { akkiourl } from "../../../../../utils/const";
 
-export const Insights = () => {
-  const [chartData, setChartData] = useState(null); // To store chart data
-  const [loading, setLoading] = useState(false); // To manage loading state
+export const Insights = ({chartData,loading}) => {
+  // const [chartData, setChartData] = useState(null); // To store chart data
+  // const [loading, setLoading] = useState(false); // To manage loading state
   const [error, setError] = useState(null); // To handle errors
 
-  useEffect(() => {
-    const fetchChartData = async () => {
-      setLoading(true); // Start loading
-      try {
-        const response = await axios.post(`${akkiourl}/dashboard`);
-        console.log(response.data);
-        setChartData(response.data.charts); // Set the charts data
-      } catch (err) {
-        setError(err.message); // Handle any error
-      } finally {
-        setLoading(false); // Stop loading
-      }
-    };
+  // useEffect(() => {
+  //   const fetchChartData = async () => {
+  //     setLoading(true); // Start loading
+  //     try {
+  //       const response = await axios.post(`${akkiourl}/dashboard`);
+  //       console.log(response.data);
+  //       setChartData(response.data.charts); // Set the charts data
+  //     } catch (err) {
+  //       setError(err.message); // Handle any error
+  //     } finally {
+  //       setLoading(false); // Stop loading
+  //     }
+  //   };
 
-    fetchChartData(); // Fetch chart data on component mount
-  }, []);
+  //   fetchChartData(); // Fetch chart data on component mount
+  // }, []);
 
   if (loading) return <div>Loading...</div>; // Show loading indicator
   if (error) return <div>Error: {error}</div>; // Show error message

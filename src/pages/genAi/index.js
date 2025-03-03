@@ -109,7 +109,6 @@ const GenAi = () => {
       setLoading(false);
       setColumnDesc(parsedData?.column_description || "");
       setSampleData(parsedData?.first_10_rows || "{}");
-console.log(sap)
       let textQuestions = Object.values(parsedData?.text_questions || {}) || [];
       // console.log(JSON.parse(parsedData))
       const graphQuestions =

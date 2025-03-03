@@ -25,8 +25,8 @@ const AnswersAccordion = ({
   const saveImage = () => {
     let savedImages = JSON.parse(localStorage.getItem(name) || "[]");
 
-    // Add the new image URL if it doesn't already exist
     if (!savedImages.includes(imageUrl)) {
+      console.log(imageUrl)
       savedImages.push(imageUrl);
       localStorage.setItem(name, JSON.stringify(savedImages));
       setIsSaved(true); // Mark the image as saved

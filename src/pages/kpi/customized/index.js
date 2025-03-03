@@ -151,7 +151,7 @@ const CustomizedKPIs = () => {
           textShadow: "1px 1px 2px rgba(0,0,0,0.1)",
         }}
       >
-        Customized KPI Generator
+         KPI Generator
       </Title>
 
       <Card

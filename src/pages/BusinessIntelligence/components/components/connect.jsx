@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { IoArrowBackSharp } from "react-icons/io5";
 import { akkiourl } from "../../../../utils/const";
 import axios from "axios";
+import Spinner from 'react-bootstrap/Spinner';
 
 const Connect = (datas) => {
   const navigate = useNavigate();
@@ -13,9 +14,11 @@ const Connect = (datas) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [userPrompt, setUserPrompt] = useState("");
   const [selectedOption, setSelectedOption] = useState("new");
+  const [isUploading, setIsUploading] = useState(false);
 
   // Functions
   const showModal = () => {
+    localStorage.setItem('chat',false)
     navigate("/data-source");
   };
 
@@ -24,6 +27,7 @@ const Connect = (datas) => {
   };
 
   const handleSyntheticData = () => {
+    localStorage.setItem('chat',false)
     setOpen(true);
   };
 
@@ -81,6 +85,38 @@ const Connect = (datas) => {
     }
   };
 
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('query', 'scope3 emissions');
+
+    try {
+      const response = await axios.post(`${akkiourl}/process_doc`, formData);
+      if (response.status === 200) {
+        saveFileToLocalStorage(file)
+        localStorage.setItem('chat',true)
+        navigate('/ai-agents');
+      }
+    } catch (error) {
+      console.error('File upload failed:', error);
+    } finally {
+      setIsUploading(false); // Stop loader
+    }
+  };
+
+
+  const saveFileToLocalStorage = (file) => {
+    const reader = new FileReader();
+    reader.onload = function (event) {
+      localStorage.setItem('uploadedFile', event.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+
   return (
     <>
       {/* <Navbar /> */}
@@ -108,6 +144,24 @@ const Connect = (datas) => {
               {<p>Synthetic Data</p>}
             </div>
           </div>
+          <div className="upload-section">
+      <div className="upload-container" onClick={() => document.getElementById('fileInput').click()}>
+        <AiFillPlusCircle size={45} />
+        <p>Chat To Doc</p>
+        {isUploading &&        <Spinner
+                animation="border"
+                size="sm"
+                role="status"
+                aria-hidden="true"
+              />}
+      </div>
+      <input
+        type="file"
+        id="fileInput"
+        style={{ display: 'none' }}
+        onChange={handleFileUpload}
+      />
+    </div>
         </div>
       }
 

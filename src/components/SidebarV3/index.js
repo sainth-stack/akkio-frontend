@@ -26,7 +26,7 @@ export default function SidebarAdmin() {
     { name: 'Organizations', icon: IoHome, id: 1, path: '/admin/organizations' },
     { name: 'Users', icon: GoProjectRoadmap, path: '/admin/users', id: 2 },
     { name: 'Roles', icon: BiSolidData, path: '/admin/roles', id: 5 },
-    // { name: 'Permissions', icon: TbReportSearch, path: '/admin/permissions', id: 6 },
+    { name: 'API-KEY', icon: TbReportSearch, path: '/admin/api-key', id: 6 },
   ]
   const [data, setData] = useState(finData)
 

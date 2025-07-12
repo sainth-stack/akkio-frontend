@@ -5,50 +5,192 @@ import TextField from '@mui/material/TextField';
 import { useEffect, useState } from "react";
 import axios from "axios";
 import '../../../../genAi/Main.css'
-import AnswersAccordion from "../../../../genAi/components/answers";
 import { Tabs, Tab, InputAdornment } from '@mui/material';
 import { IoMdClose, IoMdRefresh, IoMdSend } from 'react-icons/io';
-import { Modal } from "antd";
 import { akkiourl } from "../../../../../utils/const";
-import AnswersChat from "../../../../genAi/components/answers";
 import AnswersChat2 from "./answers";
-const ChatDataPrep = ({ showModel, setShowModel }) => {
+import { useLocation } from "react-router-dom";
+import { utils } from 'xlsx';
+
+const ChatDataPrep = ({ showModel, setShowModel, index=0,chartData=[] }) => {
     const fileName = localStorage.getItem('filename')?.replace(/\.[^/.]+$/, '');
     const [search, setSearch] = useState('')
     const [answers, setAnswers] = useState([]);
+    const [isChartMode, setIsChartMode] = useState(false);
+    const location = useLocation();
 
-    const handleGetAnswer = async (question, data) => {
-        var formData = new FormData();
-        formData.append('query', question);
-        formData.append('tablename', fileName);
+    // Effect to handle index changes and call summary API when index > 1
+    useEffect(() => {
+        if (index > 0 && showModel) {
+            setIsChartMode(true);
+            // Reset existing state
+            setAnswers([]);
+            setSearch('');
+            // Call summary API automatically if we have chart data
+            if (chartData && chartData.length > 0 && index <= chartData.length) {
+                handleChartSummary();
+            }
+        } else {
+            setIsChartMode(false);
+        }
+    }, [index, showModel, chartData]);
 
-        try {
-            const res = await axios.post(
-                `${akkiourl}/gen_txt_response`,
-                formData
-            );
+    const handleChartSummary = async () => {
+        const summaryQuestion = "summary";
+        const data = [{ question: summaryQuestion, answer: "", loading: true }];
+        setAnswers(data);
+        
+        // Check if we have valid chart data and index
+        if (!chartData || chartData.length === 0 || index <= 0 || index > chartData.length) {
             const ans = data.map((item) => {
-                if (item.question == question) {
+                if (item.question === summaryQuestion) {
                     return {
                         ...item,
-                        view: "Text",
-                        answer: res?.data?.answer,
+                        answer: "No chart data available for summary",
                         loading: false
                     }
                 } else return item;
-            })
-            setAnswers(ans)
-        } catch (err) {
+            });
+            setAnswers(ans);
+            return;
+        }
+        
+        try {
+            const formData = new FormData();
+            formData.append('chart_id', index.toString());
+            
+            const res = await axios.post(
+                `${akkiourl}/get_summary`,
+                formData
+            );
+            
             const ans = data.map((item) => {
-                if (item.question == question) {
+                if (item.question === summaryQuestion) {
+                    return {
+                        ...item,
+                        view: "Text",
+                        answer: res?.data?.summary || "No summary available",
+                        loading: false
+                    }
+                } else return item;
+            });
+            setAnswers(ans);
+        } catch (err) {
+            console.error('Error fetching chart summary:', err);
+            const ans = data.map((item) => {
+                if (item.question === summaryQuestion) {
+                    return {
+                        ...item,
+                        answer: "Failed to get chart summary",
+                        loading: false
+                    }
+                } else return item;
+            });
+            setAnswers(ans);
+        }
+    };
+
+    const handleGetAnswer = async (question, data) => {
+        var formData = new FormData();
+
+        try {
+            let res;
+            
+            if (isChartMode) {
+                // Chart question API
+                formData.append('chart_id', index.toString());
+                formData.append('question', question);
+                res = await axios.post(
+                    `${akkiourl}/get_answer`,
+                    formData
+                );
+            } else if (location.pathname === '/data-source') {
+                // Existing data source functionality
+                formData.append('prompt', question);
+                formData.append('type', 'Excel');
+                res = await axios.post(
+                    `${akkiourl}/data_scout`,
+                    formData
+                );
+            } else {
+                // Existing gen_txt_response functionality
+                formData.append('query', question);
+                formData.append('tablename', fileName);
+                res = await axios.post(
+                    `${akkiourl}/gen_txt_response`,
+                    formData
+                );
+            }
+            
+            const handleDownload = (data) => {
+                if (typeof data === 'string') {
+                    // Handle existing file path case
+                    const link = document.createElement('a');
+                    link.href = data;
+                    link.download = data.split('/').pop();
+                    link.click();
+                } else if (data && typeof data === 'object') {
+                    // Transform the columnar data into row-based format
+                    const rowData = data[Object.keys(data)[0]].map((_, index) => {
+                        const row = {};
+                        Object.keys(data).forEach(key => {
+                            row[key] = data[key][index];
+                        });
+                        return row;
+                    });
+                    
+                    // Create worksheet using the transformed data
+                    const worksheet = utils.json_to_sheet(rowData);
+                    
+                    // Create a download link for the Excel file
+                    const excelBuffer = utils.sheet_to_csv(worksheet);
+                    const blob = new Blob([excelBuffer], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'data_export.csv';
+                    link.click();
+                    window.URL.revokeObjectURL(url);
+                }
+            }
+            
+            // Handle download for non-chart mode
+            if (!isChartMode && res?.data.file_path?.[1]) {
+                handleDownload(res?.data.file_path?.[1]);
+            }
+            
+            console.log(res, 'API Response');
+            const ans = data.map((item) => {
+                if (item.question === question) {
+                    let answer;
+                    if (isChartMode) {
+                        answer = res?.data?.answer || "No answer available";
+                    } else {
+                        answer = res?.data?.answer || (res?.data.file_path?.[1] ? "Data Downloaded Successfully" : "No Data found");
+                    }
+                    
+                    return {
+                        ...item,
+                        view: "Text",
+                        answer: answer,
+                        data: isChartMode ? null : res.data?.file_path?.[1],
+                        loading: false
+                    }
+                } else return item;
+            });
+            setAnswers(ans);
+        } catch (err) {
+            console.error('Error in handleGetAnswer:', err);
+            const ans = data.map((item) => {
+                if (item.question === question) {
                     return {
                         ...item,
                         answer: "No Data found",
                         loading: false
                     }
                 } else return item;
-            })
-            setAnswers(ans)
+            });
+            setAnswers(ans);
         }
     }
 
@@ -87,7 +229,14 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
             justifyContent: "space-between"
           }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <span style={{ fontWeight: 600 }}>Chat Data Prep</span>
+              <span style={{ fontWeight: 600 }}>
+                {chartData && chartData.length > 0 && index > 0 && chartData[index-1]
+                  ? chartData[index-1].chart_data?.layout?.title?.text || `Chart ${index}` 
+                  : isChartMode 
+                    ? `Chart ${index}` 
+                    : 'Data Chat'
+                }
+              </span>
             </Box>
             <IconButton
               onClick={() => setShowModel(false)}
@@ -154,7 +303,7 @@ const ChatDataPrep = ({ showModel, setShowModel }) => {
               fullWidth
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Type your message here..."
+              placeholder={isChartMode ? "Ask a question about the chart..." : "Type your message here..."}
               variant="outlined"
               sx={{
                 "& .MuiOutlinedInput-root": {

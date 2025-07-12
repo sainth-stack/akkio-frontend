@@ -91,12 +91,12 @@ const Connect = (datas) => {
     setIsUploading(true);
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('query', 'scope3 emissions');
+    // formData.append('query', 'scope3 emissions');
 
     try {
       const response = await axios.post(`${akkiourl}/process_doc`, formData);
       if (response.status === 200) {
-        saveFileToLocalStorage(file)
+        // saveFileToLocalStorage(file)
         localStorage.setItem('chat',true)
         navigate('/ai-agents');
       }

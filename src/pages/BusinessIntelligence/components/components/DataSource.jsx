@@ -12,14 +12,15 @@ import { useEffect, useState } from "react";
 import { useDataAPI } from "../contexts/GetDataApi";
 import { Modal } from "antd";
 import {
-  adminUrl,
-  akkiourl,
-  transformData,
   transformData2,
 } from "../../../../utils/const";
 import MqttConfig from "./popups/MqttConfig";
 import SapConfig from "./popups/sap";
 import { useFileUpload } from './useApi';
+import { IconButton } from "@mui/material";
+import { FaRobot } from "react-icons/fa";
+import ChatDataPrep from "./popups/chatdataprep";
+import SyntheticData from "./popups/SyntheticData";
 
 export const DataSource = () => {
   const navigate = useNavigate();
@@ -35,8 +36,15 @@ export const DataSource = () => {
   const { uploadFile, isLoading } = useFileUpload();
   const [uploadError, setUploadError] = useState(null);
   const [changed, setChanged] = useState(false);
+  const [showModel, setShowModel] = useState(false);
+  const [syntheticDataOpen, setSyntheticDataOpen] = useState(false);
   const handleCancel = () => {
     setOpen(false);
+  };
+
+  const handleChatprepData = () => {
+    // localStorage.setItem("prepData", JSON.stringify(data));
+    setShowModel(true);
   };
 
   const handleOk = async () => {
@@ -225,6 +233,23 @@ export const DataSource = () => {
                 </div>
               </div>
             </div>
+            <div className="outerContainer">
+              <div className="cardContainer" onClick={() => setSyntheticDataOpen(true)}>
+                <div className="stepCommonContainer">
+                  <FaRobot size={40} />
+                  <div>
+                    <span class="textHeader">Build Data</span>
+                    <span data-v-fa6956f7="" class="textDesc">
+                      {" "}
+                      Generate{" "}
+                    </span>
+                  </div>
+                </div>
+                <div className="footerContainer">
+                  <span className="footerText">AI-Generated Data</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -249,12 +274,41 @@ export const DataSource = () => {
           )}
         </Modal>
       )}
+
+{/* <ChatDataPrep {...{ showModel, setShowModel }} />
+
+<IconButton
+  onClick={handleChatprepData}
+  sx={{
+    position: "fixed",
+    bottom: 24,
+    right: 24,
+    backgroundColor: "#1976d2",
+    color: "white",
+    width: 56,
+    height: 56,
+    borderRadius: "50%",
+    boxShadow: 4,
+    transition: "background-color 0.3s, transform 0.2s",
+    '&:hover': {
+      backgroundColor: "#1565c0",
+      transform: "scale(1.1)"
+    }
+  }}
+>
+  <FaRobot size={28} />
+</IconButton> */}
+
       {mqttOpen && (
         <MqttConfig setMqttOpen={setMqttOpen} onDataReceived={handleMqttData} />
       )}
       {sapOpen && (
         <SapConfig setSapOpen={setSapOpen} onDataReceived={handleNavigate} />
       )}
+      <SyntheticData 
+        isOpen={syntheticDataOpen} 
+        onClose={() => setSyntheticDataOpen(false)} 
+      />
     </>
   );
 };

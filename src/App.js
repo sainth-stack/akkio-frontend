@@ -9,6 +9,7 @@ import { HtmlReport } from './pages/Reports/generateHTMLfile';
 import "./pages/BusinessIntelligence/components/styles/uploadData.scss"
 import "./pages/BusinessIntelligence/components/styles/app.scss"
 import "./pages/BusinessIntelligence/components/styles/navbar.scss"
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import "./pages/BusinessIntelligence/components/styles/endpopup.scss"
 import { DataSource } from './pages/BusinessIntelligence/components/components/DataSource';
 import { Datasets } from './pages/BusinessIntelligence/components/datasets';
@@ -44,9 +45,14 @@ import Roles from './pages/admin/roles';
 import Permissions from './pages/admin/permissions';
 import KPI from './pages/kpi';
 import Bot from './pages/bot';
+import ApiKeyManager from './pages/admin/api-key';
+import ModelTraining from './pages/model-training';
 function App() {
+  const clientId = '573823221354-d175srri1ta9un581atkp7b9qenst32u.apps.googleusercontent.com';
   return (
+
     <BrowserRouter>
+          <GoogleOAuthProvider clientId={clientId}>
       <ToastContainer />
       <Routes>
         <Route path="/" element={<Login />} />
@@ -57,6 +63,8 @@ function App() {
           <Route path='/review-report' element={<HtmlReport />} />
           <Route path='/gen-ai' element={<GenAi />} />
           <Route path='/ai-agents' element={<Bot />} />
+          <Route path='/manufa-anomaly' element={<Bot />} />
+          <Route path='/healthcare-anomaly' element={<Bot />} />
           <Route path='/kpi' element={<KPI />} />
           <Route path='/projects' Component={Projects} />
           <Route path='/connect' Component={Connect} />
@@ -68,6 +76,7 @@ function App() {
           <Route path='/deployment' Component={DeploymentData} />
           <Route path='/business-intelligence' element={<BusinessIntelligence />} />
           <Route path='/datasets' element={<Datasets />} />
+          <Route path='/model-training' element={<ModelTraining />} />
         </Route>
 
         <Route path="/" element={<AdminLayout2 />}>
@@ -89,6 +98,7 @@ function App() {
           <Route path='/admin/users' element={<Users />} />
           <Route path='/admin/roles' element={<Roles />} />
           <Route path='/admin/permissions' element={<Permissions />} />
+          <Route path='/admin/api-key' element={<ApiKeyManager />} />
         </Route>
 
         <Route path="/terms" element={<TermsConst />} />
@@ -96,6 +106,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
       </Routes>
+      </GoogleOAuthProvider>
+
     </BrowserRouter>
   );
 }

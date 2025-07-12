@@ -56,7 +56,7 @@ export const PivotView = ({ headers, data, removeDuplicates }) => {
     console.log(finData)
     return (
         <div>
-            <table style={{ border: 'none' }}>
+            <table style={{ border: "none" }} className="discover-table">
                 <thead>
                     <tr style={{ zIndex: 9999999 }}>
                         {

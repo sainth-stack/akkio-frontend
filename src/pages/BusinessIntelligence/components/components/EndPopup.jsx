@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useDataAPI } from '../contexts/GetDataApi'
-import BarGraph from './BarGraph'
+// import BarGraph from './general-view/BarGraph'
 import { AiOutlineClose } from "react-icons/ai"
 import { Progress } from 'antd'
 import { getFinalData } from '../../../../utils/const'
@@ -160,7 +160,7 @@ const EndPopup = ({ setDisplaypopup, popup }) => {
                 );
               }) :
                 <div style={{width:'100%'}}>
-                  <BarGraph data={finalData} cursor={'pointer'} header={state.title} width={320} height={220}/>
+                  {/* <BarGraph data={finalData} cursor={'pointer'} header={state.title} width={320} height={220}/> */}
                 </div>
             }
           </div>

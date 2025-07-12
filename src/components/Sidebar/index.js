@@ -14,6 +14,7 @@ import { MdOutlineFindInPage } from "react-icons/md";
 import { TbReportSearch } from "react-icons/tb";
 import { IoHome } from "react-icons/io5";
 import { GoProjectRoadmap } from "react-icons/go";
+import { FaBrain } from "react-icons/fa";
 
 export default function Sidebar() {
   const location = useLocation()
@@ -36,19 +37,35 @@ export default function Sidebar() {
 
   const finData = [
     { name: 'Home', icon: IoHome, path: '/welcome', id: 1, permission: 'home' },
-    {
-      name: 'Gen AI', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
-        { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
-        { name: 'Connect', icon: BiSolidData, path: '/connect', permission: 'connect' },
-        { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
-        // { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
-        { name: 'AI Agents', icon: GiArtificialIntelligence, path: '/ai-agents', permission: 'genAi' },
-        { name: 'KPI', icon: GiArtificialIntelligence, path: '/kpi', permission: 'kpi' },
-        // { name: 'Predict', icon: MdOutlineFindInPage, path: '/predict', permission: 'predict' },
-        // { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
-        { name: 'Reports', icon: TbReportSearch, path: '/reports', permission: 'reports' },
-      ]
-    },
+    // {
+    //   name: 'Gen AI', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
+    //     { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
+    //     { name: 'Connect', icon: BiSolidData, path: '/connect', permission: 'connect' },
+    //     { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
+    //     // { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
+    //     { name: 'AI Agents', icon: GiArtificialIntelligence, path: '/ai-agents', permission: 'genAi' },
+    //     // { name: 'KPI', icon: GiArtificialIntelligence, path: '/kpi', permission: 'kpi' },
+    //     { name: 'Predict', icon: MdOutlineFindInPage, path: '/predict', permission: 'predict' },
+    //     // { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
+    //     { name: 'Reports', icon: TbReportSearch, path: '/reports', permission: 'reports' },
+    //   ]
+    // },
+    { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
+    { name: 'Connect', icon: BiSolidData, path: '/data-source', permission: 'connect' },
+    { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
+    // { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
+    { name: 'Model Training', icon: FaBrain, path: '/model-training', permission: 'predict' },
+    { name: 'Predict', icon: MdOutlineFindInPage, path: '/predict', permission: 'predict' },
+// {
+//   name: 'AIAgents + MCP + A2A', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
+//     // { name: 'AI Agents', icon: GiArtificialIntelligence, path: '/ai-agents', permission: 'genAi' },
+//     { name: 'Anomaly', icon: BiSolidData, path: '/manufa-anomaly', permission: 'connect' },
+//     // { name: 'Healthcare Anomaly', icon: BiSolidData, path: '/healthcare-anomaly', permission: 'connect' },
+//   ]
+// },
+    // { name: 'KPI', icon: GiArtificialIntelligence, path: '/kpi', permission: 'kpi' },
+    // { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
+    { name: 'Reports', icon: TbReportSearch, path: '/reports', permission: 'reports' },
     // { name: 'Dashboard', icon: MdDashboard, path: '/gen-dashboard', id: 4, permission: 'dashboard' },
     { name: 'Settings', icon: IoSettingsOutline, path: '/settings/team/general', id: 5, permission: 'settings' },
   ]
@@ -86,7 +103,7 @@ export default function Sidebar() {
   }
   return (
     <>
-      <div class="shadow sidebar-scroll sticky-top mt-2" style={{ overflow: 'auto', width: '220px', position: "fixed", left: 0, top: 60, background: '#000', zIndex: 10, height: '92vh' }}>
+      <div class="shadow sidebar-scroll sticky-top mt-2" style={{ overflow: 'auto', width: '240px', position: "fixed", left: 0, top: 60, background: '#000', zIndex: 10, height: '92vh' }}>
         <hr style={{ border: '1px solid white', padding: 0, margin: 0, marginTop: '0px' }} />
         <ul class="sidebar-list-items pt-2" id="menu">
           {data.map((item) => {

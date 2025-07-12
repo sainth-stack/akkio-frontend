@@ -1,10 +1,28 @@
 .main-content{
     overflow: auto;
     overflow-x:hidden;
-    margin-left: 217px;
+    margin-left: 250px;
     background-color: #FFF;
+    padding: 16px;
+    min-height: calc(100vh - 60px);
+    box-sizing: border-box;
 }
 
 .new-sidebar{
     margin-left: 230px;
+}
+
+/* Additional responsive padding for different screen sizes */
+@media (max-width: 1200px) {
+    .main-content {
+        margin-left: 200px;
+        padding: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+        padding: 8px;
+    }
 }

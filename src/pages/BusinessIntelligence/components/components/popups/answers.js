@@ -57,7 +57,7 @@ const AnswersChat2 = ({
                   boxShadow:"1px gray"// Removes any background
                 }}
               />
-              {answer}
+              <span dangerouslySetInnerHTML={{ __html: answer }} />
             </div>
           ) : (
             <div className={styles.imageContainer}>

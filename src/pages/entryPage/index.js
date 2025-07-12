@@ -12,7 +12,7 @@ const MiddleContent = () => {
                     <p style={{ width: '90%' }}>
                         Decision-based Self-Service  data-driven GenAI Platform" combines elements of decision support, self-service accessibility, advanced analytics, data-driven insights, and Generative Artificial intelligence to empower users to make informed decisions and optimize processes across various domains.
                     </p>
-                    <Link to={'/connect'} class="nav-link align-middle px-2 nav-item">
+                    <Link to={'/projects'} class="nav-link align-middle px-2 nav-item">
                         <button className={styles.ctaButton} >Get Started</button>
                     </Link>
                 </div>

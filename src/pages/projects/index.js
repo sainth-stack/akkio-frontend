@@ -117,7 +117,7 @@ const [isLoading,setIsLoading]= useState(false)
       formData.append("email", email);
       formData.append("table_names", tableNames);
       const response = await axios.post(
-        "http://54.169.213.200:3001/api/delete_selected_tables",
+        `${akkiourl}/delete_selected_tables`,
         formData,
         {
           headers: {

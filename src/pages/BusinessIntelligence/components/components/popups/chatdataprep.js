@@ -12,16 +12,25 @@ import AnswersChat2 from "./answers";
 import { useLocation } from "react-router-dom";
 import { utils } from 'xlsx';
 
-const ChatDataPrep = ({ showModel, setShowModel, index=0,chartData=[] }) => {
+const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReportMode=false }) => {
     const fileName = localStorage.getItem('filename')?.replace(/\.[^/.]+$/, '');
     const [search, setSearch] = useState('')
     const [answers, setAnswers] = useState([]);
     const [isChartMode, setIsChartMode] = useState(false);
     const location = useLocation();
 
-    // Effect to handle index changes and call summary API when index > 1
+    // Effect to handle index changes and call summary/description API
     useEffect(() => {
-        if (index > 0 && showModel) {
+        if (isReportMode && index >= 0 && showModel) {
+            setIsChartMode(true);
+            // Reset existing state
+            setAnswers([]);
+            setSearch('');
+            // Call description API automatically for reports
+            if (chartData && chartData.length > 0 && index < chartData.length) {
+                handleReportDescription();
+            }
+        } else if (index > 0 && showModel) {
             setIsChartMode(true);
             // Reset existing state
             setAnswers([]);
@@ -33,7 +42,67 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0,chartData=[] }) => {
         } else {
             setIsChartMode(false);
         }
-    }, [index, showModel, chartData]);
+    }, [index, showModel, chartData, isReportMode]);
+
+    const handleReportDescription = async () => {
+        const descriptionQuestion = "description";
+        const data = [{ question: descriptionQuestion, answer: "", loading: true }];
+        setAnswers(data);
+        
+        // Check if we have valid report data
+        if (!chartData || chartData.length === 0 || index < 0 || index >= chartData.length) {
+            const ans = data.map((item) => {
+                if (item.question === descriptionQuestion) {
+                    return {
+                        ...item,
+                        answer: "No report data available for description",
+                        loading: false
+                    }
+                } else return item;
+            });
+            setAnswers(ans);
+            return;
+        }
+        
+        try {
+            // Get user email from localStorage
+            const userEmail = JSON.parse(localStorage.getItem("user")).email;
+            const reportId = chartData[index].id;
+            
+            const formData = new FormData();
+            formData.append('email', userEmail);
+            formData.append('id', reportId.toString());
+            
+            const res = await axios.post(
+                `${akkiourl}/get_report_description`,
+                formData
+            );
+            
+            const ans = data.map((item) => {
+                if (item.question === descriptionQuestion) {
+                    return {
+                        ...item,
+                        view: "Text",
+                        answer: res?.data?.summary || "No description available",
+                        loading: false
+                    }
+                } else return item;
+            });
+            setAnswers(ans);
+        } catch (err) {
+            console.error('Error fetching report description:', err);
+            const ans = data.map((item) => {
+                if (item.question === descriptionQuestion) {
+                    return {
+                        ...item,
+                        answer: "Failed to get report description",
+                        loading: false
+                    }
+                } else return item;
+            });
+            setAnswers(ans);
+        }
+    };
 
     const handleChartSummary = async () => {
         const summaryQuestion = "summary";
@@ -96,7 +165,20 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0,chartData=[] }) => {
         try {
             let res;
             
-            if (isChartMode) {
+            if (isReportMode) {
+                // Report question API
+                const reportId = chartData[index]?.id;
+                if (!reportId) {
+                    throw new Error('Report ID not found');
+                }
+                
+                formData.append('report_id', reportId.toString());
+                formData.append('question', question);
+                res = await axios.post(
+                    `${akkiourl}/get_answer_report`,
+                    formData
+                );
+            } else if (isChartMode) {
                 // Chart question API
                 formData.append('chart_id', index.toString());
                 formData.append('question', question);
@@ -154,8 +236,8 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0,chartData=[] }) => {
                 }
             }
             
-            // Handle download for non-chart mode
-            if (!isChartMode && res?.data.file_path?.[1]) {
+            // Handle download for non-chart mode and non-report mode
+            if (!isChartMode && !isReportMode && res?.data.file_path?.[1]) {
                 handleDownload(res?.data.file_path?.[1]);
             }
             
@@ -163,7 +245,7 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0,chartData=[] }) => {
             const ans = data.map((item) => {
                 if (item.question === question) {
                     let answer;
-                    if (isChartMode) {
+                    if (isReportMode || isChartMode) {
                         answer = res?.data?.answer || "No answer available";
                     } else {
                         answer = res?.data?.answer || (res?.data.file_path?.[1] ? "Data Downloaded Successfully" : "No Data found");
@@ -173,7 +255,7 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0,chartData=[] }) => {
                         ...item,
                         view: "Text",
                         answer: answer,
-                        data: isChartMode ? null : res.data?.file_path?.[1],
+                        data: (isReportMode || isChartMode) ? null : res.data?.file_path?.[1],
                         loading: false
                     }
                 } else return item;
@@ -198,6 +280,32 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0,chartData=[] }) => {
         const data = [...answers, { question, answer: "", loading: true }]
         setAnswers(data);
         handleGetAnswer(question, data)
+    };
+
+    const handleSendMessage = () => {
+        if (search.trim()) {
+            handleQuestionClick(search);
+            setSearch("");
+        }
+    };
+
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage();
+        }
+    };
+
+    const getHeaderTitle = () => {
+        if (isReportMode && chartData && chartData.length > 0 && index >= 0 && index < chartData.length) {
+            return `Report ${index + 1}`;
+        } else if (chartData && chartData.length > 0 && index > 0 && chartData[index-1]) {
+            return chartData[index-1].chart_data?.layout?.title?.text || `Chart ${index}`;
+        } else if (isChartMode) {
+            return `Chart ${index}`;
+        } else {
+            return 'Data Chat';
+        }
     };
 
     return (
@@ -230,12 +338,7 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0,chartData=[] }) => {
           }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <span style={{ fontWeight: 600 }}>
-                {chartData && chartData.length > 0 && index > 0 && chartData[index-1]
-                  ? chartData[index-1].chart_data?.layout?.title?.text || `Chart ${index}` 
-                  : isChartMode 
-                    ? `Chart ${index}` 
-                    : 'Data Chat'
-                }
+                {getHeaderTitle()}
               </span>
             </Box>
             <IconButton
@@ -303,7 +406,8 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0,chartData=[] }) => {
               fullWidth
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={isChartMode ? "Ask a question about the chart..." : "Type your message here..."}
+              onKeyPress={handleKeyPress}
+              placeholder={isReportMode ? "Ask a question about the report..." : isChartMode ? "Ask a question about the chart..." : "Type your message here..."}
               variant="outlined"
               sx={{
                 "& .MuiOutlinedInput-root": {
@@ -315,12 +419,7 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0,chartData=[] }) => {
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
-                      onClick={() => {
-                        if (search.trim()) {
-                          handleQuestionClick(search);
-                          setSearch("");
-                        }
-                      }}
+                      onClick={handleSendMessage}
                       sx={{
                         color: search ? "primary.main" : "#bbb"
                       }}

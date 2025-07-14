@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Grid, Card, CardContent, Typography, Button, Modal, Box, CircularProgress, Alert } from "@mui/material";
 import Plot from 'react-plotly.js';
 import { akkiourl } from "../../../../utils/const";
+import ChatDataPrep from "../components/popups/chatdataprep";
 
 export const ReportsGenBI = () => {
   const [reports, setReports] = useState([]);
@@ -11,6 +12,9 @@ export const ReportsGenBI = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState(false);
+  // ChatDataPrep states
+  const [showModel, setShowModel] = useState(false);
+  const [selectedReportIndex, setSelectedReportIndex] = useState(0);
 
   useEffect(() => {
     fetchReports();
@@ -91,9 +95,10 @@ export const ReportsGenBI = () => {
     }
   };
 
-  const handleReportClick = (report) => {
+  const handleReportClick = (report, index) => {
     setSelectedReport(report);
-    setOpen(true);
+    setSelectedReportIndex(index);
+    setShowModel(true);
   };
 
   const handleClose = () => {
@@ -172,7 +177,7 @@ export const ReportsGenBI = () => {
                   width: "100%",
                 }}
               >
-                <div onClick={() => handleReportClick(report)} style={{ cursor: "pointer" }}>
+                <div onClick={() => handleReportClick(report, index)} style={{ cursor: "pointer" }}>
                   {report.plotly_json ? (
                     (() => {
                       const plotlyData = parsePlotlyJson(report.plotly_json);
@@ -325,6 +330,15 @@ export const ReportsGenBI = () => {
           )}
         </Box>
       </Modal>
+
+      {/* ChatDataPrep Component */}
+      <ChatDataPrep
+        showModel={showModel}
+        setShowModel={setShowModel}
+        index={selectedReportIndex}
+        chartData={reports}
+        isReportMode={true}
+      />
     </div>
   );
 };

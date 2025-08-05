@@ -6,6 +6,7 @@ import { CopyOutlined } from '@ant-design/icons';
 import { akkiourl } from '../../utils/const';
 import { Button } from '@mui/material';
 import { Spin, Collapse, message as message4} from 'antd';
+import { Card, Row, Col } from 'react-bootstrap';
 
 // Table styles
 const thStyle = {
@@ -23,6 +24,104 @@ const tdStyle = {
   color: '#334155',
   fontSize: '14px',
   fontWeight: '500'
+};
+
+const renderPredictionDetails = (details) => {
+    if (!details || !details.prediction_result) return null;
+
+    const { prediction_result, feature_analysis, model_performance } = details;
+
+    return (
+        <div className="prediction-response">
+            <div className="prediction-card">
+                <h3>{prediction_result.target_column} Prediction</h3>
+                <div className="prediction-value">
+                    {prediction_result.predicted_value.toFixed(2)}
+                </div>
+            </div>
+
+            <div className="features-section">
+                <div className="input-features section-card">
+                    <h4>Input Features</h4>
+                    <div className="features-grid">
+                        {Object.entries(feature_analysis.input_features).map(([key, value]) => (
+                            <div key={key} className="feature-item">
+                                <span className="feature-label">{key.replace(/_/g, ' ')}</span>
+                                <span className="feature-value">{value}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="feature-importance section-card">
+                    <h4>Feature Importance</h4>
+                    {feature_analysis.top_fields.map((field) => (
+                        <div key={field.field_name} className="importance-bar-item">
+                            <div className="importance-bar-header">
+                                <span className="field-name">{field.field_name}</span>
+                                <span className="importance-value">{field.importance_percentage.toFixed(1)}%</span>
+                            </div>
+                            <div className="importance-bar-container">
+                                <div 
+                                    className="importance-bar-fill"
+                                    style={{ width: `${field.importance_percentage}%` }}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const renderForecastDetails = (details) => {
+    if (!details || !details.plot || !details.data) return null;
+
+    let plotData;
+    try {
+        plotData = JSON.parse(details.plot);
+    } catch (e) {
+        console.error("Failed to parse plot data", e);
+        return <div className="error-message">Could not display chart.</div>;
+    }
+
+    const tableData = details.data;
+
+    return (
+        <div className="forecast-response">
+            <div className="forecast-table section-card">
+                <h4>Forecast Data</h4>
+                <div className="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Forecasted Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {Object.keys(tableData.date).map((key) => (
+                                <tr key={key}>
+                                    <td>{new Date(tableData.date[key]).toLocaleDateString()}</td>
+                                    <td>{tableData.forecasted_value[key].toFixed(2)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div className="forecast-chart">
+                <h4>Forecast Chart</h4>
+                <Plot
+                    data={plotData.data}
+                    layout={{ ...plotData.layout, autosize: true, paper_bgcolor: 'transparent', plot_bgcolor: 'transparent' }}
+                    config={{ responsive: true }}
+                    style={{ width: '100%', height: '400px' }}
+                />
+            </div>
+        </div>
+    );
 };
 
 const Bot = () => {
@@ -215,18 +314,32 @@ const Bot = () => {
       }
     } else {
       if(isChat){
+        // For chat, still use FormData (if needed)
         formData.append('query', message);
       } else{
-        formData.append('prompt', message);
+        // formData.append('prompt', message);
+        // Instead, prepare JSON body for ai_bot
       }
       try {
         setIsLoading(true);
         const endpoint = `${akkiourl}/ai_bot`;
-        
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          body: formData,
-        });
+        let response;
+        if (!isChat) {
+          // Send JSON for ai_bot
+          response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ prompt: message }),
+          });
+        } else {
+          // Keep as FormData for chat
+          response = await fetch(endpoint, {
+            method: 'POST',
+            body: formData,
+          });
+        }
       
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
@@ -234,20 +347,29 @@ const Bot = () => {
       
         const data = await response.json();
       
+        let botResponse;
 
-        // content:data?.chart_response ? "" :data?.text_output || data?.text_pre_code_response,
-        // plotsData:data?.chart_response || (data?.plot ? JSON.parse(data?.plot || `{}`):null),
-        // code:data?.code || "Not Found",
-        // data:JSON.parse(data?.data)
-
-
-        const botResponse = {
-          type: 'bot', 
-          content: isChat? data?.answer: (data?.chart_response ? "" :data?.text_output || data?.text_pre_code_response) ,
-          plotsData:data?.chart_response ||  (data?.plot ? JSON.parse(data?.plot || `{}`):null),
-          code:data?.code || "Not Found",
-          data:data?.data ? JSON.parse(data?.data) : null
-        };
+        if (data.prediction_result) { // Detailed prediction
+            botResponse = {
+                type: 'bot',
+                content: '',
+                predictionDetails: data,
+            };
+        } else if (data.plot && data.data?.forecasted_value) { // Detailed forecast
+            botResponse = {
+                type: 'bot',
+                content: '',
+                forecastDetails: data,
+            };
+        } else { // Other responses
+            botResponse = {
+                type: 'bot', 
+                content: isChat? data?.answer: (data?.chart_response ? "" :data?.text_output || data?.text_pre_code_response) ,
+                plotsData:data?.chart_response ||  (data?.plot ? JSON.parse(data?.plot || `{}`):null),
+                code:data?.code || "Not Found",
+                data:data?.data ? (typeof data.data === 'string' ? JSON.parse(data.data) : data.data) : null
+            };
+        }
 
         setMessages(prev => prev.map(msg => 
           msg.isLoading ? { ...msg, isLoading: false } : msg
@@ -339,6 +461,56 @@ const Bot = () => {
       message4.success('Image Saved successfully');
       setIsSaved(true); // Mark the image as saved
     }
+  };
+
+  const renderPredictionResponse = (data) => {
+    if (!data.prediction_result) return null;
+
+    return (
+      <div className="prediction-response">
+        <div className="prediction-card">
+          <h3>Prediction Result</h3>
+          <div className="prediction-value">
+            {data.prediction_result.predicted_value.toFixed(2)}
+          </div>
+          <div className="prediction-target">
+            {data.prediction_result.target_column}
+          </div>
+        </div>
+
+        <div className="features-section">
+          <div className="input-features">
+            <h4>Input Features</h4>
+            <div className="features-grid">
+              {Object.entries(data.feature_analysis.input_features).map(([key, value]) => (
+                <div key={key} className="feature-item">
+                  <span className="feature-label">{key}</span>
+                  <span className="feature-value">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="feature-importance">
+            <h4>Feature Importance</h4>
+            {data.feature_analysis.top_fields.map((field) => (
+              <div key={field.field_name} className="importance-bar-item">
+                <div className="importance-bar-header">
+                  <span className="field-name">{field.field_name}</span>
+                  <span className="importance-value">{field.importance_percentage.toFixed(1)}%</span>
+                </div>
+                <div className="importance-bar-container">
+                  <div 
+                    className="importance-bar-fill"
+                    style={{ width: `${field.importance_percentage}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -469,6 +641,8 @@ const Bot = () => {
       }}
     >
       {msg?.content && <div dangerouslySetInnerHTML={{ __html: msg?.content }} />}
+      {msg.predictionDetails && renderPredictionDetails(msg.predictionDetails)}
+      {msg.forecastDetails && renderForecastDetails(msg.forecastDetails)}
       {/* {msg?.code && (
     <Collapse>
         <Collapse.Panel header="Code" key="msg-code">

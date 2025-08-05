@@ -8,7 +8,7 @@ const MiddleContent = () => {
         <div className=' p-0 m-0'>
             <div className='row'>
                 <div className={`${styles.middleContent} col-6`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '92vh', justifyContent: 'center' }}>
-                    <h1>Welcome to Otamat Platform                    </h1>
+                    <h1>Welcome to AUTOMATON Platform                    </h1>
                     <p style={{ width: '90%' }}>
                         Decision-based Self-Service  data-driven GenAI Platform" combines elements of decision support, self-service accessibility, advanced analytics, data-driven insights, and Generative Artificial intelligence to empower users to make informed decisions and optimize processes across various domains.
                     </p>

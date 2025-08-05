@@ -5,7 +5,7 @@ import { Register } from './pages/Auth/register';
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { BusinessIntelligence } from './pages/BusinessIntelligence';
 import DisplayData from './pages/BusinessIntelligence/components/components/DisplayData'
-import { HtmlReport } from './pages/Reports/generateHTMLfile';
+// import { HtmlReport } from './pages/Reports/generateHTMLfile';
 import "./pages/BusinessIntelligence/components/styles/uploadData.scss"
 import "./pages/BusinessIntelligence/components/styles/app.scss"
 import "./pages/BusinessIntelligence/components/styles/navbar.scss"
@@ -47,6 +47,9 @@ import KPI from './pages/kpi';
 import Bot from './pages/bot';
 import ApiKeyManager from './pages/admin/api-key';
 import ModelTraining from './pages/model-training';
+import Reports from './pages/Reports';
+import Explore from './pages/Explore';
+import { Insights } from './pages/BusinessIntelligence/components/components/insights';
 function App() {
   const clientId = '573823221354-d175srri1ta9un581atkp7b9qenst32u.apps.googleusercontent.com';
   return (
@@ -60,7 +63,7 @@ function App() {
         <Route path="/" element={<AdminLayout />}>
           <Route path='/welcome' Component={MiddleContent} />
           <Route path='/gen-dashboard' Component={DashboardReports} />
-          <Route path='/review-report' element={<HtmlReport />} />
+          {/* <Route path='/review-report' element={<HtmlReport />} /> */}
           <Route path='/gen-ai' element={<GenAi />} />
           <Route path='/ai-agents' element={<Bot />} />
           <Route path='/manufa-anomaly' element={<Bot />} />
@@ -71,7 +74,9 @@ function App() {
           <Route path='/discover' Component={DisplayData} />
           <Route path='/predict' Component={PredictionAndForecast} />
           <Route path='/forecast' Component={ForecastData} />
-          <Route path='/reports' Component={ReportsGenBI} />
+          <Route path='/explore' Component={Explore} />
+          <Route path='/reports' Component={Reports} />
+          <Route path='/insights' Component={Insights} />
           <Route path='/data-source' element={<DataSource />} />
           <Route path='/deployment' Component={DeploymentData} />
           <Route path='/business-intelligence' element={<BusinessIntelligence />} />

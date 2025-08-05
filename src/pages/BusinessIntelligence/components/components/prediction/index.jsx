@@ -9,18 +9,21 @@ import Plot from 'react-plotly.js';
 import ChatDataPrep from "../popups/chatdataprep";
 import { IconButton } from "@mui/material";
 import { FaRobot } from "react-icons/fa6";
+import Bot from "../../../../bot";
 
 export const PredictionAndForecast = () => {
     const [activeTab, setActiveTab] = useState("Predict");
     const [targetColumn, setTargetColumn] = useState("");
     const [targetOptions, setTargetOptions] = useState([])
     const [loading, setLoading] = useState(false)
+    const [columnsLoading, setColumnsLoading] = useState(false)
     const [response, setResponse] = useState(null)
     const [formData, setFormData] = useState({});
     const [frequency, setFrequency] = useState('days');
     const [tenure, setTenure] = useState('1');
     const [show, setShow] = useState(false)
     const [showModel, setShowModel] = useState(false)
+    const [mainTab, setMainTab] = useState('Models');
     
     const frequencyOptions = [
         { value: 'days', label: 'Days' },
@@ -42,23 +45,49 @@ export const PredictionAndForecast = () => {
         return currentTab ? currentTab.model : 'RandomForest';
     };
 
+    // Function to fetch columns from API
+    const fetchColumns = async () => {
+        setColumnsLoading(true);
+        try {
+            const response = await axios.get(`${akkiourl}/get_columns`, {
+                headers: { 'accept': 'application/json' }
+            });
+            
+            if (response.data.status === 'success' && response.data.columns) {
+                const columnOptions = response.data.columns.map((column) => ({
+                    label: column,
+                    value: column
+                }));
+                setTargetOptions(columnOptions);
+            } else {
+                console.error("Failed to fetch columns:", response.data);
+                setTargetOptions([]);
+            }
+        } catch (error) {
+            console.error("Error fetching columns:", error);
+            setTargetOptions([]);
+        } finally {
+            setColumnsLoading(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true)
         setShow(true)
         try {
-            const formDataToSend = new FormData();
             const model = getCurrentModel();
-            formDataToSend.append('model', model);
-            formDataToSend.append('col', targetColumn);
-            
-            // Only add frequency and tenure for ARIMA model
+            let payload = {
+                model,
+                col: targetColumn,
+            };
             if (model === 'Arima') {
-                formDataToSend.append('frequency', frequency);
-                formDataToSend.append('tenure', tenure);
+                payload.frequency = frequency;
+                payload.tenure = tenure;
             }
-            
-            const response = await axios.post(`${akkiourl}/models`, formDataToSend);
+            const response = await axios.post(`${akkiourl}/models`, payload, {
+                headers: { 'Content-Type': 'application/json' }
+            });
             setResponse(response.data);
             setLoading(false);
         } catch (error) {
@@ -69,19 +98,8 @@ export const PredictionAndForecast = () => {
     };
 
     useEffect(() => {
-        const storedData = localStorage.getItem('prepData');
-        const name = localStorage.getItem('filename');
-
-        if (storedData) {
-            const parsedData = JSON.parse(storedData);
-            const data = Object.keys(parsedData)?.map((item) => {
-                return {
-                    label: item,
-                    value: item
-                }
-            });
-            setTargetOptions(data);
-        }
+        // Fetch columns from API instead of localStorage
+        fetchColumns();
     }, []);
 
     const handleInputChange = (e) => {
@@ -106,7 +124,7 @@ export const PredictionAndForecast = () => {
             const response = await axios.post(`${akkiourl}/model_predict`, formDataToSend);
             setResponse(prev => ({
                 ...prev,
-                rf_result: response.data.rf_result
+                ...response.data
             }));
             setLoading(false);
         } catch (error) {
@@ -131,10 +149,9 @@ export const PredictionAndForecast = () => {
         switch (model) {
             case 'RandomForest':
                 return (
-                    <div className="prediction-results">
-                        <h2 className="results-title">Prediction Results</h2>
-                        <p className="status-text">Status: {response.status}</p>
-                        <div className="prediction-content">
+                    <div className="rf-results-container">
+                        <div className="prediction-form-container section-card">
+                             <h2 className="results-title">Get a New Prediction</h2>
                             <form onSubmit={handleRandomForestSubmit} className="prediction-form">
                                 <div className="form-grid">
                                     {response.rf_cols?.map((col) => (
@@ -157,15 +174,67 @@ export const PredictionAndForecast = () => {
                                     Get Prediction
                                 </button>
                             </form>
+                        </div>
+                        
+                        <div className="prediction-output">
+                            {response.prediction_result ? (
+                                <div className="rf-results-grid">
+                                    <div className="result-display main-prediction-card">
+                                        <h3>Predicted {response.prediction_result.target_column}</h3>
+                                        <p className="result-value">
+                                            {response.prediction_result.predicted_value?.toFixed(2)}
+                                        </p>
+                                    </div>
 
-                            <div className="prediction-output">
-                                {response.rf_result && (
+                                    {response.model_performance && (
+                                        <div className="performance-metrics section-card">
+                                            <h4>Model Performance</h4>
+                                            <ul>
+                                                <li>
+                                                    <span>R² Score</span>
+                                                    <span>{response.model_performance.performance_metrics.r2_score}%</span>
+                                                </li>
+                                                <li>
+                                                    <span>MAE</span>
+                                                    <span>{response.model_performance.performance_metrics.mae}</span>
+                                                </li>
+                                                <li>
+                                                    <span>RMSE</span>
+                                                    <span>{response.model_performance.performance_metrics.rmse}</span>
+                                                </li>
+                                            </ul>
+                                            <p className="baseline-comparison">{response.model_performance.baseline_comparison}</p>
+                                        </div>
+                                    )}
+
+                                    {response.feature_analysis && (
+                                        <div className="feature-analysis section-card">
+                                            <h4>Feature Importance</h4>
+                                            <ul className="feature-list">
+                                                {response.feature_analysis.top_fields.map(field => (
+                                                    <li key={field.field_name}>
+                                                        <span className="feature-name">{field.field_name}</span>
+                                                        <div className="importance-bar-container">
+                                                            <div
+                                                                className="importance-bar"
+                                                                style={{ width: `${field.importance_percentage}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="feature-percentage">{field.importance_percentage.toFixed(1)}%</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                response.rf_result && ( // Fallback for old string response
                                     <div className="result-display">
                                         <h3>Prediction Result:</h3>
                                         <p className="result-value">{response.rf_result}</p>
                                     </div>
-                                )}
-                            </div>
+                                )
+                            )}
                         </div>
                     </div>
                 );
@@ -209,129 +278,164 @@ export const PredictionAndForecast = () => {
 
     return (
         <>
-            <div className="prediction-container">
-                <h1 className="main-title">Data Analysis & Prediction</h1>
+            <div className={mainTab === 'Models' ? "prediction-container" : "prediction-container full-width"}>
+                {/* <h1 className="main-title">Data Analysis & Prediction</h1> */}
                 
-                <form onSubmit={handleSubmit} className="analysis-form">
-                    <div className="tab-section">
-                        <div className="tab-nav">
-                            {tabs.map((tab) => (
-                                <button
-                                    key={tab.id}
-                                    type="button"
-                                    className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-                                    onClick={() => { 
-                                        setActiveTab(tab.id); 
-                                        setResponse(null); 
-                                        setShow(false); 
-                                    }}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                <div className="main-tabs">
+                    <button
+                        type="button"
+                        className={`main-tab-button ${mainTab === 'Models' ? 'active' : ''}`}
+                        onClick={() => {
+                            setMainTab('Models');
+                            setResponse(null);
+                            setShow(false);
+                        }}
+                    >
+                        Analytics
+                    </button>
+                    <button
+                        type="button"
+                        className={`main-tab-button ${mainTab === 'Agent' ? 'active' : ''}`}
+                        onClick={() => setMainTab('Agent')}
+                    >
+                        Agent
+                    </button>
+                </div>
 
-                    <div className="form-content">
-                        <div className="form-field">
-                            <label className="field-label">
-                                Target Column
-                                <select
-                                    value={targetColumn}
-                                    onChange={(e) => setTargetColumn(e.target.value)}
-                                    className="field-select"
-                                >
-                                    <option value="">Select Target Column</option>
-                                    {targetOptions.map(option => (
-                                        <option key={option.value} value={option.value}>{option.label}</option>
+                {mainTab === 'Models' && (
+                    <>
+                        <form onSubmit={handleSubmit} className="analysis-form">
+                            <div className="tab-section">
+                                <div className="tab-nav">
+                                    {tabs.map((tab) => (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                                            onClick={() => { 
+                                                setActiveTab(tab.id); 
+                                                setResponse(null); 
+                                                setShow(false); 
+                                            }}
+                                        >
+                                            {tab.label}
+                                        </button>
                                     ))}
-                                </select>
-                            </label>
-                        </div>
+                                </div>
+                            </div>
 
-                        {activeTab === 'Forecast' && (
-                            <>
+                            <div className="form-content">
                                 <div className="form-field">
                                     <label className="field-label">
-                                        Frequency
+                                        Target Column
                                         <select
-                                            value={frequency}
-                                            onChange={(e) => setFrequency(e.target.value)}
+                                            value={targetColumn}
+                                            onChange={(e) => setTargetColumn(e.target.value)}
                                             className="field-select"
+                                            disabled={columnsLoading}
                                         >
-                                            {frequencyOptions.map(option => (
+                                            <option value="">
+                                                {columnsLoading ? "Loading columns..." : "Select Target Column"}
+                                            </option>
+                                            {targetOptions.map(option => (
                                                 <option key={option.value} value={option.value}>{option.label}</option>
                                             ))}
                                         </select>
+                                        {columnsLoading && (
+                                            <div className="loading-spinner">
+                                                <Spin size="small" />
+                                            </div>
+                                        )}
                                     </label>
                                 </div>
 
-                                <div className="form-field">
-                                    <label className="field-label">
-                                        Tenure
-                                        <select
-                                            value={tenure}
-                                            onChange={(e) => setTenure(e.target.value)}
-                                            className="field-select"
-                                        >
-                                            {tenureOptions.map(option => (
-                                                <option key={option} value={option}>{option}</option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                </div>
-                            </>
+                                {activeTab === 'Forecast' && (
+                                    <>
+                                        <div className="form-field">
+                                            <label className="field-label">
+                                                Frequency
+                                                <select
+                                                    value={frequency}
+                                                    onChange={(e) => setFrequency(e.target.value)}
+                                                    className="field-select"
+                                                >
+                                                    {frequencyOptions.map(option => (
+                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                        </div>
+
+                                        <div className="form-field">
+                                            <label className="field-label">
+                                                Tenure
+                                                <select
+                                                    value={tenure}
+                                                    onChange={(e) => setTenure(e.target.value)}
+                                                    className="field-select"
+                                                >
+                                                    {tenureOptions.map(option => (
+                                                        <option key={option} value={option}>{option}</option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                        </div>
+                                    </>
+                                )}
+
+                                <button 
+                                    type="submit" 
+                                    className="analyze-btn"
+                                    disabled={loading || !targetColumn || columnsLoading}
+                                >
+                                    {loading ? 'Analyzing...' : `Train Model`}
+                                </button>
+                            </div>
+                        </form>
+
+                        {loading && (
+                            <div className="loading-message">
+                                Processing your data...
+                            </div>
                         )}
 
-                        <button 
-                            type="submit" 
-                            className="analyze-btn"
-                            disabled={loading || !targetColumn}
+                        {show && response && (
+                            <div className="results-container">
+                                {renderResponse()}
+                            </div>
+                        )}
+
+                        <div>
+                            <ChatDataPrep {...{ showModel, setShowModel }} />
+                        </div>
+                        
+                        <IconButton
+                            onClick={handleChatprepData}
+                            className="chat-fab"
+                            sx={{
+                                position: "fixed",
+                                bottom: 24,
+                                right: 24,
+                                backgroundColor: "#1976d2",
+                                color: "white",
+                                width: 56,
+                                height: 56,
+                                borderRadius: "50%",
+                                boxShadow: 4,
+                                transition: "background-color 0.3s, transform 0.2s",
+                                '&:hover': {
+                                    backgroundColor: "#1565c0",
+                                    transform: "scale(1.1)"
+                                }
+                            }}
                         >
-                            {loading ? 'Analyzing...' : `submit`}
-                        </button>
-                    </div>
-                </form>
-
-                {loading && (
-                    <div className="loading-message">
-                        Processing your data...
-                    </div>
+                            <FaRobot size={28} />
+                        </IconButton>
+                    </>
                 )}
 
-                {show && response && (
-                    <div className="results-container">
-                        {renderResponse()}
-                    </div>
-                )}
+                {mainTab === 'Agent' && <Bot />}
             </div>
-            
-            <div>
-                <ChatDataPrep {...{ showModel, setShowModel }} />
-            </div>
-            
-            <IconButton
-                onClick={handleChatprepData}
-                className="chat-fab"
-                sx={{
-                    position: "fixed",
-                    bottom: 24,
-                    right: 24,
-                    backgroundColor: "#1976d2",
-                    color: "white",
-                    width: 56,
-                    height: 56,
-                    borderRadius: "50%",
-                    boxShadow: 4,
-                    transition: "background-color 0.3s, transform 0.2s",
-                    '&:hover': {
-                        backgroundColor: "#1565c0",
-                        transform: "scale(1.1)"
-                    }
-                }}
-            >
-                <FaRobot size={28} />
-            </IconButton>
         </>
     );
 };

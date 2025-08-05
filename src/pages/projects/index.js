@@ -6,8 +6,9 @@ import { useDataAPI } from "../BusinessIntelligence/components/contexts/GetDataA
 import { adminUrl, akkiourl, arrayToCSV, transformData } from "../../utils/const";
 import { CircularProgress } from "@mui/material";
 import { useQuery } from "react-query";
-import { MdDelete } from "react-icons/md";
+import { FaTrashAlt } from "react-icons/fa";
 import { useFileUpload } from "../BusinessIntelligence/components/components/useApi";
+import './index.css';
 
 const Projects = () => {
   const { uploadedData, showContent, handleUpload } = useDataAPI();
@@ -21,8 +22,9 @@ const Projects = () => {
   const { uploadFile } = useFileUpload();
   const [loadingCards, setLoadingCards] = useState({});
   const email = JSON.parse(localStorage.getItem("user"))?.email;
-const [fetchedData,setFetchedData] = useState([])
-const [isLoading,setIsLoading]= useState(false)
+  const [fetchedData, setFetchedData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
     if (location?.state?.datasource === "postgresql") {
       setPostgresOpen(true);
@@ -74,14 +76,16 @@ const [isLoading,setIsLoading]= useState(false)
       formData.append("tablename", finalValue);
       formData.append("schemaname", "postgres");
       const response = await axios.post(`${akkiourl}/tabledata`, formData);
+      console.log(response,'respondsfdsse')
       if (response.status === 200) {
         localStorage.setItem("filename", finalValue);
-        localStorage.setItem("prepData", JSON.stringify(response?.data));
-        await showContent({
-          filename: finalValue,
-          headers: Object.keys(response?.data),
-          data: transformData(response?.data),
-        });
+        // localStorage.setItem("prepData", JSON.stringify(response?.data));
+        navigate("/discover");
+        // await showContent({
+        //   filename: finalValue,
+        //   headers: Object.keys(response?.data),
+        //   data: transformData(response?.data),
+        // });
         console.log(response?.data,'response?.data')
         const csvData = arrayToCSV(response?.data);
         console.log(csvData)
@@ -95,13 +99,13 @@ const [isLoading,setIsLoading]= useState(false)
         const file = new File([blob], `${finalValue}.csv`, { type: "text/csv;charset=utf-8-sig" });
         
         navigate("/discover");
-        const result = await uploadFile(file, handleUpload, {
-          file: file,  // Use the File object instead of blob
-          database: true,
-          data: response?.data,
-          tableName: finalValue,
-          sap: false
-        });
+        // const result = await uploadFile(file, handleUpload, {
+        //   file: file,  // Use the File object instead of blob
+        //   database: true,
+        //   data: response?.data,
+        //   tableName: finalValue,
+        //   sap: false
+        // });
       }
     } catch (error) {
       console.error("Failed to get data", error);
@@ -138,34 +142,20 @@ const [isLoading,setIsLoading]= useState(false)
   };
 
   return (
-    <>
+    <div className="data-source-container">
       <div className="p-3">
         <button className="btn " onClick={() => handleBack()}>
           <IoArrowBackSharp />
           Back
         </button>
       </div>
-      <div className="container">
+      <div className="file-grid">
         {isLoading ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: "2rem",
-            }}
-          >
+          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40 }}>
             <CircularProgress />
           </div>
         ) : fetchedData?.length === 0 ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: "2rem",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          >
+          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, color: '#888' }}>
             <h4>No data found</h4>
             <p>Please upload data to get started</p>
           </div>
@@ -174,42 +164,48 @@ const [isLoading,setIsLoading]= useState(false)
             const finalValue = finalField ? JSON.parse(finalField) : "";
             return fetchedData && finalValue !== "" ? (
               <div
-                className="csv-files"
+                className="file-card"
                 key={index}
                 onClick={() => handleNavigate(finalValue)}
+                style={{ position: 'relative', cursor: 'pointer' }}
+                tabIndex={0}
               >
                 {loadingCards[finalValue] ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      padding: "2rem",
-                    }}
-                  >
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "200px"
+                  }}>
                     <CircularProgress />
                   </div>
                 ) : (
                   <>
-                    <img
-                      src="/dataThumbnail.jpeg"
-                      alt={finalValue}
-                      width={300}
-                      className="data-img"
-                    />
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        width: "100%",
-                        alignItems: "center",
-                      }}
-                    >
-                      <h5 className="filename">{finalValue}</h5>
-                      <MdDelete
-                        width={20}
-                        onClick={(e) => handleDelete(e, email, finalValue)}
+                    <div className="thumbnail-wrapper">
+                      <img
+                        src="/dataThumbnail.jpeg"
+                        alt={finalValue}
+                        className="file-thumbnail"
                       />
                     </div>
+                    <div className="file-name">{finalValue}</div>
+                    <FaTrashAlt
+                      className="delete-icon"
+                      style={{
+                        position: 'absolute',
+                        bottom: 8,
+                        right: 8,
+                        color: '#e74c3c',
+                        background: 'white',
+                        borderRadius: '50%',
+                        padding: 4,
+                        fontSize: 22,
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+                        cursor: 'pointer'
+                      }}
+                      title="Delete file"
+                      onClick={(e) => handleDelete(e, email, finalValue)}
+                    />
                   </>
                 )}
               </div>
@@ -219,7 +215,7 @@ const [isLoading,setIsLoading]= useState(false)
           })
         )}
       </div>
-    </>
+    </div>
   );
 };
 

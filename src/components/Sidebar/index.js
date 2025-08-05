@@ -50,12 +50,14 @@ export default function Sidebar() {
     //     { name: 'Reports', icon: TbReportSearch, path: '/reports', permission: 'reports' },
     //   ]
     // },
-    { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
     { name: 'Connect', icon: BiSolidData, path: '/data-source', permission: 'connect' },
+    { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
     { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
     // { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
-    { name: 'Model Training', icon: FaBrain, path: '/model-training', permission: 'predict' },
-    { name: 'Predict', icon: MdOutlineFindInPage, path: '/predict', permission: 'predict' },
+    // { name: 'Model Training', icon: FaBrain, path: '/model-training', permission: 'predict' },
+    // { name: 'Explore', icon: TbReportSearch, path: '/explore', permission: 'reports' },
+    { name: 'Insights', icon: TbReportSearch, path: '/insights', permission: 'reports' },
+    { name: 'Analytics', icon: MdOutlineFindInPage, path: '/predict', permission: 'predict' },
 // {
 //   name: 'AIAgents + MCP + A2A', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
 //     // { name: 'AI Agents', icon: GiArtificialIntelligence, path: '/ai-agents', permission: 'genAi' },
@@ -65,8 +67,8 @@ export default function Sidebar() {
 // },
     // { name: 'KPI', icon: GiArtificialIntelligence, path: '/kpi', permission: 'kpi' },
     // { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
-    { name: 'Reports', icon: TbReportSearch, path: '/reports', permission: 'reports' },
     // { name: 'Dashboard', icon: MdDashboard, path: '/gen-dashboard', id: 4, permission: 'dashboard' },
+    { name: 'Reports', icon: TbReportSearch, path: '/reports', id: 6, permission: 'reports' },
     { name: 'Settings', icon: IoSettingsOutline, path: '/settings/team/general', id: 5, permission: 'settings' },
   ]
 
@@ -103,7 +105,7 @@ export default function Sidebar() {
   }
   return (
     <>
-      <div class="shadow sidebar-scroll sticky-top mt-2" style={{ overflow: 'auto', width: '240px', position: "fixed", left: 0, top: 60, background: '#000', zIndex: 10, height: '92vh' }}>
+      <div class="shadow sidebar-scroll sticky-top mt-2" style={{ overflow: 'auto', width: '240px', position: "fixed", left: 0, top: 70, background: '#000', zIndex: 10, height: '92vh' }}>
         <hr style={{ border: '1px solid white', padding: 0, margin: 0, marginTop: '0px' }} />
         <ul class="sidebar-list-items pt-2" id="menu">
           {data.map((item) => {

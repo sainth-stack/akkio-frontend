@@ -6,18 +6,14 @@ import EndPopup from "./EndPopup";
 import { Spin, Modal } from "antd";
 import { BsStars } from "react-icons/bs";
 import { PivotView } from "./popups/pivotVIew";
-import ChatDataPrep from "./popups/chatdataprep";
 import { akkiourl } from "../../../../utils/const";
 import "../styles/discover.scss";
 import { CleanDataPopup } from "./popups/cleandata";
-import { Insights } from "./insights";
 import { Tabs, Tab } from "@mui/material";
-import { FaRobot } from "react-icons/fa";
-import { IconButton } from "@mui/material";
 import axios from 'axios';
 import MissingValues from "./prediction/fillcsv";
-import { useQuery } from "react-query";
 import GeneralView from "./general-view";
+import Explore from '../../../Explore';
 
 const DisplayData = () => {
   const [data, setData] = useState([]);
@@ -29,15 +25,12 @@ const DisplayData = () => {
   const [filename, setFilename] = useState(localStorage.getItem("filename") || "");
   const [open, setOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [showModel, setShowModel] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [value, setValue] = useState(0); 
   const [columnsView, setColumnsView] = useState('');
   const [columnsLoading, setColumnsLoad] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading,setLoading] = useState(false)
-  const [index,setIndex] = useState(0)
-  const cancelTokenRef = useRef(null);
   const navigate = useNavigate();
   const { displayContent, handleCleanData, handlePrepareData } = useDataAPI();
 
@@ -52,10 +45,7 @@ const DisplayData = () => {
     return arr.reduce((count, current) => (value === current ? count + 1 : count), 0);
   }
 
-  const handleChatprepData = () => {
-    localStorage.setItem("prepData", JSON.stringify(data));
-    setShowModel(true);
-  };
+
 
   const handleOk = async () => {
     setConfirmLoading(true);
@@ -91,51 +81,7 @@ const DisplayData = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-  const fetchChartData = async () => {
-    try {
-      setInitialLoading(true)
-      
-      // Cancel previous request if exists
-      if (cancelTokenRef.current) {
-        cancelTokenRef.current.cancel('Operation canceled due to new request.');
-      }
-      
-      // Create new cancel token
-      cancelTokenRef.current = axios.CancelToken.source();
-      
-      const response = await axios.post(`${akkiourl}/dashboard`, {}, {
-        cancelToken: cancelTokenRef.current.token
-      });
-      let charts = response.data.charts;
-      setInitialLoading(false)
-
-      // If response is a string, try cleaning and parsing
-      if (typeof response?.data === 'string') {
-        try {
-          const cleanedString = response.data.replace(/NaN/g, 'null');
-          charts = JSON.parse(cleanedString).charts;
-        } catch (parseError) {
-          console.warn('JSON parse failed, returning as-is:', parseError);
-        }
-      }
   
-      console.log(charts, 'parsed charts');
-      return charts;
-    } catch (error) {
-      setInitialLoading(false)
-      if (axios.isCancel(error)) {
-        console.log('Request canceled:', error.message);
-        return null;
-      }
-      console.error('Failed to fetch chart data:', error);
-      return null;
-    } finally {
-      setInitialLoading(false)
-    } 
-  };
-  
-  
-
   const fetchColumnDescriptions = async () => {
     setColumnsLoad(true);
     try {
@@ -145,23 +91,6 @@ const DisplayData = () => {
       setColumnsLoad(false);
     }
   };
-
-  // React Query for chart data with aggressive caching
-  // Data is cached indefinitely until manually refreshed or page reloaded
-  const { 
-    data: chartData, 
-    isLoading: isChartDataLoading, 
-    refetch
-  } = useQuery({
-    queryKey: ["chartData", filename],
-    queryFn: fetchChartData,
-    enabled: !!filename,
-    staleTime: Infinity, // Data never becomes stale automatically
-    cacheTime: 30 * 60 * 1000, // Cache for 30 minutes
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchOnReconnect: false, // Don't refetch on reconnect
-    refetchOnMount: false, // Don't refetch on component mount if data exists
-  });
 
   const handleTabChange = async (event, newValue) => {
     setValue(newValue);
@@ -182,29 +111,17 @@ const DisplayData = () => {
     setPopup(displaypopup);
   }, [displaypopup]);
 
-  // Removed the useEffect that was calling refetch on tab change - React Query will handle caching
-
   const handleChange = async(event, newValue) => {
     setValue(newValue);
-    if (newValue !== 1) {
-      // Cancel any ongoing dashboard API calls when switching away from insights tab
-      if (cancelTokenRef.current) {
-        cancelTokenRef.current.cancel('Tab switched away from insights');
-      }
-    }
     if(newValue === 3){
       setColumnsLoad(true)
       const res=await axios.post(`${akkiourl}/getting_column_description`)
       setColumnsLoad(false)
        setColumnsView(res?.data?.Column_description)
     }
-    // Removed the direct API call for insights tab - React Query will handle it
   };
 
-  const handleClick = (index) => {
-    setIndex(index)
-    setShowModel(true)
-  }
+
 
   return (
     <div style={{ minHeight: "90vh", overflow: "auto" }}>
@@ -293,11 +210,6 @@ const DisplayData = () => {
         </div>
       ) : (
         <div className="professional-table">
-          <div className="file-details ms-2">
-            <p>{filename}</p>
-            <p>{data.length} rows</p>
-            <p>{headers.length} columns</p>
-          </div>
           
           <div className="filterData ms-2">
             <Tabs
@@ -331,7 +243,7 @@ const DisplayData = () => {
                 }}
               />
               <Tab
-                label="Insights"
+                label="Explore"
                 sx={{
                   textTransform: "none",
                   fontWeight: "500",
@@ -402,27 +314,14 @@ const DisplayData = () => {
               <span>Clean</span>
             </div> */}
 
-            <button 
-              className="btn btn-success" 
-              onClick={() => {refetch();}} 
-              disabled={isChartDataLoading}
-            >
-              {isChartDataLoading ? (
-                <>
-                  <Spin size="small" style={{ marginRight: '8px' }} />
-                  Loading...
-                </>
-              ) : (
-                'Refresh'
-              )}
-            </button>
+
 
             {/* <button className="btn btn-success" onClick={()=>debouncedFetchChartData()}>
               Reload
             </button> */}
           </div>
 
-          {(initialLoading || (isChartDataLoading && value === 1)) ? (
+          {initialLoading ? (
             <div style={{display:'flex',justifyContent:'center',width:'100%'}}>
               <Spin className="spinner" size={"large"} />
             </div>
@@ -432,55 +331,10 @@ const DisplayData = () => {
             <GeneralView {...{headers,data}} />
               )}
               
-              {value === 4 && <PivotView {...{ headers, data, removeDuplicates }} />}
-              
-              {value === 3 && (
-                <div>
-                  {columnsLoading ? (
-                    <div style={{display:'flex',justifyContent:'center',width:'100%'}}>
-                      <Spin className="spinner" size={"large"} />
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "12px",
-                        padding: "16px",
-                        borderRadius: "8px",
-                        backgroundColor: "#f8f9fa",
-                        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                        fontFamily: "Arial, sans-serif",
-                        color: "#333",
-                        maxWidth: "80%",
-                        margin: "20px auto",
-                      }}
-                    >
-                      <h2
-                        style={{
-                          textAlign: "center",
-                          fontSize: "20px",
-                          fontWeight: "bold",
-                          color: "#007bff",
-                          marginBottom: "12px",
-                        }}
-                      >
-                        Component Data Overview
-                      </h2>
-                      <div
-                        dangerouslySetInnerHTML={{ __html: columnsView }}
-                        style={{
-                          gap: "10px",
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
+              {value === 1 && <Explore />}
               
               {value === 2 &&filename&& <MissingValues />}
               
-              {value === 1 && filename && <Insights {...{chartData, loading: isChartDataLoading, handleClick:handleClick}}/>}
             </div>
           )}
         </div>
@@ -527,30 +381,6 @@ const DisplayData = () => {
           </p>
         </div>
       </Modal>
-
-      <ChatDataPrep {...{ showModel, setShowModel,index ,chartData}} />
-
-  { ( value === 1 || value === 0) &&   <IconButton
-        onClick={handleChatprepData}
-        sx={{
-          position: "fixed",
-          bottom: 24,
-          right: 24,
-          backgroundColor: "#1976d2",
-          color: "white",
-          width: 56,
-          height: 56,
-          borderRadius: "50%",
-          boxShadow: 4,
-          transition: "background-color 0.3s, transform 0.2s",
-          '&:hover': {
-            backgroundColor: "#1565c0",
-            transform: "scale(1.1)"
-          }
-        }}
-      >
-        <FaRobot size={28} />
-      </IconButton>}
 
       {showPopup && (
         <CleanDataPopup

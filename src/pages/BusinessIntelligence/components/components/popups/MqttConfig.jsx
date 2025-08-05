@@ -40,7 +40,7 @@ const MqttConfig = ({ setMqttOpen, onDataReceived }) => {
             const rawData = await response.json();
             const transformedData = transformData2(rawData)
             localStorage.setItem("filename", "MQTT_HistoryData")
-            localStorage.setItem('prepData', JSON.stringify(transformedData));
+            // localStorage.setItem('prepData', JSON.stringify(transformedData));
             localStorage.setItem('selectedTable', "MQTT_HistoryData")
             await showContent({
                 filename: "MQTT_HistoryData",

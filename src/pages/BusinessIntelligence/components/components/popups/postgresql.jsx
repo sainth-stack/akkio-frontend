@@ -102,7 +102,7 @@ const PostgreSql = (props) => {
                 props.setPostgresOpen(false);
 
                 localStorage.setItem("filename", details.tableName)
-                localStorage.setItem('prepData', JSON.stringify(response?.data));
+                // localStorage.setItem('prepData', JSON.stringify(response?.data));
                 await showContent({
                     filename: details.tableName, headers: Object.keys(response?.data), data: transformData(response?.data)
                 })

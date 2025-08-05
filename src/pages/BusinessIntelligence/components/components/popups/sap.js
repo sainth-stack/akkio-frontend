@@ -88,7 +88,7 @@ const SapConfig = ({ setSapOpen, onDataReceived }) => {
             const data = await response.json();
             if (response.status === 200) {
                 localStorage.setItem("filename", selectedTable)
-                localStorage.setItem('prepData', JSON.stringify(data));
+                // localStorage.setItem('prepData', JSON.stringify(data));
                 await showContent({
                     filename: selectedTable, headers: Object.keys(data), data: transformData(data)
                 })

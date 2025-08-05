@@ -7,18 +7,26 @@ import ChartPopup from './ChartPopup.jsx';
 import VirtualizedTable from '../../../../../components/VirtualizedTable';
 import './ChartPopup.css';
 
-const GeneralView = ({headers, data}) => {
+const GeneralView = ({ headers }) => {
+    const [data, setData] = useState([]);
     const [hoveredRowIndex, setHoveredRowIndex] = useState(-1);
     const [popupData, setPopupData] = useState(null);
     const [isPopupOpen, setIsPopupOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [dashboardKpis, setDashboardKpis] = useState(null);
     const [dashboardKpisLoading, setDashboardKpisLoading] = useState(true);
+    const [actualHeaders, setActualHeaders] = useState([]);
     
-    console.log(headers,data,'headers')
+    console.log(headers, data, 'headers and data');
     
     const handleRowHover = (index) => {
         setHoveredRowIndex(index);
+    };
+
+    // Extract headers from actual data structure
+    const extractHeadersFromData = (dataArray) => {
+        if (!dataArray || dataArray.length === 0) return [];
+        return Object.keys(dataArray[0]);
     };
 
     // Fetch KPI data from /api/processing_for_dashboard
@@ -27,6 +35,15 @@ const GeneralView = ({headers, data}) => {
             setDashboardKpisLoading(true);
             const response = await axios.get(`${akkiourl}/processing_for_dashboard`);
             setDashboardKpis(response.data || null);
+            
+            // Set the preview data
+            const previewData = response?.data?.Preview_data || [];
+            setData(previewData);
+            
+            // Extract headers from the actual data structure
+            const extractedHeaders = extractHeadersFromData(previewData);
+            setActualHeaders(extractedHeaders);
+            
         } catch (error) {
             console.error('Failed to fetch dashboard KPIs:', error);
             setDashboardKpis(null);
@@ -39,32 +56,74 @@ const GeneralView = ({headers, data}) => {
         fetchDashboardKpis();
     }, []);
 
+    // Check if a column contains numerical data
+    const isNumericalColumn = (header) => {
+        if (!data || data.length === 0) return false;
+        
+        // Skip obviously non-numerical columns
+        const nonNumericalColumns = ['DeviceID', 'SensorID', 'Date', 'EquipID', 'ID', 'Name', 'Type', 'Month'];
+        if (nonNumericalColumns.some(col => header.toLowerCase().includes(col.toLowerCase()))) {
+            return false;
+        }
+
+        // Check if most values in this column are numerical
+        const sampleSize = Math.min(data.length, 20);
+        let numericalCount = 0;
+        
+        for (let i = 0; i < sampleSize; i++) {
+            const value = data[i][header];
+            // Check for valid numbers, excluding null, undefined, empty strings
+            if (value !== null && value !== undefined && value !== '') {
+                const numValue = typeof value === 'number' ? value : parseFloat(value);
+                if (!isNaN(numValue) && isFinite(numValue)) {
+                    numericalCount++;
+                }
+            }
+        }
+        
+        return numericalCount / sampleSize > 0.6; // 60% of values should be numerical
+    };
+
     // Dynamic data processing for bar charts based on actual data
     const getChartData = (header) => {
         // Skip non-numerical columns
-        if (header === 'Date' || header === 'EquipID') {
+        if (!isNumericalColumn(header)) {
             return [];
         }
 
-        // Get all values for this column
+        // Get all valid numerical values for this column
         const values = data.map(row => {
             const value = row[header];
-            return typeof value === 'number' ? value : parseFloat(value) || 0;
-        }).filter(val => !isNaN(val));
+            if (value === null || value === undefined || value === '') return null;
+            
+            const numValue = typeof value === 'number' ? value : parseFloat(value);
+            return (!isNaN(numValue) && isFinite(numValue)) ? numValue : null;
+        }).filter(val => val !== null);
 
         if (values.length === 0) return [];
 
-        // Calculate min, max, and create bins
+        // Calculate statistics
         const min = Math.min(...values);
         const max = Math.max(...values);
-        const numBins = 8; // Number of bins for the histogram
+        
+        if (min === max) {
+            // All values are the same
+            return [{ 
+                value: min, 
+                count: values.length,
+                range: `${min}`,
+                percentage: 100
+            }];
+        }
+        
+        const numBins = Math.min(8, Math.max(3, Math.floor(Math.sqrt(values.length)))); // Dynamic number of bins
         const binSize = (max - min) / numBins;
 
         // Create bins and count frequencies
         const bins = [];
         for (let i = 0; i < numBins; i++) {
             const binStart = min + (i * binSize);
-            const binEnd = min + ((i + 1) * binSize);
+            const binEnd = i === numBins - 1 ? max : min + ((i + 1) * binSize);
             const binCenter = (binStart + binEnd) / 2;
             
             const count = values.filter(val => {
@@ -76,10 +135,14 @@ const GeneralView = ({headers, data}) => {
                 }
             }).length;
 
-            bins.push({
-                value: Math.round(binCenter),
-                count: count
-            });
+            if (count > 0) { // Only include bins with data
+                bins.push({
+                    value: Math.round(binCenter * 100) / 100,
+                    count: count,
+                    range: `${Math.round(binStart * 100) / 100}-${Math.round(binEnd * 100) / 100}`,
+                    percentage: Math.round((count / values.length) * 100)
+                });
+            }
         }
 
         return bins;
@@ -88,29 +151,42 @@ const GeneralView = ({headers, data}) => {
     // Enhanced chart data for detailed popup view
     const getDetailedChartData = (header) => {
         // Skip non-numerical columns
-        if (header === 'Date' || header === 'EquipID') {
+        if (!isNumericalColumn(header)) {
             return [];
         }
 
-        // Get all values for this column
+        // Get all valid numerical values for this column
         const values = data.map(row => {
             const value = row[header];
-            return typeof value === 'number' ? value : parseFloat(value) || 0;
-        }).filter(val => !isNaN(val));
+            if (value === null || value === undefined || value === '') return null;
+            
+            const numValue = typeof value === 'number' ? value : parseFloat(value);
+            return (!isNaN(numValue) && isFinite(numValue)) ? numValue : null;
+        }).filter(val => val !== null);
 
         if (values.length === 0) return [];
 
-        // Calculate min, max, and create more detailed bins for popup
+        // Calculate statistics
         const min = Math.min(...values);
         const max = Math.max(...values);
-        const numBins = 15; // More bins for detailed view
+        
+        if (min === max) {
+            return [{ 
+                value: min, 
+                count: values.length,
+                range: `${min}`,
+                percentage: 100
+            }];
+        }
+        
+        const numBins = Math.min(15, Math.max(5, Math.floor(values.length / 10))); // More bins for detailed view
         const binSize = (max - min) / numBins;
 
         // Create bins and count frequencies
         const bins = [];
         for (let i = 0; i < numBins; i++) {
             const binStart = min + (i * binSize);
-            const binEnd = min + ((i + 1) * binSize);
+            const binEnd = i === numBins - 1 ? max : min + ((i + 1) * binSize);
             const binCenter = (binStart + binEnd) / 2;
             
             const count = values.filter(val => {
@@ -121,10 +197,14 @@ const GeneralView = ({headers, data}) => {
                 }
             }).length;
 
-            bins.push({
-                value: parseFloat(binCenter.toFixed(2)),
-                count: count
-            });
+            if (count > 0) {
+                bins.push({
+                    value: parseFloat(binCenter.toFixed(2)),
+                    count: count,
+                    range: `${binStart.toFixed(2)}-${binEnd.toFixed(2)}`,
+                    percentage: Math.round((count / values.length) * 100)
+                });
+            }
         }
 
         return bins;
@@ -162,6 +242,18 @@ const GeneralView = ({headers, data}) => {
         setPopupData(null);
     };
 
+    // Get column type for display
+    const getColumnType = (header) => {
+        if (!data || data.length === 0) return 'Unknown';
+        
+        const sampleValue = data[0][header];
+        
+        if (header.toLowerCase().includes('id')) return 'ID';
+        if (header.toLowerCase().includes('date') || header.toLowerCase().includes('time') || header.toLowerCase().includes('month')) return 'DateTime';
+        if (isNumericalColumn(header)) return 'Number (Integer)';
+        return 'Text';
+    };
+
     // KPI Cards Component (Dashboard KPIs)
     const DashboardKpiCards = () => {
         if (dashboardKpisLoading) {
@@ -177,13 +269,14 @@ const GeneralView = ({headers, data}) => {
             );
         }
         if (!dashboardKpis) return null;
+        
         const stats = [
-            { label: 'Total Records', value: dashboardKpis.nof_rows },
-            { label: 'Number of Columns', value: dashboardKpis.nof_columns },
+            { label: 'Total Records', value: dashboardKpis.nof_rows || data.length },
+            { label: 'Number of Columns', value: dashboardKpis.nof_columns || actualHeaders.length },
             { label: 'Time Stamp Data', value: dashboardKpis.timestamp },
-            // { label: 'Stationary', value: dashboardKpis.stationary },
             { label: 'Sentiment', value: dashboardKpis.sentiment },
         ];
+        
         return (
             <div style={{
                 display: 'grid',
@@ -260,6 +353,153 @@ const GeneralView = ({headers, data}) => {
         );
     };
 
+    // Enhanced VirtualizedTable with integrated graphs
+    const EnhancedVirtualizedTable = ({ headers, data, height, rowHeight, searchTerm, maxDisplayRows, onRowClick }) => {
+        // Filter data based on search term
+        const filteredData = searchTerm 
+            ? data.filter(row => 
+                Object.values(row).some(value => 
+                    value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+                )
+              )
+            : data;
+
+        const displayData = filteredData.slice(0, maxDisplayRows || filteredData.length);
+
+        return (
+            <div style={{ 
+                border: '1px solid #e0e0e0', 
+                borderRadius: '8px',
+                overflow: 'hidden',
+                background: '#fff'
+            }}>
+                {/* Header with graphs */}
+                <div style={{
+                    display: 'flex',
+                    borderBottom: '2px solid #f0f0f0',
+                    background: '#fafafa',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 10
+                }}>
+                    {headers.map((header, index) => (
+                        <div
+                            key={index}
+                            style={{
+                                flex: 1,
+                                minWidth: '150px',
+                                padding: '12px 8px',
+                                borderRight: index < headers.length - 1 ? '1px solid #e0e0e0' : 'none',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                background: '#fafafa'
+                            }}
+                        >
+                            {/* Column Header */}
+                            <div style={{
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                color: '#333',
+                                marginBottom: '4px',
+                                textAlign: 'center',
+                                lineHeight: '1.3'
+                            }}>
+                                {header}
+                            </div>
+                            
+                            {/* Column Type */}
+                            <div style={{
+                                fontSize: '11px',
+                                color: '#666',
+                                marginBottom: '8px',
+                                textAlign: 'center'
+                            }}>
+                                {getColumnType(header)}
+                            </div>
+
+                            {/* Chart or Placeholder */}
+                            <div style={{
+                                height: '100px',
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                {!isNumericalColumn(header) ? (
+                                    <span style={{ 
+                                        fontSize: '10px', 
+                                        color: '#999',
+                                        textAlign: 'center',
+                                        fontStyle: 'italic'
+                                    }}>
+                                        {getColumnType(header) === 'ID' ? 'Identifier' : 
+                                         getColumnType(header) === 'DateTime' ? 'Timeline' : 'Text Data'}
+                                    </span>
+                                ) : (
+                                    <BarChartComponent 
+                                        data={getChartData(header)}
+                                        header={header}
+                                        height={130}
+                                        width={180}
+                                        onClick={handleChartClick}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Data Rows */}
+                <div style={{ 
+                    maxHeight: height - 120, // Account for header height
+                    overflowY: 'auto',
+                    overflowX: 'auto'
+                }}>
+                    {displayData.map((row, rowIndex) => (
+                        <div
+                            key={rowIndex}
+                            style={{
+                                display: 'flex',
+                                borderBottom: '1px solid #f0f0f0',
+                                backgroundColor: rowIndex % 2 === 0 ? '#fff' : '#fafafa',
+                                cursor: 'pointer',
+                                transition: 'background-color 0.2s'
+                            }}
+                            onClick={() => onRowClick && onRowClick(row, rowIndex)}
+                            onMouseEnter={() => handleRowHover(rowIndex)}
+                            onMouseLeave={() => handleRowHover(-1)}
+                        >
+                            {headers.map((header, colIndex) => (
+                                <div
+                                    key={colIndex}
+                                    style={{
+                                        flex: 1,
+                                        minWidth: '150px',
+                                        padding: '12px 8px',
+                                        borderRight: colIndex < headers.length - 1 ? '1px solid #e0e0e0' : 'none',
+                                        fontSize: '12px',
+                                        color: '#333',
+                                        textAlign: 'center',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                    title={row[header]} // Tooltip for full value
+                                >
+                                    {row[header] !== null && row[header] !== undefined ? row[header].toString() : '-'}
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    // Use actualHeaders extracted from data, fallback to props headers
+    const displayHeaders = actualHeaders.length > 0 ? actualHeaders : headers || [];
+
     return (
         <div style={{ padding: '10px', margin: '0' }}>
             {/* KPI Cards Section (Dashboard KPIs) */}
@@ -284,57 +524,7 @@ const GeneralView = ({headers, data}) => {
                 />
             </div>
 
-            {/* Charts Row */}
-            <div style={{
-                marginBottom: '16px',
-                padding: '16px',
-                background: '#f9f9f9',
-                borderRadius: '8px',
-                border: '1px solid #e0e0e0'
-            }}>
-                <h3 style={{ 
-                    margin: '0 0 16px 0', 
-                    fontSize: '16px', 
-                    fontWeight: '600',
-                    color: '#333'
-                }}>
-                    Data Distribution
-                </h3>
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: `repeat(${headers.length}, 1fr)`,
-                    gap: '16px',
-                    alignItems: 'center'
-                }}>
-                    {headers.map((header, index) => (
-                        <div key={index} style={{ textAlign: 'center' }}>
-                            <div style={{ 
-                                fontSize: '12px', 
-                                fontWeight: '500', 
-                                color: '#666',
-                                marginBottom: '8px'
-                            }}>
-                                {header}
-                            </div>
-                            {(header === 'Date' || header === 'EquipID') ? (
-                                <span style={{ fontSize: '11px', color: '#999' }}>
-                                    {header === 'Date' ? 'Timeline' : 'Equipment'}
-                                </span>
-                            ) : (
-                                <BarChartComponent 
-                                    data={getChartData(header)}
-                                    header={header}
-                                    height={80}
-                                    width={150}
-                                    onClick={handleChartClick}
-                                />
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Data Table with Virtualization */}
+            {/* Enhanced Data Table with Integrated Charts */}
             <div style={{
                 marginBottom: '24px'
             }}>
@@ -344,12 +534,12 @@ const GeneralView = ({headers, data}) => {
                     fontWeight: '600',
                     color: '#333'
                 }}>
-                    Data Records ({data.length.toLocaleString()} total)
+                    Data Overview ({data.length} records)
                 </h3>
-                <VirtualizedTable
-                    headers={headers}
+                <EnhancedVirtualizedTable
+                    headers={displayHeaders}
                     data={data}
-                    height={500}
+                    height={600}
                     rowHeight={45}
                     searchTerm={searchTerm}
                     maxDisplayRows={10000}

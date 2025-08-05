@@ -104,59 +104,61 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
         }
     };
 
-    const handleChartSummary = async () => {
-        const summaryQuestion = "summary";
-        const data = [{ question: summaryQuestion, answer: "", loading: true }];
+    const analyzeChart = async (question, isSummary = false) => {
+        const data = isSummary
+            ? [{ question, answer: "", loading: true }]
+            : [...answers, { question, answer: "", loading: true }];
         setAnswers(data);
-        
-        // Check if we have valid chart data and index
-        if (!chartData || chartData.length === 0 || index <= 0 || index > chartData.length) {
-            const ans = data.map((item) => {
-                if (item.question === summaryQuestion) {
-                    return {
-                        ...item,
-                        answer: "No chart data available for summary",
-                        loading: false
-                    }
-                } else return item;
-            });
-            setAnswers(ans);
-            return;
-        }
-        
+
         try {
             const formData = new FormData();
             formData.append('chart_id', index.toString());
+            formData.append('question', question);
             
             const res = await axios.post(
-                `${akkiourl}/get_summary`,
+                `${akkiourl}/analyze_chart`,
                 formData
             );
-            
+
             const ans = data.map((item) => {
-                if (item.question === summaryQuestion) {
+                if (item.question === question) {
                     return {
                         ...item,
                         view: "Text",
-                        answer: res?.data?.summary || "No summary available",
+                        answer: res?.data?.response || "No answer available",
                         loading: false
-                    }
-                } else return item;
+                    };
+                }
+                return item;
             });
             setAnswers(ans);
         } catch (err) {
-            console.error('Error fetching chart summary:', err);
+            console.error(`Error analyzing chart for question: "${question}"`, err);
             const ans = data.map((item) => {
-                if (item.question === summaryQuestion) {
+                if (item.question === question) {
                     return {
                         ...item,
-                        answer: "Failed to get chart summary",
+                        answer: "Failed to get answer from chart analysis",
                         loading: false
-                    }
-                } else return item;
+                    };
+                }
+                return item;
             });
             setAnswers(ans);
         }
+    };
+
+    const handleChartSummary = async () => {
+        const summaryQuestion = "summary";
+        if (!chartData || chartData.length === 0 || index <= 0 || index > chartData.length) {
+            setAnswers([{
+                question: summaryQuestion,
+                answer: "No chart data available for summary",
+                loading: false
+            }]);
+            return;
+        }
+        analyzeChart(summaryQuestion, true);
     };
 
     const handleGetAnswer = async (question, data) => {
@@ -179,17 +181,16 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
                     formData
                 );
             } else if (isChartMode) {
-                // Chart question API
-                formData.append('chart_id', index.toString());
-                formData.append('question', question);
-                res = await axios.post(
-                    `${akkiourl}/get_answer`,
-                    formData
-                );
+                // This is now handled by analyzeChart, but we call it from handleQuestionClick
+                // to keep the flow consistent. The actual API call will be made there.
+                // We are setting the state here to show the user's question immediately.
+                setAnswers(data); 
+                analyzeChart(question);
+                return; // Return early as analyzeChart handles the rest
             } else if (location.pathname === '/data-source') {
                 // Existing data source functionality
                 formData.append('prompt', question);
-                formData.append('type', 'Excel');
+                formData.append('data_type', 'Excel');
                 res = await axios.post(
                     `${akkiourl}/data_scout`,
                     formData
@@ -278,8 +279,12 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
 
     const handleQuestionClick = async (question) => {
         const data = [...answers, { question, answer: "", loading: true }]
-        setAnswers(data);
-        handleGetAnswer(question, data)
+        if (isChartMode) {
+             analyzeChart(question);
+        } else {
+            setAnswers(data);
+            handleGetAnswer(question, data);
+        }
     };
 
     const handleSendMessage = () => {

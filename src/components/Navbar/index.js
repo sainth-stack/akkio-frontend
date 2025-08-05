@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from "react";
 // import "./styles.scss";
 // import userprofile from '../../assets/images/userprofile.png'
 import { useNavigate } from "react-router-dom";
-import Logo from '../../assets/images/Logo2.jpg'
+import Logo from '../../assets/images/Logo.jpeg'
 import { AiTwotoneCalendar } from 'react-icons/ai'
 import { useLocation } from "react-router-dom";
 import { useDataAPI } from "../../pages/BusinessIntelligence/components/contexts/GetDataApi";
@@ -50,7 +50,7 @@ function Navbar() {
         <div class="collapse navbar-collapse" style={{ marginLeft: '0px' }} id="navbarNav">
           <img
             src={Logo}
-            style={{ width: '160px' }}
+            style={{ width: '100px',height:'60px',marginLeft:'50px' }}
             id="logo_RL"
           />
           {/* {name == "KProcess" && <div style={{

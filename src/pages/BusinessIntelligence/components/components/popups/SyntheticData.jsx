@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Modal, Input, Select, message, Typography, Card, Checkbox, Button } from "antd";
+import { Modal, Input, Select, message, Typography, Card, Checkbox, Button, Tabs, Upload } from "antd";
+import { InboxOutlined, DeleteOutlined } from "@ant-design/icons";
 import axios from "axios";
 import { akkiourl } from "../../../../../utils/const";
 import SampleDataTable from "../../../../genAi/components/sampleData";
@@ -7,20 +8,41 @@ import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 
 const { Text } = Typography;
+const { Dragger } = Upload;
 
-const EXAMPLE_PROMPTS = [
+const GENERATE_EXAMPLE_PROMPTS = [
   "Generate a table with 25 rows of sales data with columns: Order ID, Product Name, Quantity, Unit Price, Total Amount, Customer Name, Order Date",
   "Generate 2 images related to X-ray of a human.",
   "Create a PDF with 3 pages about Artificial Intelligence with sections: Introduction, Methodology, Conclusion"
 ];
 
+const EXTEND_EXAMPLE_PROMPTS = {
+  pdf: [
+    "Extend the document up to 7 pages",
+    "Add more sections about machine learning applications",
+    "Expand the conclusion with future research directions"
+  ],
+  image: [
+    "Create 5 images with the help of above images",
+    "Generate variations of the uploaded images",
+    "Create similar style images with different subjects"
+  ],
+  excel: [
+    "Extend 1000 rows for the given dataset",
+    "Add more realistic data following the same pattern",
+    "Generate additional columns with related data"
+  ]
+};
+
 const SyntheticData = ({ isOpen, onClose }) => {
+  const [activeTab, setActiveTab] = useState("generate");
   const [prompt, setPrompt] = useState("");
   const [type, setType] = useState("excel");
   const [loading, setLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [imageData, setImageData] = useState([]);
   const [selectedImages, setSelectedImages] = useState([]);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -32,13 +54,30 @@ const SyntheticData = ({ isOpen, onClose }) => {
     setImageData([]);
     setSelectedImages([]);
     const formData = new FormData();
-    formData.append("prompt", prompt);
-    formData.append("type", type);
+    
+    if (activeTab === "generate") {
+      formData.append("prompt", prompt);
+      formData.append("data_type", type);
+    } else {
+      // For extend tab, append files
+      if (uploadedFiles.length === 0) {
+        message.error("Please upload at least one file to extend");
+        setLoading(false);
+        return;
+      }
+      
+      uploadedFiles.forEach(file => {
+        formData.append("files", file.originFileObj || file);
+      });
+      formData.append("user_prompt", prompt);
+    }
 
     try {
-      if (type === "image") {
+      const endpoint = activeTab === "generate" ? "/data_scout" : "/generate_synthetic_data";
+      
+      if (activeTab === "generate" && type === "image") {
         const response = await axios.post(
-          `${akkiourl}/data_scout`,
+          `${akkiourl}${endpoint}`,
           formData
         );
         
@@ -57,16 +96,14 @@ const SyntheticData = ({ isOpen, onClose }) => {
         return;
       }
 
-      // Handle PDF generation differently - first try to get JSON response
-      if (type === "pdf") {
+      // Handle PDF generation for generate tab
+      if (activeTab === "generate" && type === "pdf") {
         try {
-          // Try to get JSON response first
           const jsonResponse = await axios.post(
-            `${akkiourl}/data_scout`,
+            `${akkiourl}${endpoint}`,
             formData
           );
           
-          // Check if response is JSON with document structure
           if (jsonResponse.data && (jsonResponse.data.title || jsonResponse.data.sections)) {
             const pdf = generatePDFFromJSON(jsonResponse.data);
             pdf.save(`synthetic_document_${Date.now()}.pdf`);
@@ -78,10 +115,9 @@ const SyntheticData = ({ isOpen, onClose }) => {
           console.log("JSON response failed, trying blob response...");
         }
         
-        // Fallback to blob response if JSON fails
         try {
           const blobResponse = await axios.post(
-            `${akkiourl}/data_scout`,
+            `${akkiourl}${endpoint}`,
             formData,
             {
               responseType: 'blob'
@@ -104,15 +140,14 @@ const SyntheticData = ({ isOpen, onClose }) => {
         }
       }
 
-      // Handle Excel files - try JSON response
-      if (type === "excel") {
+      // Handle Excel files for generate tab
+      if (activeTab === "generate" && type === "excel") {
         try {
           const jsonResponse = await axios.post(
-            `${akkiourl}/data_scout`,
+            `${akkiourl}${endpoint}`,
             formData
           );
           
-          // Check if response has the expected structure with message[1] containing data
           if (jsonResponse.data && 
               jsonResponse.data.message && 
               Array.isArray(jsonResponse.data.message) && 
@@ -123,7 +158,6 @@ const SyntheticData = ({ isOpen, onClose }) => {
             const excelData = jsonResponse.data.message[1];
             const workbook = convertJSONToExcel(excelData);
             
-            // Generate Excel file and download
             const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
             const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const url = window.URL.createObjectURL(blob);
@@ -139,15 +173,13 @@ const SyntheticData = ({ isOpen, onClose }) => {
             return;
           }
           
-          // If the structure doesn't match, fallback to blob response
           throw new Error("Unexpected response structure");
         } catch (jsonError) {
           console.log("JSON response failed, trying blob response...", jsonError);
           
-          // Fallback to blob response if JSON fails
           try {
             const blobResponse = await axios.post(
-              `${akkiourl}/data_scout`,
+              `${akkiourl}${endpoint}`,
               formData,
               {
                 responseType: 'blob'
@@ -168,6 +200,72 @@ const SyntheticData = ({ isOpen, onClose }) => {
           } catch (blobError) {
             throw blobError;
           }
+        }
+      }
+
+      // Handle extend tab response
+      if (activeTab === "extend") {
+        const response = await axios.post(
+          `${akkiourl}${endpoint}`,
+          formData
+        );
+
+        // Check if response contains images
+        if (response.data && response.data.images) {
+          const images = response.data.images.map((img, idx) => ({ 
+            id: idx, 
+            path: img.path, 
+            base64: img.base64 
+          }));
+          setImageData(images);
+          message.success("Images generated successfully! Select images to download.");
+          setLoading(false);
+          return;
+        }
+
+        // Handle file downloads for extend tab
+        try {
+          const blobResponse = await axios.post(
+            `${akkiourl}${endpoint}`,
+            formData,
+            {
+              responseType: 'blob'
+            }
+          );
+          
+          const contentDisposition = blobResponse.headers['content-disposition'];
+          let fileName = 'extended_file';
+          
+          if (contentDisposition && contentDisposition.includes('filename=')) {
+            fileName = contentDisposition.split('filename=')[1].replace(/"/g, '');
+          } else {
+            // Determine file extension based on uploaded file type
+            const uploadedFile = uploadedFiles[0];
+            if (uploadedFile) {
+              const originalName = uploadedFile.name.toLowerCase();
+              if (originalName.endsWith('.pdf')) {
+                fileName = 'extended_document.pdf';
+              } else if (originalName.endsWith('.xlsx') || originalName.endsWith('.xls')) {
+                fileName = 'extended_data.xlsx';
+              } else if (originalName.endsWith('.csv')) {
+                fileName = 'extended_data.csv';
+              }
+            }
+          }
+
+          const blob = new Blob([blobResponse.data]);
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', fileName);
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.URL.revokeObjectURL(url);
+          message.success("File extended and downloaded successfully!");
+        } catch (blobError) {
+          console.error("Error downloading extended file:", blobError);
+          message.error("Failed to download extended file. Please try again.");
         }
       }
 
@@ -201,7 +299,6 @@ const SyntheticData = ({ isOpen, onClose }) => {
   };
 
   const generateSafeFileName = (baseName, index, extension = 'png') => {
-    // Remove any invalid characters and ensure safe naming
     const sanitized = baseName.replace(/[<>:"/\\|?*]/g, '_');
     const timestamp = Date.now();
     return `${sanitized}_${index}_${timestamp}.${extension}`;
@@ -215,35 +312,28 @@ const SyntheticData = ({ isOpen, onClose }) => {
 
     const selectedImageData = imageData.filter(img => selectedImages.includes(img.id));
 
-    // Check if File System Access API is supported
     if ('showDirectoryPicker' in window) {
       try {
         const directoryHandle = await window.showDirectoryPicker();
         let successCount = 0;
-        let failedFiles = [];
         
         for (let i = 0; i < selectedImageData.length; i++) {
           const img = selectedImageData[i];
           try {
-            // Generate a safe, unique filename
             const fileName = generateSafeFileName('synthetic_image', img.id + 1);
             
-            // Check if file already exists and create a unique name if needed
             let finalFileName = fileName;
             let counter = 1;
             
             while (true) {
               try {
-                // Try to get existing file handle
                 await directoryHandle.getFileHandle(finalFileName);
-                // If we get here, file exists, so create a new name
                 const nameParts = fileName.split('.');
                 const extension = nameParts.pop();
                 const baseName = nameParts.join('.');
                 finalFileName = `${baseName}_${counter}.${extension}`;
                 counter++;
               } catch (error) {
-                // File doesn't exist, we can use this name
                 break;
               }
             }
@@ -254,7 +344,6 @@ const SyntheticData = ({ isOpen, onClose }) => {
             
             const writable = await fileHandle.createWritable();
             
-            // Convert base64 to blob with proper error handling
             const response = await fetch(`data:image/png;base64,${img.base64}`);
             if (!response.ok) {
               throw new Error('Failed to process image data');
@@ -267,33 +356,26 @@ const SyntheticData = ({ isOpen, onClose }) => {
             
           } catch (fileError) {
             console.error(`Error saving image ${img.id + 1}:`, fileError);
-            failedFiles.push(`Image ${img.id + 1}`);
           }
         }
         
-                 if (successCount === selectedImageData.length) {
-           // All files saved successfully
-           message.success(`All ${successCount} image(s) saved successfully to the selected directory!`);
-         } else if (successCount > 0) {
-           // Some files saved successfully
-           message.success(`${successCount} image(s) saved successfully to the selected directory!`);
-         } else {
-           // No files saved, fallback to regular download
-           downloadImagesRegular(selectedImageData);
-         }
+        if (successCount === selectedImageData.length) {
+          message.success(`All ${successCount} image(s) saved successfully to the selected directory!`);
+        } else if (successCount > 0) {
+          message.success(`${successCount} image(s) saved successfully to the selected directory!`);
+        } else {
+          downloadImagesRegular(selectedImageData);
+        }
         
-             } catch (error) {
-         if (error.name === 'AbortError') {
-           // User cancelled directory selection
-           return;
-         } else {
-           console.error('Error with directory access:', error);
-           // Fallback to regular download silently
-           downloadImagesRegular(selectedImageData);
-         }
-       }
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return;
+        } else {
+          console.error('Error with directory access:', error);
+          downloadImagesRegular(selectedImageData);
+        }
+      }
     } else {
-      // Fallback for browsers that don't support File System Access API
       downloadImagesRegular(selectedImageData);
     }
   };
@@ -307,6 +389,7 @@ const SyntheticData = ({ isOpen, onClose }) => {
       link.click();
       link.remove();
     });
+    message.success(`${selectedImageData.length} image(s) downloaded successfully!`);
   };
 
   const generatePDFFromJSON = (jsonData) => {
@@ -317,7 +400,6 @@ const SyntheticData = ({ isOpen, onClose }) => {
     const maxWidth = pageWidth - 2 * margin;
     let yPosition = margin;
 
-    // Helper function to add text with word wrapping
     const addWrappedText = (text, x, y, maxWidth, fontSize = 12) => {
       pdf.setFontSize(fontSize);
       const lines = pdf.splitTextToSize(text, maxWidth);
@@ -335,20 +417,16 @@ const SyntheticData = ({ isOpen, onClose }) => {
       return y + (lines.length * lineHeight) + 8;
     };
 
-    // Title
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(20);
     pdf.text(jsonData.title || 'Generated Document', margin, yPosition);
     yPosition += 20;
 
-    // Add a line under the title
     pdf.setLineWidth(0.5);
     pdf.line(margin, yPosition, pageWidth - margin, yPosition);
     yPosition += 15;
 
-    // Process sections
     jsonData.sections?.forEach((section, sectionIndex) => {
-      // Section heading
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(16);
       
@@ -360,9 +438,7 @@ const SyntheticData = ({ isOpen, onClose }) => {
       pdf.text(`${sectionIndex + 1}. ${section.heading}`, margin, yPosition);
       yPosition += 15;
 
-      // Process subsections
       section.subsections?.forEach((subsection, subIndex) => {
-        // Subsection heading
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(14);
         
@@ -374,16 +450,14 @@ const SyntheticData = ({ isOpen, onClose }) => {
         pdf.text(`${sectionIndex + 1}.${subIndex + 1} ${subsection.subheading}`, margin + 10, yPosition);
         yPosition += 12;
 
-        // Subsection content
         pdf.setFont('helvetica', 'normal');
         yPosition = addWrappedText(subsection.content, margin + 10, yPosition, maxWidth - 10, 11);
         yPosition += 8;
       });
       
-      yPosition += 5; // Extra space between sections
+      yPosition += 5;
     });
 
-    // Add page numbers
     const totalPages = pdf.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
@@ -395,17 +469,12 @@ const SyntheticData = ({ isOpen, onClose }) => {
     return pdf;
   };
 
-  // Helper function to convert JSON data to Excel workbook
   const convertJSONToExcel = (jsonData) => {
     const workbook = XLSX.utils.book_new();
     
-    // Get all column names
     const columns = Object.keys(jsonData);
-    
-    // Find the maximum length among all arrays to determine number of rows
     const maxRows = Math.max(...columns.map(col => Array.isArray(jsonData[col]) ? jsonData[col].length : 0));
     
-    // Create array of objects for the worksheet
     const worksheetData = [];
     
     for (let i = 0; i < maxRows; i++) {
@@ -420,149 +489,286 @@ const SyntheticData = ({ isOpen, onClose }) => {
       worksheetData.push(row);
     }
     
-    // Create worksheet from array of objects
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-    
-    // Add worksheet to workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
     
     return workbook;
   };
+
+  const handleFileUpload = (info) => {
+    const { fileList } = info;
+    setUploadedFiles(fileList);
+    
+    if (info.file.status === 'done') {
+      message.success(`${info.file.name} file uploaded successfully`);
+    } else if (info.file.status === 'error') {
+      message.error(`${info.file.name} file upload failed.`);
+    }
+  };
+
+  const removeFile = (file) => {
+    const newFileList = uploadedFiles.filter(item => item.uid !== file.uid);
+    setUploadedFiles(newFileList);
+  };
+
+  const getFileTypeFromUploaded = () => {
+    if (uploadedFiles.length === 0) return null;
+    
+    const file = uploadedFiles[0].originFileObj || uploadedFiles[0];
+    const fileName = file.name.toLowerCase();
+    
+    if (fileName.endsWith('.pdf')) return 'pdf';
+    if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.png')) return 'image';
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) return 'excel';
+    
+    return null;
+  };
+
+  const resetState = () => {
+    setPrompt("");
+    setPreviewData(null);
+    setImageData([]);
+    setSelectedImages([]);
+    setUploadedFiles([]);
+  };
+
+  const tabItems = [
+    {
+      key: 'generate',
+      label: 'Generate',
+      children: (
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <div style={{ marginBottom: "8px", fontWeight: "500" }}>Prompt</div>
+            <Input.TextArea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Generate a table with 25 rows of realistic synthetic data..."
+              rows={4}
+            />
+          </div>
+          
+          {imageData.length === 0 && (
+            <div>
+              <Text type="secondary">Example prompts (click to use):</Text>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+                {GENERATE_EXAMPLE_PROMPTS.map((example, index) => (
+                  <Card
+                    key={index}
+                    size="small"
+                    style={{ cursor: "pointer", transition: "background-color 0.2s" }}
+                    onClick={() => handleExampleClick(example)}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
+                    <Text>{example}</Text>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div>
+            <div style={{ marginBottom: "8px", fontWeight: "500" }}>Output Type</div>
+            <Select
+              value={type}
+              onChange={setType}
+              style={{ width: "100%" }}
+              options={[
+                { value: "excel", label: "Excel" },
+                { value: "image", label: "Image" },
+                { value: "pdf", label: "PDF" },
+              ]}
+            />
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'extend',
+      label: 'Extend',
+      children: (
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <div style={{ marginBottom: "8px", fontWeight: "500" }}>Upload Files</div>
+            <Dragger
+              multiple
+              beforeUpload={() => false}
+              onChange={handleFileUpload}
+              fileList={uploadedFiles}
+              accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png"
+              style={{ backgroundColor: '#fafafa' }}
+            >
+              <p className="ant-upload-drag-icon">
+                <InboxOutlined style={{ fontSize: '48px', color: '#40a9ff' }} />
+              </p>
+              <p className="ant-upload-text">Click or drag files to this area to upload</p>
+              <p className="ant-upload-hint">
+                Support for PDF, Excel, CSV, and Image files
+              </p>
+            </Dragger>
+          </div>
+
+          {uploadedFiles.length > 0 && (
+            <div>
+              <div style={{ marginBottom: "8px", fontWeight: "500" }}>Uploaded Files:</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {uploadedFiles.map((file) => (
+                  <div key={file.uid} style={{ 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "center", 
+                    padding: "12px", 
+                    border: "1px solid #d9d9d9", 
+                    borderRadius: "6px",
+                    backgroundColor: "#fafafa"
+                  }}>
+                    <span style={{ fontWeight: "500" }}>{file.name}</span>
+                    <Button 
+                      type="text" 
+                      icon={<DeleteOutlined />} 
+                      onClick={() => removeFile(file)}
+                      size="small"
+                      danger
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div>
+            <div style={{ marginBottom: "8px", fontWeight: "500" }}>Prompt</div>
+            <Input.TextArea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Describe how you want to extend the uploaded files..."
+              rows={4}
+            />
+          </div>
+          
+          {uploadedFiles.length > 0 && imageData.length === 0 && (
+            <div>
+              <Text type="secondary">Example prompts for {getFileTypeFromUploaded() || 'your file type'} (click to use):</Text>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+                {(EXTEND_EXAMPLE_PROMPTS[getFileTypeFromUploaded()] || EXTEND_EXAMPLE_PROMPTS.excel).map((example, index) => (
+                  <Card
+                    key={index}
+                    size="small"
+                    style={{ cursor: "pointer", transition: "background-color 0.2s" }}
+                    onClick={() => handleExampleClick(example)}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
+                    <Text>{example}</Text>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )
+    }
+  ];
 
   return (
     <Modal
       title="Generate Synthetic Data"
       open={isOpen}
       onCancel={() => {
-        setPreviewData(null);
-        setImageData([]);
-        setSelectedImages([]);
+        resetState();
         onClose();
       }}
       onOk={handleGenerate}
-      okText="Generate"
+      okText={activeTab === "generate" ? "Generate" : "Extend"}
       confirmLoading={loading}
       width={800}
+      destroyOnClose={true}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        <div>
-          <div style={{ marginBottom: "8px" }}>Prompt</div>
-          <Input.TextArea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Generate a table with 25 rows of realistic synthetic data..."
-            rows={4}
-          />
+      <Tabs 
+        activeKey={activeTab} 
+        onChange={(key) => {
+          setActiveTab(key);
+          resetState();
+        }}
+        items={tabItems}
+        style={{ marginBottom: "16px" }}
+      />
+      
+      {previewData && (
+        <div style={{ marginTop: "16px" }}>
+          <div style={{ marginBottom: "8px", fontWeight: "500" }}>Preview</div>
+          <div style={{ maxHeight: "300px", overflow: "auto", border: "1px solid #d9d9d9", borderRadius: "6px" }}>
+            <SampleDataTable data={previewData} />
+          </div>
         </div>
-        
-        {/* Hide example prompts when images are generated */}
-        {imageData.length === 0 && (
-          <div>
-            <Text type="secondary">Example prompts (click to use):</Text>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
-              {EXAMPLE_PROMPTS.map((example, index) => (
-                <Card
-                  key={index}
-                  size="small"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => handleExampleClick(example)}
-                >
-                  <Text>{example}</Text>
-                </Card>
-              ))}
+      )}
+      
+      {imageData.length > 0 && (
+        <div style={{ marginTop: "16px" }}>
+          <div style={{ 
+            display: "flex", 
+            justifyContent: "space-between", 
+            alignItems: "center", 
+            marginBottom: "16px" 
+          }}>
+            <div style={{ fontSize: "16px", fontWeight: "500" }}>
+              Generated Images
+            </div>
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              <Checkbox
+                checked={selectedImages.length === imageData.length}
+                indeterminate={selectedImages.length > 0 && selectedImages.length < imageData.length}
+                onChange={(e) => handleSelectAll(e.target.checked)}
+              >
+                Select All
+              </Checkbox>
+              <Button 
+                type="primary" 
+                disabled={selectedImages.length === 0}
+                onClick={downloadSelectedImages}
+              >
+                Download Selected ({selectedImages.length})
+              </Button>
             </div>
           </div>
-        )}
-        
-        <div>
-          <div style={{ marginBottom: "8px" }}>Output Type</div>
-          <Select
-            value={type}
-            onChange={setType}
-            style={{ width: "100%" }}
-            options={[
-              { value: "excel", label: "Excel" },
-              { value: "image", label: "Image" },
-              { value: "pdf", label: "PDF" },
-            ]}
-          />
-        </div>
-        
-        {previewData && (
-          <div>
-            <div style={{ marginBottom: "8px" }}>Preview</div>
-            <div style={{ maxHeight: "300px", overflow: "auto" }}>
-              <SampleDataTable data={previewData} />
-            </div>
-          </div>
-        )}
-        
-        {imageData.length > 0 && (
-          <div>
-            <div style={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center", 
-              marginBottom: "16px" 
-            }}>
-              <div style={{ marginBottom: "8px", fontSize: "16px", fontWeight: "500" }}>
-                Generated Images
-              </div>
-              <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                <Checkbox
-                  checked={selectedImages.length === imageData.length}
-                  indeterminate={selectedImages.length > 0 && selectedImages.length < imageData.length}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                >
-                  Select All
-                </Checkbox>
-                <Button 
-                  type="primary" 
-                  disabled={selectedImages.length === 0}
-                  onClick={downloadSelectedImages}
-                >
-                  Download Selected ({selectedImages.length})
-                </Button>
-              </div>
-            </div>
-            
-            <div style={{ 
-              display: "grid", 
-              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", 
-              gap: "16px" 
-            }}>
-              {imageData.map((img) => (
-                <div key={img.id} style={{ 
-                  border: '1px solid #eee', 
-                  borderRadius: '8px', 
-                  padding: '12px',
-                  backgroundColor: selectedImages.includes(img.id) ? '#f0f8ff' : 'white'
-                }}>
-                  <div style={{ textAlign: "center", marginBottom: "8px" }}>
-                    <Checkbox
-                      checked={selectedImages.includes(img.id)}
-                      onChange={(e) => handleImageSelection(img.id, e.target.checked)}
-                    >
-                      Select Image {img.id + 1}
-                    </Checkbox>
-                  </div>
-                  <img
-                    src={`data:image/png;base64,${img.base64}`}
-                    alt={`Generated ${img.id + 1}`}
-                    style={{ 
-                      width: "100%", 
-                      maxHeight: 200, 
-                      objectFit: "contain",
-                      // border: '1px solid #ddd',
-                      // borderRadius: '4px'
-                    }}
-                  />
+          
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", 
+            gap: "16px" 
+          }}>
+            {imageData.map((img) => (
+              <div key={img.id} style={{ 
+                border: '1px solid #eee', 
+                borderRadius: '8px', 
+                padding: '12px',
+                backgroundColor: selectedImages.includes(img.id) ? '#f0f8ff' : 'white',
+                transition: "background-color 0.2s"
+              }}>
+                <div style={{ textAlign: "center", marginBottom: "8px" }}>
+                  <Checkbox
+                    checked={selectedImages.includes(img.id)}
+                    onChange={(e) => handleImageSelection(img.id, e.target.checked)}
+                  >
+                    Select Image {img.id + 1}
+                  </Checkbox>
                 </div>
-              ))}
-            </div>
+                <img
+                  src={`data:image/png;base64,${img.base64}`}
+                  alt={`Generated ${img.id + 1}`}
+                  style={{ 
+                    width: "100%", 
+                    maxHeight: 200, 
+                    objectFit: "contain",
+                    borderRadius: "4px"
+                  }}
+                />
+              </div>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </Modal>
   );
 };

@@ -128,13 +128,13 @@ const Reports = () => {
                   <h3 className="pro__report-title">
                     {report.title || 'Untitled Document'}
                   </h3>
-                  <span className="pro__report-date">
-                    {formatDate(report.created_at)}
-                  </span>
                 </div>
                 <div className="pro__description">
                   {report.description || <em>No description provided.</em>}
                 </div>
+                <span className="pro__report-date" style={{marginBottom:'20px'}}>
+                    {formatDate(report.created_at)}
+                  </span>
                 <div className="pro__card-actions">
                   <a
                     href={report.url}

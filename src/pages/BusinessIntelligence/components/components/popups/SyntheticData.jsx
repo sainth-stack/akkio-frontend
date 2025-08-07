@@ -34,6 +34,145 @@ const EXTEND_EXAMPLE_PROMPTS = {
   ]
 };
 
+function parseDataframeString(dfStr) {
+  // This is a parser for pandas dataframe string representation
+  try {
+    // First, identify the header row and data rows
+    const lines = dfStr.split('\n').filter(line => line.trim() !== '');
+    if (lines.length < 2) return null;
+    
+    // Check if this is a pandas DataFrame string representation
+    // Look for patterns like index headers or DataFrame summary lines
+    const isPandasDF = lines.some(line => 
+      line.includes('dtype:') || 
+      line.includes('Name:') || 
+      line.includes('Length:') ||
+      line.match(/^\s*\d+\s+\S/) ||
+      line.includes('[') && line.includes('rows') && line.includes('columns')
+    );
+    
+    if (!isPandasDF) {
+      console.error("Not a pandas DataFrame string representation");
+      return null;
+    }
+    
+    // Find the header line - it's usually the first line that doesn't contain summary info
+    let headerLineIndex = 0;
+    while (headerLineIndex < lines.length && 
+           (lines[headerLineIndex].includes('[') || 
+            lines[headerLineIndex].includes('dtype:') || 
+            lines[headerLineIndex].trim() === '')) {
+      headerLineIndex++;
+    }
+    
+    if (headerLineIndex >= lines.length) {
+      console.error("Could not find header line");
+      return null;
+    }
+    
+    const headerLine = lines[headerLineIndex].trim();
+    
+    // Parse header - handle multi-word column names with spaces
+    // This regex matches words or word groups separated by 2+ spaces
+    const headerMatches = headerLine.match(/([\w\s\-\.\(\)\[\]\+\/%]+?)(?=\s{2,}|$)/g) || [];
+    const headerParts = headerMatches.map(part => part.trim()).filter(part => part !== '');
+    
+    if (headerParts.length === 0) {
+      console.error("Could not parse header parts");
+      return null;
+    }
+    
+    // Create a structured object for the data
+    const result = {};
+    headerParts.forEach(header => {
+      result[header] = [];
+    });
+    
+    // Check if the format includes row indices
+    const hasIndices = lines.slice(headerLineIndex + 1).some(line => /^\s*\d+\s/.test(line.trim()));
+    
+    // Process data rows
+    for (let i = headerLineIndex + 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Skip empty lines and summary lines (usually at the end of DataFrame output)
+      if (!line || 
+          line.includes('dtype:') || 
+          line.includes('Name:') || 
+          line.includes('Length:') ||
+          (line.includes('[') && line.includes('rows') && line.includes('columns'))) {
+        continue;
+      }
+      
+      // Handle row with index
+      let rowData = line;
+      let rowIndex = null;
+      
+      if (hasIndices) {
+        // Extract the index and the rest of the data
+        const indexMatch = line.match(/^\s*(\d+)\s+(.*)$/);
+        if (indexMatch) {
+          rowIndex = indexMatch[1];
+          rowData = indexMatch[2];
+        }
+      }
+      
+      // Split the row data by position to match headers
+      let columnValues = [];
+      let currentPos = 0;
+      
+      // For each header, try to extract a corresponding value
+      for (let j = 0; j < headerParts.length; j++) {
+        // Skip the first column if it's just the row index and we already extracted it
+        if (j === 0 && hasIndices && rowIndex !== null) {
+          columnValues.push(rowIndex);
+          continue;
+        }
+        
+        // Find the next value
+        let nextValue;
+        
+        // If this is the last column, take the rest of the line
+        if (j === headerParts.length - 1) {
+          nextValue = rowData.substring(currentPos).trim();
+        } else {
+          // Try to find where the next column starts (usually after 2+ spaces)
+          const nextColumnMatch = rowData.substring(currentPos).match(/([^\s].*?)(?=\s{2,}|$)/);
+          if (nextColumnMatch) {
+            nextValue = nextColumnMatch[0].trim();
+            currentPos += nextColumnMatch[0].length + (nextColumnMatch.index || 0);
+          } else {
+            nextValue = '';
+          }
+        }
+        
+        columnValues.push(nextValue);
+      }
+      
+      // Add values to the result object
+      headerParts.forEach((header, idx) => {
+        if (idx < columnValues.length) {
+          result[header].push(columnValues[idx]);
+        } else {
+          result[header].push(''); // Add empty string for missing values
+        }
+      });
+    }
+    
+    // Check if we actually parsed any data
+    const hasData = Object.values(result).some(arr => arr.length > 0);
+    if (!hasData) {
+      console.error("No data rows were parsed");
+      return null;
+    }
+    
+    return result;
+  } catch (e) {
+    console.error("Error parsing dataframe string:", e);
+    return null;
+  }
+}
+
 const SyntheticData = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState("generate");
   const [prompt, setPrompt] = useState("");
@@ -140,27 +279,114 @@ const SyntheticData = ({ isOpen, onClose }) => {
         }
       }
 
-      // Handle Excel files for generate tab
       if (activeTab === "generate" && type === "excel") {
         try {
-          const jsonResponse = await axios.post(
+          const response = await axios.post(
             `${akkiourl}${endpoint}`,
             formData
           );
           
-          if (jsonResponse.data && 
-              jsonResponse.data.message && 
-              Array.isArray(jsonResponse.data.message) && 
-              jsonResponse.data.message.length > 1 && 
-              typeof jsonResponse.data.message[1] === 'object') {
+          // Handle the new response format with data, shape, and columns
+          if (response.data && response.data.data && Array.isArray(response.data.data)) {
+            try {
+              // Convert the array of objects to the format expected by convertJSONToExcel
+              const jsonData = {};
+              
+              // Initialize columns from the first object or from columns array if provided
+              const columns = response.data.columns || Object.keys(response.data.data[0] || {});
+              
+              // Initialize arrays for each column
+              columns.forEach(column => {
+                jsonData[column] = [];
+              });
+              
+              // Populate data for each column
+              response.data.data.forEach(row => {
+                columns.forEach(column => {
+                  jsonData[column].push(row[column] || '');
+                });
+              });
+              
+              const workbook = convertJSONToExcel(jsonData);
+              const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+              const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+              const url = window.URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.setAttribute('download', `synthetic_data_${Date.now()}.xlsx`);
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              window.URL.revokeObjectURL(url);
+              message.success("Excel file generated and downloaded successfully!");
+              setLoading(false);
+              return;
+            } catch (parseError) {
+              console.error("Error processing data array:", parseError);
+            }
+          }
+          
+          // Handle the legacy response format: "('data_output.xlsx', dataframe)"
+          if (response.data && response.data.message) {
+            // Check if the message is a string that contains the filename and data
+            if (typeof response.data.message === 'string') {
+              // Try to parse the string to extract filename and data
+              try {
+                const match = response.data.message.match(/^\((.*?),\s*(.*)\)$/);
+                if (match) {
+                  const fileName = match[1].replace(/'/g, '');
+                  const dataStr = match[2];
+                  
+                  // If the data is already a JSON object in string form
+                  let data;
+                  try {
+                    data = JSON.parse(dataStr);
+                  } catch (e) {
+                    // If not JSON, try to handle as pandas dataframe string representation
+                    data = parseDataframeString(dataStr);
+                  }
+                  
+                  if (data) {
+                    const workbook = convertJSONToExcel(data);
+                    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+                    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', fileName || `synthetic_data_${Date.now()}.xlsx`);
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(url);
+                    message.success("Excel file generated and downloaded successfully!");
+                    setLoading(false);
+                    return;
+                  }
+                }
+              } catch (parseError) {
+                console.error("Error parsing response message:", parseError);
+              }
+            }
+          }
+          
+          // Fallback to blob response handling
+          try {
+            const blobResponse = await axios.post(
+              `${akkiourl}${endpoint}`,
+              formData,
+              {
+                responseType: 'blob'
+              }
+            );
             
-            const fileName = jsonResponse.data.message[0] || `synthetic_data_${Date.now()}.xlsx`;
-            const excelData = jsonResponse.data.message[1];
-            const workbook = convertJSONToExcel(excelData);
+            const contentDisposition = blobResponse.headers['content-disposition'];
+            let fileName = `synthetic_data_${Date.now()}.xlsx`;
             
-            const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-            const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            const url = window.URL.createObjectURL(blob);
+            if (contentDisposition && contentDisposition.includes('filename=')) {
+              fileName = contentDisposition.split('filename=')[1].replace(/"/g, '');
+            }
+            
+            const url = window.URL.createObjectURL(new Blob([blobResponse.data]));
             const link = document.createElement('a');
             link.href = url;
             link.setAttribute('download', fileName);
@@ -171,35 +397,11 @@ const SyntheticData = ({ isOpen, onClose }) => {
             message.success("Excel file generated and downloaded successfully!");
             setLoading(false);
             return;
-          }
-          
-          throw new Error("Unexpected response structure");
-        } catch (jsonError) {
-          console.log("JSON response failed, trying blob response...", jsonError);
-          
-          try {
-            const blobResponse = await axios.post(
-              `${akkiourl}${endpoint}`,
-              formData,
-              {
-                responseType: 'blob'
-              }
-            );
-            
-            const url = window.URL.createObjectURL(new Blob([blobResponse.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `synthetic_data.xlsx`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-            message.success("Excel file generated and downloaded successfully!");
-            setLoading(false);
-            return;
           } catch (blobError) {
             throw blobError;
           }
+        } catch (error) {
+          throw error;
         }
       }
 
@@ -223,7 +425,23 @@ const SyntheticData = ({ isOpen, onClose }) => {
           return;
         }
 
-        // Handle file downloads for extend tab
+        // Check if response contains structured document data for PDF
+        if (response.data && response.data.structured_document && 
+            (response.data.content_type === 'pdf' || 
+             (uploadedFiles[0] && uploadedFiles[0].name.toLowerCase().endsWith('.pdf')))) {
+          try {
+            const pdf = generatePDFFromJSON(response.data.structured_document);
+            pdf.save(`extended_document_${Date.now()}.pdf`);
+            message.success("PDF extended and downloaded successfully!");
+            setLoading(false);
+            return;
+          } catch (pdfError) {
+            console.error("Error generating PDF from structured data:", pdfError);
+            // Fall through to blob handling
+          }
+        }
+        
+        // Handle file downloads for extend tab as blob
         try {
           const blobResponse = await axios.post(
             `${akkiourl}${endpoint}`,

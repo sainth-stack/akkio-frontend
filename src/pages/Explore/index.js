@@ -818,6 +818,345 @@ const GeneralAnswer = ({ data }) => {
   );
 };
 
+// Component to render simple text/explanation answers
+const AnswerText = ({ payload, explanation }) => {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      {explanation && (
+        <div style={{
+          background: '#eef2ff',
+          border: '1px solid #c7d2fe',
+          color: '#3730a3',
+          padding: '0.5rem 0.75rem',
+          borderRadius: 6,
+          fontSize: 13,
+        }}>
+          {explanation}
+        </div>
+      )}
+      <div style={{ color: '#111827', fontSize: 15, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+        {typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2)}
+      </div>
+    </div>
+  );
+};
+
+// Component to render table/list results
+const AnswerTable = ({ rows, explanation }) => {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return <AnswerText payload="No rows to display." explanation={explanation} />;
+  }
+
+  // Build a stable set of columns from the union of keys across rows
+  const firstRowKeys = Object.keys(rows[0] || {});
+  const extraKeys = Array.from(
+    rows.reduce((set, r) => {
+      Object.keys(r || {}).forEach((k) => set.add(k));
+      return set;
+    }, new Set())
+  ).filter((k) => !firstRowKeys.includes(k));
+  const columns = [...firstRowKeys, ...extraKeys];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      {explanation && (
+        <div style={{
+          background: '#ecfeff',
+          border: '1px solid #a5f3fc',
+          color: '#155e75',
+          padding: '0.5rem 0.75rem',
+          borderRadius: 6,
+          fontSize: 13,
+        }}>
+          {explanation}
+        </div>
+      )}
+      <div style={{ width: '100%', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f9fafb' }}>
+              {columns.map((col) => (
+                <th key={col} style={{
+                  position: 'sticky',
+                  top: 0,
+                  textAlign: 'left',
+                  padding: '10px 12px',
+                  borderBottom: '1px solid #e5e7eb',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  color: '#374151',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIdx) => (
+              <tr key={rowIdx} style={{ backgroundColor: rowIdx % 2 === 0 ? '#ffffff' : '#f9fafb' }}>
+                {columns.map((col) => (
+                  <td key={col} style={{
+                    padding: '10px 12px',
+                    borderBottom: '1px solid #f3f4f6',
+                    fontSize: 13,
+                    color: '#111827',
+                    maxWidth: 420,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {row && row[col] !== undefined && row[col] !== null
+                      ? String(row[col])
+                      : ''}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// Component to render Plotly chart from figure dict
+const AnswerPlotly = ({ figure, explanation }) => {
+  const rawData = (figure && (figure.data || figure.figure?.data)) || [];
+  const rawLayout = (figure && (figure.layout || figure.figure?.layout)) || {};
+
+  // Normalize traces: ensure arrays exist and lengths match; allow categorical y for scatter/line; drop empty traces
+  let missingYWarning = false;
+  const MAX_POINTS_PER_TRACE = 10000; // hard cap for rendering performance
+  const WEBGL_THRESHOLD = 50000; // switch to scattergl beyond this size
+
+  const toEpoch = (v) => {
+    const t = typeof v === 'string' || v instanceof Date ? Date.parse(v) : (Number.isFinite(v) ? v : NaN);
+    return Number.isFinite(t) ? t : NaN;
+  };
+
+  // Largest-Triangle-Three-Buckets downsampling for numeric series
+  const downsampleLTTB = (xArr, yArr, threshold) => {
+    const length = xArr.length;
+    if (threshold >= length || threshold <= 2) return { x: xArr, y: yArr };
+
+    // Convert x to numeric domain for area calculations
+    const xNum = xArr.map((v, i) => {
+      const n = toEpoch(v);
+      return Number.isFinite(n) ? n : i; // fallback to index if not a date/number
+    });
+
+    const sampledX = new Array(threshold);
+    const sampledY = new Array(threshold);
+
+    // Bucket size. Leave room for first and last data points
+    const bucketSize = (length - 2) / (threshold - 2);
+    let a = 0; // initially a is the first point
+    sampledX[0] = xArr[0];
+    sampledY[0] = yArr[0];
+
+    for (let i = 0; i < threshold - 2; i++) {
+      // range for this bucket
+      const rangeStart = Math.floor((i + 1) * bucketSize) + 1;
+      const rangeEnd = Math.floor((i + 2) * bucketSize) + 1;
+      const rangeEndClamped = Math.min(rangeEnd, length);
+
+      // Calculate average for next bucket (used for calculating area)
+      let avgX = 0;
+      let avgY = 0;
+      const avgRangeStart = rangeStart;
+      const avgRangeEnd = rangeEndClamped;
+      const avgRangeLength = avgRangeEnd - avgRangeStart;
+      for (let j = avgRangeStart; j < avgRangeEnd; j++) {
+        avgX += xNum[j];
+        avgY += Number(yArr[j]) || 0;
+      }
+      avgX /= Math.max(1, avgRangeLength);
+      avgY /= Math.max(1, avgRangeLength);
+
+      // Get the point from this bucket that forms the largest triangle
+      let maxArea = -1;
+      let maxIndex = rangeStart;
+      for (let j = rangeStart; j < rangeEndClamped; j++) {
+        const area = Math.abs(
+          (xNum[a] - avgX) * (Number(yArr[j]) - Number(yArr[a])) -
+          (xNum[a] - xNum[j]) * (avgY - Number(yArr[a]))
+        );
+        if (area > maxArea) {
+          maxArea = area;
+          maxIndex = j;
+        }
+      }
+      sampledX[i + 1] = xArr[maxIndex];
+      sampledY[i + 1] = yArr[maxIndex];
+      a = maxIndex; // next a is this bucket's chosen point
+    }
+
+    sampledX[threshold - 1] = xArr[length - 1];
+    sampledY[threshold - 1] = yArr[length - 1];
+    return { x: sampledX, y: sampledY };
+  };
+
+  const strideSample = (xArr, yArr, threshold) => {
+    const length = xArr.length;
+    if (length <= threshold) return { x: xArr, y: yArr };
+    const stride = Math.ceil(length / threshold);
+    const sx = [];
+    const sy = [];
+    for (let i = 0; i < length; i += stride) {
+      sx.push(xArr[i]);
+      sy.push(yArr[i]);
+    }
+    // Ensure last point is included
+    if (sx[sx.length - 1] !== xArr[length - 1]) {
+      sx.push(xArr[length - 1]);
+      sy.push(yArr[length - 1]);
+    }
+    return { x: sx, y: sy };
+  };
+
+  const normalizedData = (Array.isArray(rawData) ? rawData : [])
+    .map((trace) => {
+      const x = Array.isArray(trace?.x) ? trace.x : [];
+      let yCandidate = Array.isArray(trace?.y) ? trace.y : (Array.isArray(trace?.values) ? trace.values : []);
+      if ((!yCandidate || yCandidate.length === 0) && Array.isArray(x) && x.length > 0 && (trace?.type === 'scatter' || trace?.type === 'lines')) {
+        yCandidate = x.map((_, i) => i + 1);
+        missingYWarning = true;
+      }
+
+      const isScatterLike = (
+        trace?.type === 'scatter' ||
+        trace?.type === 'scattergl' ||
+        (typeof trace?.mode === 'string' && (trace.mode.includes('lines') || trace.mode.includes('markers')))
+      );
+
+      const y = isScatterLike
+        ? yCandidate.map((v) => (v === null || v === undefined || v === '' ? null : v))
+        : yCandidate
+            .map((v) => (v === null || v === undefined || v === '' ? null : Number(v)))
+            .map((v) => (Number.isFinite(v) ? v : null));
+
+      const filtered = x.reduce((acc, xv, i) => {
+        const yv = y[i];
+        if (isScatterLike) {
+          if (yv !== null) {
+            acc.x.push(xv);
+            acc.y.push(yv);
+          }
+        } else if (yv !== null && Number.isFinite(yv)) {
+          acc.x.push(xv);
+          acc.y.push(yv);
+        }
+        return acc;
+      }, { x: [], y: [] });
+
+      // Downsample large traces
+      const pointCount = filtered.x.length;
+      let ds = { x: filtered.x, y: filtered.y };
+      if (pointCount > MAX_POINTS_PER_TRACE) {
+        const yIsNumeric = filtered.y.every((v) => typeof v === 'number' && Number.isFinite(v));
+        ds = yIsNumeric ? downsampleLTTB(filtered.x, filtered.y, MAX_POINTS_PER_TRACE) : strideSample(filtered.x, filtered.y, MAX_POINTS_PER_TRACE);
+      }
+
+      return {
+        ...trace,
+        type: (isScatterLike && pointCount > WEBGL_THRESHOLD) ? 'scattergl' : trace?.type,
+        x: ds.x,
+        y: ds.y,
+        hovertemplate: trace?.hovertemplate || '%{x}<br>%{y}<extra></extra>',
+        marker: {
+          ...(trace?.marker || {}),
+          line: { width: 0 },
+        },
+      };
+    })
+    .filter((t) => Array.isArray(t.x) && t.x.length > 0 && Array.isArray(t.y) && t.y.length > 0);
+
+  if (!normalizedData.length) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {explanation && (
+          <div style={{
+            background: '#fef3c7',
+            border: '1px solid #fde68a',
+            color: '#7c2d12',
+            padding: '0.5rem 0.75rem',
+            borderRadius: 6,
+            fontSize: 13,
+          }}>
+            {explanation}
+          </div>
+        )}
+        <div style={{
+          width: '100%',
+          padding: '16px',
+          border: '1px dashed #e5e7eb',
+          borderRadius: 8,
+          background: '#fafafa',
+          color: '#6b7280',
+          fontSize: 14,
+          textAlign: 'center',
+        }}>
+          No chart data to display.
+        </div>
+      </div>
+    );
+  }
+
+  const isCategoricalY = normalizedData.some((t) => (t?.y || []).some((v) => typeof v === 'string'));
+
+  const layout = {
+    ...rawLayout,
+    autosize: true,
+    paper_bgcolor: '#ffffff',
+    plot_bgcolor: '#ffffff',
+    margin: { l: 60, r: 30, t: 48, b: 80, ...(rawLayout?.margin || {}) },
+    font: { family: 'Inter, system-ui, sans-serif', size: 12, color: '#374151', ...(rawLayout?.font || {}) },
+    showlegend: rawLayout?.showlegend ?? true,
+    legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.2, ...(rawLayout?.legend || {}) },
+    xaxis: { ...(rawLayout?.xaxis || {}), tickangle: rawLayout?.xaxis?.tickangle ?? -45, gridcolor: '#f3f4f6', zerolinecolor: '#e5e7eb' },
+    yaxis: { ...(rawLayout?.yaxis || {}), gridcolor: '#f3f4f6', zerolinecolor: '#e5e7eb', type: isCategoricalY ? 'category' : (rawLayout?.yaxis?.type || undefined) },
+    template: undefined, // avoid heavy default templates that clash with app theme
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      {explanation && (
+        <div style={{
+          background: '#fef3c7',
+          border: '1px solid #fde68a',
+          color: '#7c2d12',
+          padding: '0.5rem 0.75rem',
+          borderRadius: 6,
+          fontSize: 13,
+        }}>
+          {explanation}
+        </div>
+      )}
+      {missingYWarning && (
+        <div style={{
+          background: '#fff7ed',
+          border: '1px solid #fed7aa',
+          color: '#9a3412',
+          padding: '0.4rem 0.65rem',
+          borderRadius: 6,
+          fontSize: 12,
+        }}>
+          Y values were missing in the response; plotted index values as a fallback.
+        </div>
+      )}
+      <div style={{ width: '100%', height: 420 }}>
+        <Plot
+          data={normalizedData}
+          layout={layout}
+          config={{ responsive: true, displaylogo: false, displayModeBar: 'hover', modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d'] }}
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
+    </div>
+  );
+};
+
 // Component to render message content
 const MessageContent = ({ content }) => {
   try {
@@ -828,9 +1167,27 @@ const MessageContent = ({ content }) => {
       return <ReportContent data={parsedContent} />;
     }
     
-    // Check if it's a general answer format
+    // General older format answer
     if (parsedContent.answer) {
       return <GeneralAnswer data={parsedContent} />;
+    }
+
+    // New agent formats: { type, payload, explanation? }
+    if (parsedContent.type && Object.prototype.hasOwnProperty.call(parsedContent, 'payload')) {
+      const { type, payload, explanation } = parsedContent;
+      if (type === 'plotly') {
+        if (!payload) return <AnswerText payload="No chart to display." explanation={explanation} />;
+        return <AnswerPlotly figure={payload} explanation={explanation} />;
+      }
+      if (type === 'table') {
+        const rows = Array.isArray(payload) ? payload : [];
+        return <AnswerTable rows={rows} explanation={explanation} />;
+      }
+      if (type === 'text') {
+        return <AnswerText payload={payload} explanation={explanation} />;
+      }
+      // Unknown type -> stringify
+      return <AnswerText payload={parsedContent} />;
     }
     
     // Fallback to original content if structure is unknown

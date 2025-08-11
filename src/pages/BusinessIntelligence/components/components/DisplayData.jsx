@@ -242,21 +242,7 @@ const DisplayData = () => {
                   },
                 }}
               />
-              <Tab
-                label="Explore"
-                sx={{
-                  textTransform: "none",
-                  fontWeight: "500",
-                  fontSize: "14px",
-                  "&:hover": {
-                    backgroundColor: "#f1f1f1", // light hover effect
-                  },
-                  "&.Mui-selected": {
-                    color: "#1976d2", // selected tab color
-                    fontWeight: "bold", // bold text for selected tab
-                  },
-                }}
-              />
+       
               {/* <Tab
                 label="Data View"
                 sx={{
@@ -303,6 +289,21 @@ const DisplayData = () => {
                   },
                 }}
               />
+                     <Tab
+                label="Explore"
+                sx={{
+                  textTransform: "none",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  "&:hover": {
+                    backgroundColor: "#f1f1f1", // light hover effect
+                  },
+                  "&.Mui-selected": {
+                    color: "#1976d2", // selected tab color
+                    fontWeight: "bold", // bold text for selected tab
+                  },
+                }}
+              />
             </Tabs>
             {/* <div
               className="clean-section"
@@ -331,10 +332,10 @@ const DisplayData = () => {
             <GeneralView {...{headers,data}} />
               )}
               
-              {value === 1 && <Explore />}
               
-              {value === 2 &&filename&& <MissingValues />}
-              
+              {value === 1 &&filename&& <MissingValues />}
+              {value === 2 && <Explore />}
+
             </div>
           )}
         </div>

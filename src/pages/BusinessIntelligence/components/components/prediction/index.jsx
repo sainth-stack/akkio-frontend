@@ -151,7 +151,7 @@ export const PredictionAndForecast = () => {
                 return (
                     <div className="rf-results-container">
                         <div className="prediction-form-container section-card">
-                             <h2 className="results-title">Get a New Prediction</h2>
+                             <h2 className="results-title">Get a {((response?.prediction_result?.target_column || targetColumn) || 'New').replace(/_/g, ' ')} Prediction</h2>
                             <form onSubmit={handleRandomForestSubmit} className="prediction-form">
                                 <div className="form-grid">
                                     {response.rf_cols?.map((col) => (

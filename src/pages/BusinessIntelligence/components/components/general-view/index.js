@@ -373,125 +373,125 @@ const GeneralView = ({ headers }) => {
                 overflow: 'hidden',
                 background: '#fff'
             }}>
-                {/* Header with graphs */}
-                <div style={{
-                    display: 'flex',
-                    borderBottom: '2px solid #f0f0f0',
-                    background: '#fafafa',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 10
-                }}>
-                    {headers.map((header, index) => (
-                        <div
-                            key={index}
-                            style={{
-                                flex: 1,
-                                minWidth: '150px',
-                                padding: '12px 8px',
-                                borderRight: index < headers.length - 1 ? '1px solid #e0e0e0' : 'none',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                background: '#fafafa'
-                            }}
-                        >
-                            {/* Column Header */}
-                            <div style={{
-                                fontSize: '13px',
-                                fontWeight: '600',
-                                color: '#333',
-                                marginBottom: '4px',
-                                textAlign: 'center',
-                                lineHeight: '1.3'
-                            }}>
-                                {header}
-                            </div>
-                            
-                            {/* Column Type */}
-                            <div style={{
-                                fontSize: '11px',
-                                color: '#666',
-                                marginBottom: '8px',
-                                textAlign: 'center'
-                            }}>
-                                {getColumnType(header)}
-                            </div>
-
-                            {/* Chart or Placeholder */}
-                            <div style={{
-                                height: '100px',
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                {!isNumericalColumn(header) ? (
-                                    <span style={{ 
-                                        fontSize: '10px', 
-                                        color: '#999',
-                                        textAlign: 'center',
-                                        fontStyle: 'italic'
-                                    }}>
-                                        {getColumnType(header) === 'ID' ? 'Identifier' : 
-                                         getColumnType(header) === 'DateTime' ? 'Timeline' : 'Text Data'}
-                                    </span>
-                                ) : (
-                                    <BarChartComponent 
-                                        data={getChartData(header)}
-                                        header={header}
-                                        height={130}
-                                        width={180}
-                                        onClick={handleChartClick}
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Data Rows */}
-                <div style={{ 
-                    maxHeight: height - 120, // Account for header height
-                    overflowY: 'auto',
-                    overflowX: 'auto'
-                }}>
-                    {displayData.map((row, rowIndex) => (
-                        <div
-                            key={rowIndex}
-                            style={{
-                                display: 'flex',
-                                borderBottom: '1px solid #f0f0f0',
-                                backgroundColor: rowIndex % 2 === 0 ? '#fff' : '#fafafa',
-                                cursor: 'pointer',
-                                transition: 'background-color 0.2s'
-                            }}
-                            onClick={() => onRowClick && onRowClick(row, rowIndex)}
-                            onMouseEnter={() => handleRowHover(rowIndex)}
-                            onMouseLeave={() => handleRowHover(-1)}
-                        >
-                            {headers.map((header, colIndex) => (
-                                <div
-                                    key={colIndex}
-                                    style={{
-                                        flex: 1,
-                                        minWidth: '150px',
-                                        padding: '12px 8px',
-                                        borderRight: colIndex < headers.length - 1 ? '1px solid #e0e0e0' : 'none',
-                                        fontSize: '12px',
-                                        color: '#333',
-                                        textAlign: 'center',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap'
-                                    }}
-                                    title={row[header]} // Tooltip for full value
-                                >
-                                    {row[header] !== null && row[header] !== undefined ? row[header].toString() : '-'}
+                {/* Unified scroll container so header and body scroll together */}
+                <div style={{ height, overflow: 'auto' }}>
+                    {/* Header with graphs */}
+                    <div style={{
+                        display: 'flex',
+                        borderBottom: '2px solid #f0f0f0',
+                        background: '#fafafa',
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 10
+                    }}>
+                        {headers.map((header, index) => (
+                            <div
+                                key={index}
+                                style={{
+                                    flex: 1,
+                                    minWidth: '200px',
+                                    padding: '12px 8px',
+                                    borderRight: index < headers.length - 1 ? '1px solid #e0e0e0' : 'none',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    background: '#fafafa'
+                                }}
+                            >
+                                {/* Column Header */}
+                                <div style={{
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    color: '#333',
+                                    marginBottom: '4px',
+                                    textAlign: 'center',
+                                    lineHeight: '1.3'
+                                }}>
+                                    {header}
                                 </div>
-                            ))}
-                        </div>
-                    ))}
+                                
+                                {/* Column Type */}
+                                <div style={{
+                                    fontSize: '11px',
+                                    color: '#666',
+                                    marginBottom: '8px',
+                                    textAlign: 'center'
+                                }}>
+                                    {getColumnType(header)}
+                                </div>
+
+                                {/* Chart or Placeholder */}
+                                <div style={{
+                                    height: '100px',
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    {!isNumericalColumn(header) ? (
+                                        <span style={{ 
+                                            fontSize: '10px', 
+                                            color: '#999',
+                                            textAlign: 'center',
+                                            fontStyle: 'italic'
+                                        }}>
+                                            {getColumnType(header) === 'ID' ? 'Identifier' : 
+                                             getColumnType(header) === 'DateTime' ? 'Timeline' : 'Text Data'}
+                                        </span>
+                                    ) : (
+                                        <BarChartComponent 
+                                            data={getChartData(header)}
+                                            header={header}
+                                            height={130}
+                                            width={190}
+                                            onClick={handleChartClick}
+                                            xAxis={false}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Data Rows */}
+                    <div>
+                        {displayData.map((row, rowIndex) => (
+                            <div
+                                key={rowIndex}
+                                style={{
+                                    display: 'flex',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    backgroundColor: rowIndex % 2 === 0 ? '#fff' : '#fafafa',
+                                    cursor: 'pointer',
+                                    transition: 'background-color 0.2s'
+                                }}
+                                onClick={() => onRowClick && onRowClick(row, rowIndex)}
+                                // onMouseEnter={() => handleRowHover(rowIndex)}
+                                // onMouseLeave={() => handleRowHover(-1)}
+                            >
+                                {headers.map((header, colIndex) => (
+                                    <div
+                                        key={colIndex}
+                                        style={{
+                                            flex: 1,
+                                            minWidth: '200px',
+                                            padding: '12px 8px',
+                                            borderRight: colIndex < headers.length - 1 ? '1px solid #e0e0e0' : 'none',
+                                            fontSize: '12px',
+                                            color: '#333',
+                                            textAlign: 'center',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}
+                                        title={row[header]} // Tooltip for full value
+                                    >
+                                        {row[header] !== null && row[header] !== undefined ? row[header].toString() : '-'}
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         );
@@ -514,7 +514,7 @@ const GeneralView = ({ headers }) => {
             </div>
 
             {/* Search Box */}
-            <div style={{ marginBottom: '16px' }}>
+            {/* <div style={{ marginBottom: '16px' }}>
                 <Input.Search
                     placeholder="Search through data..."
                     value={searchTerm}
@@ -522,24 +522,17 @@ const GeneralView = ({ headers }) => {
                     style={{ maxWidth: '400px' }}
                     allowClear
                 />
-            </div>
+            </div> */}
 
             {/* Enhanced Data Table with Integrated Charts */}
             <div style={{
                 marginBottom: '24px'
             }}>
-                <h3 style={{ 
-                    margin: '0 0 16px 0', 
-                    fontSize: '16px', 
-                    fontWeight: '600',
-                    color: '#333'
-                }}>
-                    Data Overview ({data.length} records)
-                </h3>
+
                 <EnhancedVirtualizedTable
                     headers={displayHeaders}
                     data={data}
-                    height={600}
+                    height={750}
                     rowHeight={45}
                     searchTerm={searchTerm}
                     maxDisplayRows={10000}

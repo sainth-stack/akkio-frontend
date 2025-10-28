@@ -44,6 +44,19 @@ export const ConnectData = ({
 const parseTablesFromResponse = (jsonResponse) => {
     try {
       const response = typeof jsonResponse === 'string' ? JSON.parse(jsonResponse) : jsonResponse;
+      // Handle new response structure
+      if (response && response.response && response.response.data) {
+        const data = response.response.data;
+        const details = {
+          db_type: data.database_type,
+          username: data.username,
+          host: data.host,
+          database: data.database_name,
+          password: data.password
+        };
+        const tables = Array.isArray(data.tables) ? data.tables : [];
+        return { tables, connectionDetails: details };
+      }
       
       if (!response || !response.response) {
         return { tables: [], connectionDetails: null };

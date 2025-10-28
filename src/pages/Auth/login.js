@@ -78,7 +78,8 @@ export const Login = () => {
         username: data.name.replaceAll(" ", "_"),
         id: data.id,
         email: data.email,
-        roles:['67945a230af44462b4451f9c'],
+        organization: "673dff11ab5f4148582def42",
+        roles: ["67945a230af44462b4451f9c"],
         app: "akkio"
       });
       
@@ -216,6 +217,10 @@ export const Login = () => {
                 {loading ? "Logging in..." : 'Login'} {loading ? <LoadingIndicator size={"1"} /> : null}
               </button>
             </form>
+            <div className="account2 mt-2">{"Don't Have An Account?"}</div>
+            <Link to="/register" className="text-decoration-none register2">
+              <span>  {"Register"}</span>
+            </Link>
           </div>
         </div>
       </div>

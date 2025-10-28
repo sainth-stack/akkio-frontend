@@ -7,6 +7,7 @@ import { akkiourl } from '../../utils/const';
 import { Button } from '@mui/material';
 import { Spin, Collapse, message as message4} from 'antd';
 import { Card, Row, Col } from 'react-bootstrap';
+import EmptyState from '../../components/EmptyState';
 
 // Table styles
 const thStyle = {
@@ -125,12 +126,13 @@ const renderForecastDetails = (details) => {
 };
 
 const Bot = () => {
+  const filename = typeof window !== 'undefined' ? (localStorage.getItem('filename') || '') : '';
   const [message, setMessage] = useState('');
   const [file, setFile] = useState(null);
   const [messageType, setMessageType] = useState('text');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([
-    { type: 'bot', content: 'Hello! How can I assist you today?' }
+    { type: 'bot', content: 'Hello! How can I automate you today?' }
   ]);
 
   // const getFileFromLocalStorage = () => {
@@ -514,7 +516,7 @@ const Bot = () => {
   };
 
   return (
-    <div className="chat-container">
+    !filename ? <EmptyState /> : <div className="chat-container">
       <div className="recent-chats">
         <h3>Recent Chats</h3>
         {recentChats.length === 0 ? (

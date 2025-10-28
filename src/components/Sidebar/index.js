@@ -55,9 +55,10 @@ export default function Sidebar() {
     { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
     // { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
     // { name: 'Model Training', icon: FaBrain, path: '/model-training', permission: 'predict' },
-    // { name: 'Explore', icon: TbReportSearch, path: '/explore', permission: 'reports' },
     { name: 'Insights', icon: TbReportSearch, path: '/insights', permission: 'reports' },
-    { name: 'Analytics', icon: MdOutlineFindInPage, path: '/predict', permission: 'predict' },
+    { name: 'Analytics', icon: MdOutlineFindInPage, path: '/train', permission: 'predict' },
+    { name: 'Automate', icon: TbReportSearch, path: '/explore', permission: 'reports' },
+
 // {
 //   name: 'AIAgents + MCP + A2A', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
 //     // { name: 'AI Agents', icon: GiArtificialIntelligence, path: '/ai-agents', permission: 'genAi' },
@@ -112,11 +113,15 @@ export default function Sidebar() {
             let NewIcon = (item.id === 2 && expand.expand1) || (item.id === 3 && expand.expand2) || (item.id === 5 && expand.expand3) ? FaAngleDown : FaAngleRight
             return (
               <div>
-                <li class={`sidebar-list-item cursor-pointer p-2 mt-1 ${location.pathname === item.path ? 'backgroundSelected' : ''}`} onClick={() => handleClickExpand(item.id)} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <li class={`sidebar-list-item cursor-pointer p-2 mt-1 ${
+                  (item.name === 'Analytics' && ['/train', '/predict', '/forecast'].some(p => location.pathname.startsWith(p)))
+                    ? 'backgroundSelected'
+                    : (location.pathname === item.path ? 'backgroundSelected' : '')
+                }`} onClick={() => handleClickExpand(item.id)} style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Link to={item?.children?.length > 0 ? '#' : item.path} onClick={() => item?.children?.length > 0 ? () => { } : handleClickExpand(item.id)} class="nav-link align-middle px-2 nav-item" >
                     <div>
-                      <item.icon size={20} style={{ color: location.pathname === item.path ? 'black' : 'white' }} />
-                      <span class="ms-1 d-none d-sm-inline link-text px-1" style={{ color: location.pathname === item.path ? 'black' : 'white' }}>{item.name}</span>
+                      <item.icon size={20} style={{ color: (item.name === 'Analytics' && ['/train', '/predict', '/forecast'].some(p => location.pathname.startsWith(p))) ? 'black' : (location.pathname === item.path ? 'black' : 'white') }} />
+                      <span class="ms-1 d-none d-sm-inline link-text px-1" style={{ color: (item.name === 'Analytics' && ['/train', '/predict', '/forecast'].some(p => location.pathname.startsWith(p))) ? 'black' : (location.pathname === item.path ? 'black' : 'white') }}>{item.name}</span>
                     </div>
                   </Link>
                   {item?.children?.length > 0 && <NewIcon size={20} style={{ color: 'white', cursor: 'pointer' }} />}

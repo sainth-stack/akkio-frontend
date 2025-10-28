@@ -5,6 +5,7 @@ import {
 } from 'react-icons/fa';
 import './index.css'; // (updated filename for clarity)
 import { akkiourl } from '../../utils/const';
+import EmptyState from '../../components/EmptyState';
 
 const Reports = () => {
   const [reports, setReports] = useState([]);
@@ -30,7 +31,7 @@ const Reports = () => {
         const data = await response.json();
         setReports(data || []);
       } else {
-        toast.error('Failed to fetch reports');
+        // toast.error('Failed to fetch reports');
       }
     } catch (error) {
       toast.error('Error fetching reports');
@@ -91,6 +92,11 @@ const Reports = () => {
     });
 
   useEffect(() => { fetchReports(); }, []);
+
+  const filename = typeof window !== 'undefined' ? (localStorage.getItem('filename') || '') : '';
+  if (!filename) {
+    return <EmptyState />;
+  }
 
   return (
     <div className="pro__reports-main">

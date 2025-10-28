@@ -14,6 +14,7 @@ import axios from 'axios';
 import MissingValues from "./prediction/fillcsv";
 import GeneralView from "./general-view";
 import Explore from '../../../Explore';
+import EmptyState from "../../../../components/EmptyState";
 
 const DisplayData = () => {
   const [data, setData] = useState([]);
@@ -128,199 +129,11 @@ const DisplayData = () => {
       <Navbar />
       
       {!filename && !initialLoading ? (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '70vh',
-          textAlign: 'center',
-          padding: '40px 20px'
-        }}>
-          <div style={{
-            backgroundColor: '#f8f9fa',
-            borderRadius: '12px',
-            padding: '60px 40px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-            border: '2px dashed #dee2e6',
-            maxWidth: '500px',
-            width: '100%'
-          }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              backgroundColor: '#e9ecef',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 24px',
-              fontSize: '32px',
-              color: '#6c757d'
-            }}>
-              📊
-            </div>
-            <h2 style={{
-              fontSize: '28px',
-              fontWeight: '600',
-              color: '#212529',
-              marginBottom: '16px',
-              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-            }}>
-              No Data Uploaded
-            </h2>
-            <p style={{
-              fontSize: '16px',
-              color: '#6c757d',
-              lineHeight: '1.6',
-              marginBottom: '32px',
-              maxWidth: '400px',
-              margin: '0 auto 32px'
-            }}>
-              Upload your data file to start exploring insights, analyzing trends, and generating comprehensive reports.
-            </p>
-            <button 
-              onClick={() => navigate('/data-source')} 
-              style={{
-                backgroundColor: '#1976d2',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '12px 32px',
-                fontSize: '16px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#1565c0';
-                e.target.style.transform = 'translateY(-1px)';
-                e.target.style.boxShadow = '0 4px 12px rgba(25, 118, 210, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#1976d2';
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 2px 8px rgba(25, 118, 210, 0.3)';
-              }}
-            >
-              Upload Data
-            </button>
-          </div>
-        </div>
+        <EmptyState />
       ) : (
         <div className="professional-table">
           
-          <div className="filterData ms-2">
-            <Tabs
-              value={value}
-              onChange={handleChange}
-              indicatorColor="primary"
-              textColor="primary"
-              centered
-              sx={
-                {
-                  // backgroundColor: "#f5f5f5", // light background for the tab bar
-                  // borderBottom: "2px solid #e0e0e0", // subtle border between tab and content
-                  // boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)", // soft shadow for a modern feel
-                  // borderRadius: "8px 8px 0px", // rounded corners on top
-                }
-              }
-            >
-              <Tab
-                label="General View"
-                sx={{
-                  textTransform: "none",
-                  fontWeight: "500",
-                  fontSize: "14px",
-                  "&:hover": {
-                    backgroundColor: "#f1f1f1", // light hover effect
-                  },
-                  "&.Mui-selected": {
-                    color: "#1976d2", // selected tab color
-                    fontWeight: "bold", // bold text for selected tab
-                  },
-                }}
-              />
-       
-              {/* <Tab
-                label="Data View"
-                sx={{
-                  textTransform: "none",
-                  fontWeight: "500",
-                  fontSize: "14px",
-                  "&:hover": {
-                    backgroundColor: "#f1f1f1", // light hover effect
-                  },
-                  "&.Mui-selected": {
-                    color: "#1976d2", // selected tab color
-                    fontWeight: "bold", // bold text for selected tab
-                  },
-                }}
-              />
-              <Tab
-                label="Columns Overview"
-                sx={{
-                  textTransform: "none",
-                  fontWeight: "500",
-                  fontSize: "14px",
-                  "&:hover": {
-                    backgroundColor: "#f1f1f1", // light hover effect
-                  },
-                  "&.Mui-selected": {
-                    color: "#1976d2", // selected tab color
-                    fontWeight: "bold", // bold text for selected tab
-                  },
-                }}
-              /> */}
-
-            <Tab
-                label="Missing Values"
-                sx={{
-                  textTransform: "none",
-                  fontWeight: "500",
-                  fontSize: "14px",
-                  "&:hover": {
-                    backgroundColor: "#f1f1f1", // light hover effect
-                  },
-                  "&.Mui-selected": {
-                    color: "#1976d2", // selected tab color
-                    fontWeight: "bold", // bold text for selected tab
-                  },
-                }}
-              />
-                     <Tab
-                label="Explore"
-                sx={{
-                  textTransform: "none",
-                  fontWeight: "500",
-                  fontSize: "14px",
-                  "&:hover": {
-                    backgroundColor: "#f1f1f1", // light hover effect
-                  },
-                  "&.Mui-selected": {
-                    color: "#1976d2", // selected tab color
-                    fontWeight: "bold", // bold text for selected tab
-                  },
-                }}
-              />
-            </Tabs>
-            {/* <div
-              className="clean-section"
-              onClick={() => {
-                handleCleanButtonClick();
-              }}
-            >
-              <AiOutlineClear size={25} />
-              <span>Clean</span>
-            </div> */}
-
-
-
-            {/* <button className="btn btn-success" onClick={()=>debouncedFetchChartData()}>
-              Reload
-            </button> */}
-          </div>
+      
 
           {initialLoading ? (
             <div style={{display:'flex',justifyContent:'center',width:'100%'}}>
@@ -333,8 +146,8 @@ const DisplayData = () => {
               )}
               
               
-              {value === 1 &&filename&& <MissingValues />}
-              {value === 2 && <Explore />}
+              {/* {value === 1 &&filename&& <MissingValues />} */}
+              {/* {value === 2 && <Explore />} */}
 
             </div>
           )}

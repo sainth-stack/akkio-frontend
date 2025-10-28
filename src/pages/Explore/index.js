@@ -7,6 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import Plot from 'react-plotly.js';
+import EmptyState from '../../components/EmptyState';
 
 // Component to render report content
 const ReportContent = ({ data }) => {
@@ -830,13 +831,11 @@ const AnswerText = ({ payload, explanation }) => {
           padding: '0.5rem 0.75rem',
           borderRadius: 6,
           fontSize: 13,
-        }}>
-          {explanation}
+        }} dangerouslySetInnerHTML={{ __html: explanation }}>
+          {/* {explanation} */} 
         </div>
       )}
-      <div style={{ color: '#111827', fontSize: 15, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-        {typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2)}
-      </div>
+      <div style={{ color: '#111827', fontSize: 15, lineHeight: 1.6, whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: payload }} />
     </div>
   );
 };
@@ -1174,7 +1173,7 @@ const MessageContent = ({ content }) => {
 
     // New agent formats: { type, payload, explanation? }
     if (parsedContent.type && Object.prototype.hasOwnProperty.call(parsedContent, 'payload')) {
-      const { type, payload, explanation } = parsedContent;
+      const { type, payload, explanation,explanation_html } = parsedContent;
       if (type === 'plotly') {
         if (!payload) return <AnswerText payload="No chart to display." explanation={explanation} />;
         return <AnswerPlotly figure={payload} explanation={explanation} />;
@@ -1202,12 +1201,14 @@ const MessageContent = ({ content }) => {
   }
 };
 
-const Reports = () => {
+const Reports = ({ initialSessionId }) => {
+  const filename = typeof window !== 'undefined' ? (localStorage.getItem('filename') || '') : '';
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([
     { type: 'bot', content: '{"answer": "Hello! How can I assist you today?"}' }
   ]);
+  const [sessionId, setSessionId] = useState(initialSessionId || '');
 
   const handleMessageChange = (e) => {
     setMessage(e.target.value);
@@ -1229,6 +1230,9 @@ const Reports = () => {
 
     const params = new URLSearchParams();
     params.append('query', message);
+    if (sessionId) {
+      params.append('session_id', sessionId);
+    }
 
     try {
       const response = await axios.post(`${akkiourl}/Explore/`, params, {
@@ -1236,6 +1240,24 @@ const Reports = () => {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
+      // Try to extract session_id from response
+      let newSessionId = sessionId;
+      if (response.data) {
+        if (typeof response.data === 'object' && response.data.session_id) {
+          newSessionId = response.data.session_id;
+        } else {
+          // Try to parse if string
+          try {
+            const parsed = typeof response.data === 'string' ? JSON.parse(response.data) : null;
+            if (parsed && parsed.session_id) {
+              newSessionId = parsed.session_id;
+            }
+          } catch {}
+        }
+      }
+      if (newSessionId && newSessionId !== sessionId) {
+        setSessionId(newSessionId);
+      }
       const botResponse = {
         type: 'bot',
         content: typeof response.data === 'object' ? JSON.stringify(response.data) : response.data
@@ -1271,7 +1293,7 @@ const Reports = () => {
     scrollToBottom();
   }, [messages]);
   return (
-    <div className="chat-container">
+    !filename ? <EmptyState /> : <div className="chat-container">
       <div className="chat-window">
         <div className="chat-messages">
           {messages.map((msg, index) => {

@@ -50,6 +50,7 @@ import ModelTraining from './pages/model-training';
 import Reports from './pages/Reports';
 import Explore from './pages/Explore';
 import { Insights } from './pages/BusinessIntelligence/components/components/insights';
+import Train from './pages/BusinessIntelligence/components/components/prediction/train';
 function App() {
   const clientId = '573823221354-d175srri1ta9un581atkp7b9qenst32u.apps.googleusercontent.com';
   return (
@@ -72,8 +73,9 @@ function App() {
           <Route path='/projects' Component={Projects} />
           <Route path='/connect' Component={Connect} />
           <Route path='/discover' Component={DisplayData} />
+          <Route path='/train' Component={Train} />
           <Route path='/predict' Component={PredictionAndForecast} />
-          <Route path='/forecast' Component={ForecastData} />
+          <Route path='/forecast' Component={PredictionAndForecast} />
           <Route path='/explore' Component={Explore} />
           <Route path='/reports' Component={Reports} />
           <Route path='/insights' Component={Insights} />

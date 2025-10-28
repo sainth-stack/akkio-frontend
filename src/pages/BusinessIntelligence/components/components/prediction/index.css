@@ -200,13 +200,13 @@
 
 .main-prediction-card {
     background: linear-gradient(135deg, #3b82f6, #60a5fa);
-    color: white;
+    /* color: white; */
     text-align: center;
     padding: 2rem;
 }
 
 .main-prediction-card h3 {
-    color: rgba(255, 255, 255, 0.9);
+    /* color: rgba(255, 255, 255, 0.9); */
     font-size: 1.25rem;
     margin-bottom: 1rem;
 }
@@ -214,7 +214,7 @@
 .main-prediction-card .result-value {
     font-size: 3rem;
     font-weight: 700;
-    color: white;
+    /* color: white; */
     margin: 0;
 }
 
@@ -771,4 +771,168 @@
 
 .table-body ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
+}
+
+/* Modern Business Analytics UI Enhancements */
+.modern-business-ui {
+    background: #f4f7fb;
+    border-radius: 18px;
+    box-shadow: 0 6px 32px 0 rgba(30, 41, 59, 0.08);
+    padding: 2.5rem 2rem;
+    gap: 2.5rem;
+}
+
+.modern-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2.5rem;
+    align-items: stretch;
+}
+
+.modern-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px 0 rgba(30, 41, 59, 0.06);
+    padding: 2rem 1.5rem;
+    border: none;
+    transition: box-shadow 0.2s;
+}
+.modern-card:hover {
+    box-shadow: 0 8px 32px 0 rgba(30, 41, 59, 0.12);
+}
+
+.modern-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+}
+
+.modern-value {
+    font-size: 3.2rem;
+    font-weight: 800;
+    color: #2563eb;
+    margin: 0.5rem 0 0.75rem 0;
+    letter-spacing: -1px;
+}
+
+.model-type-chip {
+    display: inline-block;
+    background: linear-gradient(90deg, #3b82f6 60%, #6366f1 100%);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 0.25rem 0.75rem;
+    margin-top: 0.5rem;
+    letter-spacing: 0.04em;
+    box-shadow: 0 1px 4px 0 rgba(59, 130, 246, 0.08);
+}
+
+.modern-subtitle {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 1.25rem;
+    letter-spacing: 0.01em;
+}
+
+.modern-metrics-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem 0;
+}
+.modern-metrics-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    font-size: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.modern-metrics-list li:last-child {
+    border-bottom: none;
+}
+
+.modern-baseline {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+.modern-feature-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.modern-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+.modern-feature-name {
+    flex: 1;
+    font-size: 0.98rem;
+    color: #334155;
+    font-weight: 500;
+}
+.modern-bar-container {
+    flex: 2;
+    height: 10px;
+    background: #e0e7ef;
+    border-radius: 5px;
+    overflow: hidden;
+}
+.modern-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 60%, #6366f1 100%);
+    border-radius: 5px;
+    transition: width 0.3s ease;
+}
+.modern-feature-percentage {
+    flex: 0 0 55px;
+    text-align: right;
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: #2563eb;
+}
+
+.input-features-card {
+    margin-top: 1.5rem;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+}
+.modern-input-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+}
+.modern-input-item {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.97rem;
+    background: #fff;
+    border-radius: 6px;
+    padding: 0.25rem 0.75rem;
+    box-shadow: 0 1px 2px 0 rgba(30, 41, 59, 0.04);
+    border: 1px solid #e5e7eb;
+}
+.modern-input-key {
+    color: #64748b;
+    font-weight: 500;
+}
+.modern-input-value {
+    color: #1e293b;
+    font-weight: 600;
+}
+
+@media (max-width: 900px) {
+    .modern-grid {
+        grid-template-columns: 1fr;
+    }
 }

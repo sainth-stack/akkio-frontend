@@ -10,9 +10,13 @@ import ChatDataPrep from "../popups/chatdataprep";
 import { IconButton } from "@mui/material";
 import { FaRobot } from "react-icons/fa6";
 import Bot from "../../../../bot";
+import { useLocation } from "react-router-dom";
 
 export const PredictionAndForecast = () => {
-    const [activeTab, setActiveTab] = useState("Predict");
+    const location = useLocation();
+    // Determine mode based on path
+    const isPredict = location.pathname.includes('/predict');
+    const isForecast = location.pathname.includes('/forecast');
     const [targetColumn, setTargetColumn] = useState("");
     const [targetOptions, setTargetOptions] = useState([])
     const [loading, setLoading] = useState(false)
@@ -34,16 +38,6 @@ export const PredictionAndForecast = () => {
     ];
 
     const tenureOptions = [1, 3, 5, 7, 10];
-
-    const tabs = [
-        { id: 'Predict', label: 'Predict', model: 'RandomForest' },
-        { id: 'Forecast', label: 'Forecast', model: 'Arima' }
-    ];
-
-    const getCurrentModel = () => {
-        const currentTab = tabs.find(tab => tab.id === activeTab);
-        return currentTab ? currentTab.model : 'RandomForest';
-    };
 
     // Function to fetch columns from API
     const fetchColumns = async () => {
@@ -71,34 +65,67 @@ export const PredictionAndForecast = () => {
         }
     };
 
+    // Unified submit handler for predict/forecast
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true)
-        setShow(true)
-        try {
-            const model = getCurrentModel();
-            let payload = {
-                model,
-                col: targetColumn,
-            };
-            if (model === 'Arima') {
-                payload.frequency = frequency;
-                payload.tenure = tenure;
+        setShow(true);
+        if (isForecast) {
+            // Two-step process for forecast: train, then predict
+            setLoading(true);
+            setResponse(null);
+            setForecastStep('training'); // NEW: track which step we're on
+            try {
+                // 1. Train model
+                let trainPayload = {
+                    model: 'Arima',
+                    col: targetColumn,
+                    frequency,
+                    tenure,
+                };
+                await axios.post(`${akkiourl}/models`, trainPayload, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                // 2. Predict (forecast)
+                setForecastStep('predicting');
+                const predictForm = new FormData();
+                predictForm.append('form_name', 'arima');
+                predictForm.append('targetColumn', targetColumn);
+                predictForm.append('frequency', frequency);
+                predictForm.append('tenure', tenure);
+                const predictRes = await axios.post(`${akkiourl}/model_predict`, predictForm);
+                setResponse(predictRes.data);
+                setLoading(false);
+                setForecastStep(null);
+            } catch (error) {
+                setLoading(false);
+                setForecastStep(null);
+                setResponse({ msg: 'Error processing forecast' });
+                console.error('Forecast error:', error);
             }
-            const response = await axios.post(`${akkiourl}/models`, payload, {
-                headers: { 'Content-Type': 'application/json' }
-            });
-            setResponse(response.data);
-            setLoading(false);
-        } catch (error) {
-            setLoading(false);
-            setResponse({ msg: "Error processing data" });
-            console.error("Error:", error);
+        } else {
+            // Predict (RandomForest) - unchanged
+            setLoading(true)
+            setShow(true)
+            try {
+                let model = 'RandomForest';
+                let payload = {
+                    model,
+                    col: targetColumn,
+                };
+                const response = await axios.post(`${akkiourl}/models`, payload, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                setResponse(response.data);
+                setLoading(false);
+            } catch (error) {
+                setLoading(false);
+                setResponse({ msg: "Error processing data" });
+                console.error("Error:", error);
+            }
         }
     };
 
     useEffect(() => {
-        // Fetch columns from API instead of localStorage
         fetchColumns();
     }, []);
 
@@ -110,6 +137,7 @@ export const PredictionAndForecast = () => {
         }));
     };
 
+    // For RandomForest prediction form (if needed)
     const handleRandomForestSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -137,6 +165,10 @@ export const PredictionAndForecast = () => {
         setShowModel(true);
     };
 
+    // Loader for forecast steps
+    const [forecastStep, setForecastStep] = useState(null); // 'training' | 'predicting' | null
+
+    // Render response for predict/forecast
     const renderResponse = () => {
         if (!response) return null;
     
@@ -144,143 +176,202 @@ export const PredictionAndForecast = () => {
             return <div className="error-message">{response.msg}</div>;
         }
     
-        const model = getCurrentModel();
-        
-        switch (model) {
-            case 'RandomForest':
-                return (
-                    <div className="rf-results-container">
-                        <div className="prediction-form-container section-card">
-                             <h2 className="results-title">Get a {((response?.prediction_result?.target_column || targetColumn) || 'New').replace(/_/g, ' ')} Prediction</h2>
-                            <form onSubmit={handleRandomForestSubmit} className="prediction-form">
-                                <div className="form-grid">
-                                    {response.rf_cols?.map((col) => (
-                                        <div key={col} className="form-field">
-                                            <label className="field-label">
-                                                {col.replace(/_/g, ' ')}
-                                                <input
-                                                    type={col.toLowerCase().includes('date') ? 'date' : 'text'}
-                                                    name={col}
-                                                    value={formData[col] || ''}
-                                                    onChange={handleInputChange}
-                                                    className="field-input"
-                                                    required
-                                                />
-                                            </label>
-                                        </div>
-                                    ))}
-                                </div>
-                                <button type="submit" className="submit-btn">
-                                    Get Prediction
-                                </button>
-                            </form>
-                        </div>
-                        
-                        <div className="prediction-output">
-                            {response.prediction_result ? (
-                                <div className="rf-results-grid">
-                                    <div className="result-display main-prediction-card">
-                                        <h3>Predicted {response.prediction_result.target_column}</h3>
-                                        <p className="result-value">
-                                            {response.prediction_result.predicted_value?.toFixed(2)}
-                                        </p>
+        if (isPredict) {
+            // Prediction result rendering (RandomForest)
+            return (
+                <div className="rf-results-container modern-business-ui">
+                    <div className="prediction-form-container section-card">
+                        <h2 className="results-title">Get a {((response?.prediction_result?.target_column || targetColumn) || 'New').replace(/_/g, ' ')} Prediction</h2>
+                        <form onSubmit={handleRandomForestSubmit} className="prediction-form">
+                            <div className="form-grid">
+                                {response.rf_cols?.map((col) => (
+                                    <div key={col} className="form-field">
+                                        <label className="field-label">
+                                            {col.replace(/_/g, ' ')}
+                                            <input
+                                                type={col.toLowerCase().includes('date') ? 'date' : 'text'}
+                                                name={col}
+                                                value={formData[col] || ''}
+                                                onChange={handleInputChange}
+                                                className="field-input"
+                                                required
+                                            />
+                                        </label>
                                     </div>
-
-                                    {response.model_performance && (
-                                        <div className="performance-metrics section-card">
-                                            <h4>Model Performance</h4>
-                                            <ul>
+                                ))}
+                            </div>
+                            <button type="submit" className="submit-btn">
+                                Get Prediction
+                            </button>
+                        </form>
+                    </div>
+                    <div className="prediction-output">
+                        {response.prediction_result ? (
+                            <div className="rf-results-grid modern-grid">
+                                <div className="result-display main-prediction-card modern-card">
+                                    <h3 className="modern-title">Predicted {response.prediction_result.target_column}</h3>
+                                    <p className="result-value modern-value">
+                                        {typeof response.prediction_result.predicted_value === 'number'
+                                            ? response.prediction_result.predicted_value.toFixed(2)
+                                            : response.prediction_result.predicted_value}
+                                    </p>
+                                    <span className="model-type-chip">{response.prediction_result.model_type}</span>
+                                </div>
+                                {response.model_performance && (
+                                    <div className="performance-metrics section-card modern-card">
+                                        <h4 className="modern-subtitle">Model Performance</h4>
+                                        <ul className="modern-metrics-list">
+                                            {(response.model_performance.regression_metrics?.r2_score ?? response.model_performance.performance_metrics?.r2_score) != null && (
                                                 <li>
                                                     <span>R² Score</span>
-                                                    <span>{response.model_performance.performance_metrics.r2_score}%</span>
+                                                    <span>{response.model_performance.regression_metrics?.r2_score ?? response.model_performance.performance_metrics?.r2_score}</span>
                                                 </li>
+                                            )}
+                                            {(response.model_performance.regression_metrics?.mae ?? response.model_performance.performance_metrics?.mae) != null && (
                                                 <li>
                                                     <span>MAE</span>
-                                                    <span>{response.model_performance.performance_metrics.mae}</span>
+                                                    <span>{response.model_performance.regression_metrics?.mae ?? response.model_performance.performance_metrics?.mae}</span>
                                                 </li>
+                                            )}
+                                            {(response.model_performance.regression_metrics?.rmse ?? response.model_performance.performance_metrics?.rmse) != null && (
                                                 <li>
                                                     <span>RMSE</span>
-                                                    <span>{response.model_performance.performance_metrics.rmse}</span>
+                                                    <span>{response.model_performance.regression_metrics?.rmse ?? response.model_performance.performance_metrics?.rmse}</span>
                                                 </li>
-                                            </ul>
-                                            <p className="baseline-comparison">{response.model_performance.baseline_comparison}</p>
-                                        </div>
-                                    )}
-
-                                    {response.feature_analysis && (
-                                        <div className="feature-analysis section-card">
-                                            <h4>Feature Importance</h4>
-                                            <ul className="feature-list">
-                                                {response.feature_analysis.top_fields.map(field => (
-                                                    <li key={field.field_name}>
-                                                        <span className="feature-name">{field.field_name}</span>
-                                                        <div className="importance-bar-container">
-                                                            <div
-                                                                className="importance-bar"
-                                                                style={{ width: `${field.importance_percentage}%` }}
-                                                            ></div>
-                                                        </div>
-                                                        <span className="feature-percentage">{field.importance_percentage.toFixed(1)}%</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                response.rf_result && ( // Fallback for old string response
-                                    <div className="result-display">
-                                        <h3>Prediction Result:</h3>
-                                        <p className="result-value">{response.rf_result}</p>
+                                            )}
+                                            {response.model_performance.total_samples != null && (
+                                                <li>
+                                                    <span>Samples</span>
+                                                    <span>{response.model_performance.total_samples}</span>
+                                                </li>
+                                            )}
+                                            {response.model_performance.cross_validation?.mean_score != null && (
+                                                <li>
+                                                    <span>CV Mean</span>
+                                                    <span>{response.model_performance.cross_validation.mean_score}</span>
+                                                </li>
+                                            )}
+                                            {response.model_performance.cross_validation?.std_score != null && (
+                                                <li>
+                                                    <span>CV Std</span>
+                                                    <span>{response.model_performance.cross_validation.std_score}</span>
+                                                </li>
+                                            )}
+                                        </ul>
+                                        <p className="baseline-comparison modern-baseline">{response.model_performance.baseline_comparison}</p>
                                     </div>
-                                )
-                            )}
-                        </div>
+                                )}
+                                {response.feature_analysis && (
+                                    <div className="feature-analysis section-card modern-card">
+                                        <h4 className="modern-subtitle">Top Influencing Features</h4>
+                                        <ul className="feature-list modern-feature-list">
+                                            {response.feature_analysis.top_influencing_features?.map(field => (
+                                                <li key={field.feature} className="modern-feature-item">
+                                                    <span className="feature-name modern-feature-name">{field.feature}</span>
+                                                    <div className="importance-bar-container modern-bar-container">
+                                                        <div
+                                                            className="importance-bar modern-bar"
+                                                            style={{ width: `${field.importance}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="feature-percentage modern-feature-percentage">{field.importance.toFixed(1)}%</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                {response.feature_analysis?.input_features && (
+                                    <div className="section-card modern-card input-features-card">
+                                        <h4 className="modern-subtitle">Input Features</h4>
+                                        <ul className="modern-input-list">
+                                            {Object.entries(response.feature_analysis.input_features).map(([key, value]) => (
+                                                <li key={key} className="modern-input-item">
+                                                    <span className="modern-input-key">{key}</span>
+                                                    <span className="modern-input-value">{value}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            response.rf_result && (
+                                <div className="result-display">
+                                    <h3>Prediction Result:</h3>
+                                    <p className="result-value">{response.rf_result}</p>
+                                </div>
+                            )
+                        )}
                     </div>
-                );
-    
-            case 'Arima':
-                let plotData;
-                try {
-                    plotData = response?.path ? JSON.parse(response?.path) : null;
-                } catch (error) {
-                    console.error('Error parsing plot data:', error);
-                    return <div className="error-message">This dataset doesn't meet the modeling requirement</div>;
-                }
-    
+                </div>
+            );
+        }
+        if (isForecast) {
+            // Only show forecast results from /model_predict
+            // Hide ARIMA training message
+            // If forecasted data is present, show it
+            if (response.prediction_result && response.prediction_result.forecast_data) {
+                const forecastData = response.prediction_result.forecast_data;
+                const dates = Object.values(forecastData.date);
+                const values = Object.values(forecastData.forecasted_value);
                 return (
                     <div className="forecast-results">
                         <h2 className="results-title">Forecast Results</h2>
-                        <p className="status-text">Status: {response?.status ? "Success" : "Failed"}</p>
-                        {plotData && (
-                            <div className="plot-container">
-                                <Plot
-                                    data={plotData?.data}
-                                    layout={{
-                                        ...plotData?.layout,
-                                        autosize: true,
-                                        plot_bgcolor: '#ffffff',
-                                        paper_bgcolor: '#ffffff',
-                                        margin: { l: 50, r: 50, t: 50, b: 50 }
-                                    }}
-                                    config={{ responsive: true }}
-                                    style={{ width: '100%', height: '60vh' }}
-                                />
-                            </div>
-                        )}
+                        <div className="plot-container">
+                            <Plot
+                                data={[{
+                                    x: dates,
+                                    y: values,
+                                    type: 'scatter',
+                                    mode: 'lines+markers',
+                                    marker: { color: '#3b82f6' },
+                                    line: { shape: 'spline' },
+                                    name: 'Forecasted Value',
+                                }]}
+                                layout={{
+                                    autosize: true,
+                                    plot_bgcolor: '#ffffff',
+                                    paper_bgcolor: '#ffffff',
+                                    margin: { l: 50, r: 50, t: 50, b: 50 },
+                                    xaxis: { title: 'Date' },
+                                    yaxis: { title: response.prediction_result.target_column },
+                                }}
+                                config={{ responsive: true }}
+                                style={{ width: '100%', height: '60vh' }}
+                            />
+                        </div>
+                        <div className="forecast-table section-card modern-card" style={{ marginTop: 32 }}>
+                            <h4 className="modern-subtitle">Forecast Table</h4>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: '#f4f7fb' }}>
+                                        <th style={{ padding: '8px 16px', textAlign: 'left' }}>Date</th>
+                                        <th style={{ padding: '8px 16px', textAlign: 'left' }}>Forecasted Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {dates.map((date, idx) => (
+                                        <tr key={date}>
+                                            <td style={{ padding: '8px 16px', borderBottom: '1px solid #e5e7eb' }}>{date}</td>
+                                            <td style={{ padding: '8px 16px', borderBottom: '1px solid #e5e7eb' }}>{values[idx]}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 );
-    
-            default:
-                return <pre className="default-response">{JSON.stringify(response, null, 2)}</pre>;
+            }
+            // fallback: show raw response if no forecast data
+            return <pre className="default-response">{JSON.stringify(response, null, 2)}</pre>;
         }
+        return <pre className="default-response">{JSON.stringify(response, null, 2)}</pre>;
     };
 
     return (
         <>
             <div className={mainTab === 'Models' ? "prediction-container" : "prediction-container full-width"}>
-                {/* <h1 className="main-title">Data Analysis & Prediction</h1> */}
-                
+                {/* First-level tabs */}
                 <div className="main-tabs">
                     <button
                         type="button"
@@ -305,25 +396,6 @@ export const PredictionAndForecast = () => {
                 {mainTab === 'Models' && (
                     <>
                         <form onSubmit={handleSubmit} className="analysis-form">
-                            <div className="tab-section">
-                                <div className="tab-nav">
-                                    {tabs.map((tab) => (
-                                        <button
-                                            key={tab.id}
-                                            type="button"
-                                            className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-                                            onClick={() => { 
-                                                setActiveTab(tab.id); 
-                                                setResponse(null); 
-                                                setShow(false); 
-                                            }}
-                                        >
-                                            {tab.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
                             <div className="form-content">
                                 <div className="form-field">
                                     <label className="field-label">
@@ -349,7 +421,7 @@ export const PredictionAndForecast = () => {
                                     </label>
                                 </div>
 
-                                {activeTab === 'Forecast' && (
+                                {isForecast && (
                                     <>
                                         <div className="form-field">
                                             <label className="field-label">
@@ -388,18 +460,25 @@ export const PredictionAndForecast = () => {
                                     className="analyze-btn"
                                     disabled={loading || !targetColumn || columnsLoading}
                                 >
-                                    {loading ? 'Analyzing...' : `Train Model`}
+                                    {loading ? (isForecast ? (forecastStep === 'training' ? 'Training Model...' : 'Generating Forecast...') : 'Analyzing...') : `Train Model`}
                                 </button>
                             </div>
                         </form>
 
-                        {loading && (
+                        {/* Professional loader for forecast steps */}
+                        {loading && isForecast && (
+                            <div className="loading-container">
+                                <div className="loader" />
+                                <p>{forecastStep === 'training' ? 'Training ARIMA model...' : 'Generating forecast...'}</p>
+                            </div>
+                        )}
+                        {loading && !isForecast && (
                             <div className="loading-message">
                                 Processing your data...
                             </div>
                         )}
 
-                        {show && response && (
+                        {show && response && !loading && (
                             <div className="results-container">
                                 {renderResponse()}
                             </div>
@@ -408,7 +487,6 @@ export const PredictionAndForecast = () => {
                         <div>
                             <ChatDataPrep {...{ showModel, setShowModel }} />
                         </div>
-                        
                         <IconButton
                             onClick={handleChatprepData}
                             className="chat-fab"

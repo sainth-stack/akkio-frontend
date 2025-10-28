@@ -8,16 +8,22 @@ import { IconButton } from "@mui/material";
 import { FaRobot, FaEye } from "react-icons/fa";
 import { FiRefreshCw } from "react-icons/fi";
 import ChatDataPrep from "../popups/chatdataprep";
+import "../../styles/datasource.scss";
+import "../../components/prediction/index.css";
+import EmptyState from "../../../../../components/EmptyState";
 
 export const Insights = () => {
+  const filename = typeof window !== 'undefined' ? (localStorage.getItem('filename') || '') : '';
   const [showModel, setShowModel] = useState(false);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [chartType, setChartType] = useState("basic"); // "basic" or "advanced"
 
+  // Fetch chart data with chartType
   const fetchChartData = async () => {
     try {
       setLoading(true);
-      const response = await axios.post(`${akkiourl}/dashboard`);
+      const response = await axios.post(`${akkiourl}/dashboard?type=${chartType}`);
       let charts = response.data.charts;
 
       if (typeof response?.data === "string") {
@@ -53,21 +59,28 @@ export const Insights = () => {
     }
   };
 
+  // useQuery key includes chartType so it refetches on tab change
   const {
     data: chartData,
     isLoading,
     refetch,
-  } = useQuery(["chartData"], fetchChartData, {
+  } = useQuery(["chartData", chartType], fetchChartData, {
     staleTime: Infinity,
     cacheTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchOnMount: true,
+    enabled: !!filename
   });
 
   useEffect(() => {
     setLoading(isLoading);
   }, [isLoading]);
+
+  // Tab click handler
+  const handleTabChange = (type) => {
+    setChartType(type);
+  };
 
   const handleClick = (chartIndex) => {
     setIndex(chartIndex);
@@ -75,7 +88,6 @@ export const Insights = () => {
   };
 
   const handleChatprepData = () => {
-    // localStorage.setItem("prepData", JSON.stringify(chartData));
     setShowModel(true);
   };
 
@@ -88,16 +100,34 @@ export const Insights = () => {
     }
   };
 
-  if (loading)
-    return (
-      <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-        <Spin className="spinner" size={"large"} />
-      </div>
-    );
-  if (!chartData) return <div>No data available</div>;
-
   return (
     <>
+      {!filename ? (
+        <EmptyState />
+      ) : loading ? (
+        <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+          <Spin className="spinner" size={"large"} />
+        </div>
+      ) : !chartData ? (
+        <div>No data available</div>
+      ) : (
+      <>
+      {/* Tabs for Simple/Advanced */}
+      <div className="main-tabs" style={{marginTop: 16}}>
+        <button
+          className={`main-tab-button${chartType === "basic" ? " active" : ""}`}
+          onClick={() => handleTabChange("basic")}
+        >
+          Simple
+        </button>
+        <button
+          className={`main-tab-button${chartType === "advanced" ? " active" : ""}`}
+          onClick={() => handleTabChange("advanced")}
+        >
+          Advanced
+        </button>
+      </div>
+      {/* Header */}
       <div
         style={{
           display: "flex",
@@ -258,6 +288,8 @@ export const Insights = () => {
       >
         <FaRobot size={28} />
       </IconButton>
+      </>
+      )}
     </>
   );
 };

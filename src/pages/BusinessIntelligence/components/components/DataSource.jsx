@@ -118,12 +118,12 @@ export const DataSource = () => {
                     className="step-tile-icon"
                   />
                   <div className="step-tile-text-container">
-                    <div className="textHeader">Upload Data</div>
-                    <div className="textDesc">Upload and configure datasets</div>
+                    <div className="textHeader">Upload  Files</div>
+                    <div className="textDesc">Upload and configure files (CSV, Excel, etc.)</div>
                   </div>
                 </div>
                 <div className="footerContainer">
-                  <span className="footerText">CSV</span>
+                  <span className="footerText">Files</span>
                 </div>
               </div>
             </div>
@@ -155,12 +155,12 @@ export const DataSource = () => {
                     />
                   </div>
                   <div className="step-tile-text-container">
-                    <div className="textHeader">Connect Data</div>
-                    <div className="textDesc">AI-powered database & API connections</div>
+                    <div className="textHeader">Connect Databases</div>
+                    <div className="textDesc">Connect to databases & APIs (AI-powered)</div>
                   </div>
                 </div>
                 <div className="footerContainer">
-                  <span className="footerText">AI Assistant</span>
+                  <span className="footerText">Databases</span>
                 </div>
               </div>
             </div>
@@ -171,8 +171,8 @@ export const DataSource = () => {
                 <div className="stepContainer">
                   <FaRobot size={40} />
                   <div className="step-tile-text-container">
-                    <div className="textHeader">Build Data</div>
-                    <div className="textDesc">Generate</div>
+                    <div className="textHeader">Synthetic Data</div>
+                    <div className="textDesc">Generate synthetic datasets</div>
                   </div>
                 </div>
                 <div className="footerContainer">

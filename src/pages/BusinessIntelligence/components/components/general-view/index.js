@@ -254,6 +254,64 @@ const GeneralView = ({ headers }) => {
         return 'Text';
     };
 
+    // Helper: isCategoricalColumn
+    const isCategoricalColumn = (header) => {
+      if (!data || data.length === 0) return false;
+      // Heuristic: not numerical, not all unique, and at least 1 unique value (allow single category)
+      const values = data.map(row => row[header]);
+      const unique = Array.from(new Set(values.filter(v => v !== null && v !== undefined && v !== '')));
+      return !isNumericalColumn(header) && unique.length >= 1 && unique.length <= 20;
+    };
+
+    // Helper: isUniqueColumn
+    const isUniqueColumn = (header) => {
+      if (!data || data.length === 0) return false;
+      const values = data.map(row => row[header]);
+      const unique = Array.from(new Set(values.filter(v => v !== null && v !== undefined && v !== '')));
+      return unique.length === data.length && data.length > 1;
+    };
+
+    // Helper: getCategoricalData
+    const getCategoricalData = (header) => {
+      if (!data || data.length === 0) return [];
+      const values = data.map(row => row[header]);
+      const counts = {};
+      values.forEach(v => {
+        if (v !== null && v !== undefined && v !== '') counts[v] = (counts[v] || 0) + 1;
+      });
+      const total = values.length;
+      return Object.entries(counts)
+        .map(([category, count]) => ({ category, count, percentage: Math.round((count / total) * 100) }))
+        .sort((a, b) => b.count - a.count);
+    };
+
+    // CategoricalBar: horizontal bar for categorical columns (screenshot style)
+    const CategoricalBar = ({ data, height = 60 }) => {
+      if (!data || data.length === 0) return <span style={{ color: '#999', fontSize: 11 }}>No data</span>;
+      return (
+        <div style={{ width: '100%', height, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+          {data.slice(0, 3).map((item, idx) => (
+            <div key={item.category} style={{ width: '100%', margin: '8px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{display:'flex',justifyContent:'space-between',width:'100%'}}>
+          <span style={{ fontSize: 12, color: '#22304a', fontWeight: 500, marginBottom: 2 }}>{item.category}</span>
+              <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 600, minWidth: 32 }}>{item.percentage}%</span>
+          </div>
+              <div style={{ width: '100%', background: '#e5eaf2', borderRadius: 4, height: 12, marginBottom: 2, overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
+                <div style={{ width: `${item.percentage}%`, background: 'rgba(59, 130, 246, 0.8)', height: '100%', borderRadius: 4, transition: 'width 0.3s' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    };
+
+    // UniqueValueCount: for columns with all unique values
+    const UniqueValueCount = ({ count }) => (
+      <div style={{ width: '100%', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', fontWeight: 600, fontSize: 13, background: '#f4f8fd', borderRadius: 6 }}>
+        {count.toLocaleString()} unique values
+      </div>
+    );
+
     // KPI Cards Component (Dashboard KPIs)
     const DashboardKpiCards = () => {
         if (dashboardKpisLoading) {
@@ -428,17 +486,7 @@ const GeneralView = ({ headers }) => {
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                 }}>
-                                    {!isNumericalColumn(header) ? (
-                                        <span style={{ 
-                                            fontSize: '10px', 
-                                            color: '#999',
-                                            textAlign: 'center',
-                                            fontStyle: 'italic'
-                                        }}>
-                                            {getColumnType(header) === 'ID' ? 'Identifier' : 
-                                             getColumnType(header) === 'DateTime' ? 'Timeline' : 'Text Data'}
-                                        </span>
-                                    ) : (
+                                    {isNumericalColumn(header) ? (
                                         <BarChartComponent 
                                             data={getChartData(header)}
                                             header={header}
@@ -447,6 +495,12 @@ const GeneralView = ({ headers }) => {
                                             onClick={handleChartClick}
                                             xAxis={false}
                                         />
+                                    ) : isCategoricalColumn(header) ? (
+                                        <CategoricalBar data={getCategoricalData(header)} />
+                                    ) : isUniqueColumn(header) ? (
+                                        <UniqueValueCount count={data.length} />
+                                    ) : (
+                                        <span style={{ fontSize: '10px', color: '#999', fontStyle: 'italic' }}>Text Data</span>
                                     )}
                                 </div>
                             </div>

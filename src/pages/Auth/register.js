@@ -8,7 +8,7 @@ import { LoadingIndicator } from "../../components/loader";
 import { useNavigate } from "react-router-dom";
 import './styles.css'
 import axios from 'axios'
-const baseURL="http://localhost:5000/api/register"
+import { adminUrl } from "../../utils/const";
 export const Register =()=>{
     const [loading,setLoading] = useState(false)
     const [toggle2,setToggle2] = useState(false)
@@ -20,11 +20,13 @@ export const Register =()=>{
       setLoading(true)
       event.preventDefault()
       axios
-      .post(baseURL, {
+      .post(adminUrl+"/register", {
         email:email,
         userName:userName,
         password:password,
-        app:'akkio'
+        app:'akkio',
+        organization: "673dff11ab5f4148582def42",
+        roles: ["67945a230af44462b4451f9c"]
       })
       .then((response) => {
         setLoading(false)

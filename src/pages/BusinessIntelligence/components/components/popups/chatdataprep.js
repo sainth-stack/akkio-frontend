@@ -197,11 +197,10 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
                 );
             } else {
                 // Existing gen_txt_response functionality
-                formData.append('query', question);
-                formData.append('tablename', fileName);
+                formData.append('prompt', question);
                 res = await axios.post(
-                    `${akkiourl}/gen_txt_response`,
-                    formData
+                    `${akkiourl}/ai_bot`,
+                    { prompt: question }
                 );
             }
             
@@ -249,7 +248,7 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
                     if (isReportMode || isChartMode) {
                         answer = res?.data?.answer || "No answer available";
                     } else {
-                        answer = res?.data?.answer || (res?.data.file_path?.[1] ? "Data Downloaded Successfully" : "No Data found");
+                        answer = (res?.data?.answer|| res?.data?.code) || (res?.data.file_path?.[1] ? "Data Downloaded Successfully" : "No Data found");
                     }
                     
                     return {

@@ -1,20 +1,20 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import "./styles.css";
-import { GiArtificialIntelligence } from 'react-icons/gi'
-import { MdDashboard } from "react-icons/md";
+// import { GiArtificialIntelligence } from 'react-icons/gi'
+// import { MdDashboard } from "react-icons/md";
 import { Link } from "react-router-dom";
-import { IoSettingsOutline } from "react-icons/io5";
+// import { IoSettingsOutline } from "react-icons/io5";
 import { useLocation } from "react-router-dom";
 import { FaAngleDown, FaAngleRight } from "react-icons/fa6";
-import { IoLocationSharp } from "react-icons/io5";
+// import { IoLocationSharp } from "react-icons/io5";
 import { BiSolidData } from "react-icons/bi";
-import { BiSolidAnalyse } from "react-icons/bi";
-import { MdOutlineFindInPage } from "react-icons/md";
+// import { BiSolidAnalyse } from "react-icons/bi";
+// import { MdOutlineFindInPage } from "react-icons/md";
 import { TbReportSearch } from "react-icons/tb";
-import { IoHome } from "react-icons/io5";
-import { GoProjectRoadmap } from "react-icons/go";
-import { FaBrain } from "react-icons/fa";
+// import { IoHome } from "react-icons/io5";
+// import { GoProjectRoadmap } from "react-icons/go";
+// import { FaBrain } from "react-icons/fa";
 
 export default function Sidebar() {
   const location = useLocation()
@@ -36,7 +36,7 @@ export default function Sidebar() {
   };
 
   const finData = [
-    { name: 'Home', icon: IoHome, path: '/welcome', id: 1, permission: 'home' },
+    // { name: 'Home', icon: IoHome, path: '/welcome', id: 1, permission: 'home' },
     // {
     //   name: 'Gen AI', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
     //     { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
@@ -50,13 +50,13 @@ export default function Sidebar() {
     //     { name: 'Reports', icon: TbReportSearch, path: '/reports', permission: 'reports' },
     //   ]
     // },
-    { name: 'Connect', icon: BiSolidData, path: '/data-source', permission: 'connect' },
-    { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
-    { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
-    // { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
-    // { name: 'Model Training', icon: FaBrain, path: '/model-training', permission: 'predict' },
-    { name: 'Insights', icon: TbReportSearch, path: '/insights', permission: 'reports' },
-    { name: 'Analytics', icon: MdOutlineFindInPage, path: '/train', permission: 'predict' },
+    { name: 'Data Source', icon: BiSolidData, path: '/data-source', permission: 'connect' },
+    // { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
+    // { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
+    // // { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
+    // // { name: 'Model Training', icon: FaBrain, path: '/model-training', permission: 'predict' },
+    // { name: 'Insights', icon: TbReportSearch, path: '/insights', permission: 'reports' },
+    // { name: 'Analytics', icon: MdOutlineFindInPage, path: '/train', permission: 'predict' },
     { name: 'Automate', icon: TbReportSearch, path: '/explore', permission: 'reports' },
 
 // {
@@ -69,8 +69,8 @@ export default function Sidebar() {
     // { name: 'KPI', icon: GiArtificialIntelligence, path: '/kpi', permission: 'kpi' },
     // { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
     // { name: 'Dashboard', icon: MdDashboard, path: '/gen-dashboard', id: 4, permission: 'dashboard' },
-    { name: 'Reports', icon: TbReportSearch, path: '/reports', id: 6, permission: 'reports' },
-    { name: 'Settings', icon: IoSettingsOutline, path: '/settings/team/general', id: 5, permission: 'settings' },
+    // { name: 'Reports', icon: TbReportSearch, path: '/reports', id: 6, permission: 'reports' },
+    // { name: 'Settings', icon: IoSettingsOutline, path: '/settings/team/general', id: 5, permission: 'settings' },
   ]
 
   const filteredData = finData.map(item => {
@@ -83,11 +83,11 @@ export default function Sidebar() {
     }
     return {
       ...item,
-      show: hasPermission(item.permission)
+      show: true
     };
   }).filter(item => item.show);
 
-  const [data, setData] = useState(filteredData)
+  const [data] = useState(filteredData)
 
   const handleClickExpand = (id) => {
     if (id === 2) {

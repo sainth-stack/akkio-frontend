@@ -2,7 +2,7 @@ import './App.css';
 import { AdminLayout } from './layout';
 import { Login } from './pages/Auth/login';
 import { Register } from './pages/Auth/register';
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { BusinessIntelligence } from './pages/BusinessIntelligence';
 import DisplayData from './pages/BusinessIntelligence/components/components/DisplayData'
 // import { HtmlReport } from './pages/Reports/generateHTMLfile';
@@ -28,12 +28,12 @@ import { Usage } from './pages/BusinessIntelligence/components/settings/componen
 import { TermsConst } from './pages/BusinessIntelligence/components/settings/components/account/legal/terms';
 import { LegalConst } from './pages/BusinessIntelligence/components/settings/components/account/legal/legal';
 import DeploymentData from './pages/BusinessIntelligence/components/deployments';
-import { ReportsGenBI } from './pages/BusinessIntelligence/components/reports';
+ 
 import { DashboardReports } from './pages/BusinessIntelligence/components/reports/dashboard';
 import Connect from './pages/BusinessIntelligence/components/components/connect';
 import MiddleContent from './pages/entryPage';
 import GenAi from './pages/genAi';
-import ForecastData from './pages/BusinessIntelligence/components/components/prediction/Forecast';
+ 
 import NewDeploymentData from './pages/BusinessIntelligence/components/deployments/newDeployment';
 import { PredictionAndForecast } from './pages/BusinessIntelligence/components/components/prediction';
 import Projects from './pages/projects';
@@ -51,6 +51,16 @@ import Reports from './pages/Reports';
 import Explore from './pages/Explore';
 import { Insights } from './pages/BusinessIntelligence/components/components/insights';
 import Train from './pages/BusinessIntelligence/components/components/prediction/train';
+
+// Seed default user for non-login flows
+try {
+  const existing = localStorage.getItem('user');
+  if (!existing) {
+    localStorage.setItem('user', JSON.stringify({ email: 'admin@gmail.com' }));
+  }
+} catch (e) {
+  // ignore
+}
 function App() {
   const clientId = '573823221354-d175srri1ta9un581atkp7b9qenst32u.apps.googleusercontent.com';
   return (
@@ -59,7 +69,7 @@ function App() {
           <GoogleOAuthProvider clientId={clientId}>
       <ToastContainer />
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Navigate to="/data-source" replace />} />
         <Route path="/new-deployment" element={<NewDeploymentData />} />
         <Route path="/" element={<AdminLayout />}>
           <Route path='/welcome' Component={MiddleContent} />

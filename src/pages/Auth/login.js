@@ -37,7 +37,7 @@ export const Login = () => {
           navigate('/admin/organizations');
           return;
         } else {
-          navigate('/welcome');
+          navigate('/data-source');
         }
       }
     } catch (error) {
@@ -92,7 +92,7 @@ export const Login = () => {
         if (data?.email === 'superadmin@gmail.com') {
           navigate('/admin/organizations');
         } else {
-          navigate('/welcome');
+          navigate('/data-source');
         }
       } else {
         message.error('Google login failed');

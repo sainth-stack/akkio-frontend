@@ -7,7 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import Plot from 'react-plotly.js';
-import EmptyState from '../../components/EmptyState';
+ 
 
 // Component to render report content
 const ReportContent = ({ data }) => {
@@ -807,14 +807,12 @@ const GeneralAnswer = ({ data }) => {
       // boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
       // border: '1px solid #e5e7eb'
     }}>
-      <p className="desc-ben" style={{
+      <div className="desc-ben" style={{
         margin: 0,
         fontSize: '1rem',
         lineHeight: '1.6',
         color: '#374151'
-      }}>
-        {data.answer}
-      </p>
+      }} dangerouslySetInnerHTML={{ __html: data.answer }} />
     </div>
   );
 };
@@ -1173,7 +1171,7 @@ const MessageContent = ({ content }) => {
 
     // New agent formats: { type, payload, explanation? }
     if (parsedContent.type && Object.prototype.hasOwnProperty.call(parsedContent, 'payload')) {
-      const { type, payload, explanation,explanation_html } = parsedContent;
+      const { type, payload, explanation } = parsedContent;
       if (type === 'plotly') {
         if (!payload) return <AnswerText payload="No chart to display." explanation={explanation} />;
         return <AnswerPlotly figure={payload} explanation={explanation} />;
@@ -1182,7 +1180,7 @@ const MessageContent = ({ content }) => {
         const rows = Array.isArray(payload) ? payload : [];
         return <AnswerTable rows={rows} explanation={explanation} />;
       }
-      if (type === 'text') {
+      if (type === 'text' || type=='conversational_answer') {
         return <AnswerText payload={payload} explanation={explanation} />;
       }
       // Unknown type -> stringify
@@ -1202,7 +1200,6 @@ const MessageContent = ({ content }) => {
 };
 
 const Reports = ({ initialSessionId }) => {
-  const filename = typeof window !== 'undefined' ? (localStorage.getItem('filename') || '') : '';
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([
@@ -1235,7 +1232,7 @@ const Reports = ({ initialSessionId }) => {
     }
 
     try {
-      const response = await axios.post(`${akkiourl}/Explore/`, params, {
+      const response = await axios.post(`${akkiourl}/legislation/chat/`, params, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
@@ -1293,7 +1290,7 @@ const Reports = ({ initialSessionId }) => {
     scrollToBottom();
   }, [messages]);
   return (
-    !filename ? <EmptyState /> : <div className="chat-container">
+    <div className="chat-container">
       <div className="chat-window">
         <div className="chat-messages">
           {messages.map((msg, index) => {

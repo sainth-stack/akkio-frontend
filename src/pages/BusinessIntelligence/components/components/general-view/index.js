@@ -286,17 +286,17 @@ const GeneralView = ({ headers }) => {
     };
 
     // CategoricalBar: horizontal bar for categorical columns (screenshot style)
-    const CategoricalBar = ({ data, height = 60 }) => {
+    const CategoricalBar = ({ data, height = 48 }) => {
       if (!data || data.length === 0) return <span style={{ color: '#999', fontSize: 11 }}>No data</span>;
       return (
         <div style={{ width: '100%', height, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
           {data.slice(0, 3).map((item, idx) => (
-            <div key={item.category} style={{ width: '100%', margin: '8px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div key={item.category} style={{ width: '100%', margin: '4px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{display:'flex',justifyContent:'space-between',width:'100%'}}>
           <span style={{ fontSize: 12, color: '#22304a', fontWeight: 500, marginBottom: 2 }}>{item.category}</span>
               <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 600, minWidth: 32 }}>{item.percentage}%</span>
           </div>
-              <div style={{ width: '100%', background: '#e5eaf2', borderRadius: 4, height: 12, marginBottom: 2, overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
+              <div style={{ width: '100%', background: '#e5eaf2', borderRadius: 4, height: 8, marginBottom: 1, overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
                 <div style={{ width: `${item.percentage}%`, background: 'rgba(59, 130, 246, 0.8)', height: '100%', borderRadius: 4, transition: 'width 0.3s' }} />
               </div>
             </div>
@@ -307,7 +307,7 @@ const GeneralView = ({ headers }) => {
 
     // UniqueValueCount: for columns with all unique values
     const UniqueValueCount = ({ count }) => (
-      <div style={{ width: '100%', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', fontWeight: 600, fontSize: 13, background: '#f4f8fd', borderRadius: 6 }}>
+      <div style={{ width: '100%', height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', fontWeight: 600, fontSize: 12, background: '#f4f8fd', borderRadius: 6 }}>
         {count.toLocaleString()} unique values
       </div>
     );
@@ -319,8 +319,8 @@ const GeneralView = ({ headers }) => {
                 <div style={{ 
                     display: 'flex', 
                     justifyContent: 'center', 
-                    padding: '40px',
-                    marginBottom: '24px'
+                    padding: '16px',
+                    marginBottom: '12px'
                 }}>
                     <Spin size="large" />
                 </div>
@@ -339,33 +339,24 @@ const GeneralView = ({ headers }) => {
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '24px',
-                marginBottom: '32px',
-                padding: '0 8px'
+                gap: '12px',
+                marginBottom: '12px',
+                padding: '0'
             }}>
                 {stats.map((stat, index) => (
                     <div
                         key={index}
                         style={{
-                            background: 'linear-gradient(135deg, #ffffff 0%, #fafbfc 100%)',
-                            borderRadius: '12px',
-                            padding: '28px 24px',
-                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                            border: '1px solid #f0f2f5',
+                            background: '#ffffff',
+                            borderRadius: '8px',
+                            padding: '14px 16px',
+                            boxShadow: '0 1px 4px rgba(0, 0, 0, 0.06)',
+                            border: '1px solid #eee',
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                             position: 'relative',
                             overflow: 'hidden'
                         }}
                     >
-                        <div style={{
-                            position: 'absolute',
-                            left: 0,
-                            top: '20%',
-                            bottom: '20%',
-                            width: '3px',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            borderRadius: '0 2px 2px 0'
-                        }} />
                         <div style={{
                             display: 'flex',
                             flexDirection: 'column',
@@ -384,7 +375,7 @@ const GeneralView = ({ headers }) => {
                                 {stat.label}
                             </h3>
                             <div style={{
-                                fontSize: '36px',
+                                fontSize: '24px',
                                 fontWeight: '700',
                                 color: '#1a202c',
                                 lineHeight: '1.1',
@@ -395,16 +386,6 @@ const GeneralView = ({ headers }) => {
                                 {stat.value || 'N/A'}
                             </div>
                         </div>
-                        <div style={{
-                            position: 'absolute',
-                            top: '-50%',
-                            right: '-20%',
-                            width: '150px',
-                            height: '150px',
-                            background: 'radial-gradient(circle, rgba(102, 126, 234, 0.03) 0%, transparent 70%)',
-                            borderRadius: '50%',
-                            pointerEvents: 'none'
-                        }} />
                     </div>
                 ))}
             </div>
@@ -448,7 +429,8 @@ const GeneralView = ({ headers }) => {
                                 style={{
                                     flex: 1,
                                     minWidth: '200px',
-                                    padding: '12px 8px',
+                                    padding: '8px 6px',
+                                    paddingBottom: '10px',
                                     borderRight: index < headers.length - 1 ? '1px solid #e0e0e0' : 'none',
                                     display: 'flex',
                                     flexDirection: 'column',
@@ -458,10 +440,10 @@ const GeneralView = ({ headers }) => {
                             >
                                 {/* Column Header */}
                                 <div style={{
-                                    fontSize: '13px',
+                                    fontSize: '12px',
                                     fontWeight: '600',
                                     color: '#333',
-                                    marginBottom: '4px',
+                                    marginBottom: '2px',
                                     textAlign: 'center',
                                     lineHeight: '1.3'
                                 }}>
@@ -470,9 +452,9 @@ const GeneralView = ({ headers }) => {
                                 
                                 {/* Column Type */}
                                 <div style={{
-                                    fontSize: '11px',
+                                    fontSize: '10px',
                                     color: '#666',
-                                    marginBottom: '8px',
+                                    marginBottom: '4px',
                                     textAlign: 'center'
                                 }}>
                                     {getColumnType(header)}
@@ -480,7 +462,7 @@ const GeneralView = ({ headers }) => {
 
                                 {/* Chart or Placeholder */}
                                 <div style={{
-                                    height: '100px',
+                                    height: '70px',
                                     width: '100%',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -490,7 +472,7 @@ const GeneralView = ({ headers }) => {
                                         <BarChartComponent 
                                             data={getChartData(header)}
                                             header={header}
-                                            height={130}
+                                            height={70}
                                             width={190}
                                             onClick={handleChartClick}
                                             xAxis={false}
@@ -558,11 +540,11 @@ const GeneralView = ({ headers }) => {
         <div style={{ padding: '10px', margin: '0' }}>
             {/* KPI Cards Section (Dashboard KPIs) */}
             <div style={{
-                marginBottom: '24px',
-                padding: '24px',
-                background: '#fafafa',
-                borderRadius: '12px',
-                border: '1px solid #e0e0e0'
+                marginBottom: '12px',
+                padding: '0px',
+                background: 'transparent',
+                borderRadius: '0',
+                border: 'none'
             }}>
                 <DashboardKpiCards />
             </div>
@@ -586,7 +568,7 @@ const GeneralView = ({ headers }) => {
                 <EnhancedVirtualizedTable
                     headers={displayHeaders}
                     data={data}
-                    height={750}
+                    height={'calc(100vh - 210px)'}
                     rowHeight={45}
                     searchTerm={searchTerm}
                     maxDisplayRows={10000}

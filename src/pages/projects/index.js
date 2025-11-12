@@ -42,8 +42,9 @@ const Projects = () => {
       formData.append("email", email);
   
       const response = await axios.post(`${akkiourl}/get_user_data`, formData);
-      const result = response.data.result || []; // Ensure it's an array
-      setFetchedData(result.map((file) => JSON.stringify(file)));
+      console.log(response,'response.data.result')
+      const result = response.data || []; // Ensure it's an array
+      setFetchedData(result.map((file) => JSON.stringify(file.name)));
     } catch (error) {
       console.error("Error fetching files:", error);
     } finally {

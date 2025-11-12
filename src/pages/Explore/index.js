@@ -866,8 +866,8 @@ const AnswerTable = ({ rows, explanation }) => {
           padding: '0.5rem 0.75rem',
           borderRadius: 6,
           fontSize: 13,
-        }}>
-          {explanation}
+        }} dangerouslySetInnerHTML={{ __html: explanation }}>
+          {/* {explanation} */}
         </div>
       )}
       <div style={{ width: '100%', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
@@ -1082,8 +1082,8 @@ const AnswerPlotly = ({ figure, explanation }) => {
             padding: '0.5rem 0.75rem',
             borderRadius: 6,
             fontSize: 13,
-          }}>
-            {explanation}
+          }} dangerouslySetInnerHTML={{ __html: explanation }}>
+            {/* {explanation} */}
           </div>
         )}
         <div style={{
@@ -1128,8 +1128,8 @@ const AnswerPlotly = ({ figure, explanation }) => {
           padding: '0.5rem 0.75rem',
           borderRadius: 6,
           fontSize: 13,
-        }}>
-          {explanation}
+        }} dangerouslySetInnerHTML={{ __html: explanation }}>
+          {/* {explanation} */}
         </div>
       )}
       {missingYWarning && (

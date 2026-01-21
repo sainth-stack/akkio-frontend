@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React from "react";
-import "./styles.css";
+import "./akkioSidebar.scss";
+import "./akkioSidebarLayout.scss";
 import { IoHomeOutline, IoPeople } from 'react-icons/io5'
 import { IoMdArrowRoundBack } from 'react-icons/io'
 import { FaCode } from "react-icons/fa6";
@@ -14,6 +15,7 @@ import { useState } from 'react'
 import { Link, useNavigate,useLocation } from "react-router-dom";
 import { BsClipboardData } from "react-icons/bs";
 import { UpgradePopup } from "../../pages/BusinessIntelligence/components/components/popups/upgradePopup";
+import WorkspaceUsageCard from "./WorkspaceUsageCard";
 export default function GenBiSidebar() {
     const navigate = useNavigate()
     const [show, setShow] = useState(false);
@@ -48,18 +50,18 @@ export default function GenBiSidebar() {
     }
     return (
         <>
-            <div class="shadow sidebar-scroll sticky-top mt-3" style={{ overflow: 'auto', width: '220px', position: "fixed", left: 0, top: -20, background: '#fff', zIndex: 10, height: '100vh' }}>
+            <div className="shadow sticky-top mt-3 akkioSidebar akkioSidebarLayout akkioSidebarLayout--settings">
                 <button className="btn btn-primary m-3" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px' }} onClick={() => navigate('/welcome')}><IoMdArrowRoundBack />Back</button>
                 {data.map((item) => {
                     return (
-                        <ul class="sidebar-list-items" id="menu" style={{ padding: '10px', paddingLeft: '20px' }}>
-                            <p style={{ fontSize: '18px', fontWeight: 500 }}>{item.name}</p>
+                        <ul className="akkioSidebar__list" id="menu" style={{ padding: '10px', paddingLeft: '20px' }}>
+                            <p className="akkioSidebar__sectionTitle">{item.name}</p>
                             {item.children.map((item) => {
                                 return (
-                                    <li class={`sidebar-list-item cursor-pointer p-2 mt-2 ${location.pathname ===item.path ? 'backgroundSelected':''}`} onClick={(e) => ['Predict', 'Publish'].includes(item.name) ? handleClick(e) : () => { }}>
-                                        <Link to={handlegetpath(item)} class="nav-link align-middle px-3 nav-item">
-                                            <item.icon size={24} style={{color:location.pathname ===item.path ? 'white':'black',marginBottom: '6px'}}/>
-                                            <span class="ms-1 d-none d-sm-inline link-text px-1" style={{ fontSize: '16px', fontWeight: 400,color:location.pathname ===item.path ? 'white':'black' }} >{item.name}</span>
+                                    <li className={`akkioSidebar__item cursor-pointer p-2 mt-2 ${location.pathname === item.path ? 'akkioSidebar__item--active' : ''}`} onClick={(e) => ['Predict', 'Publish'].includes(item.name) ? handleClick(e) : () => { }}>
+                                        <Link to={handlegetpath(item)} className="akkioSidebar__link">
+                                            <item.icon size={24} className="akkioSidebar__icon" />
+                                            <span className="akkioSidebar__text">{item.name}</span>
                                         </Link>
                                     </li>
                                 )
@@ -67,6 +69,7 @@ export default function GenBiSidebar() {
                         </ul>
                     )
                 })}
+                <WorkspaceUsageCard />
             </div>
             <UpgradePopup {...{ showModal: show, setShowModal: setShow }} />
         </>

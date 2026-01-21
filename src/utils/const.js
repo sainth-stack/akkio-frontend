@@ -1,6 +1,8 @@
-export const akkiourl = "http://127.0.0.1:8000/api";
+export const akkiourl = "http://localhost:8000/api";
+// export const akkiourl = "https://akkio-fastapi-td5f.onrender.com/api";
+// export const akkiourl = "http://18.143.150.140:3001/api";
 export const keypulseurl = "http://18.143.174.1:8000/api";
-export const adminUrl="http://54.169.213.200:4500/api"
+export const adminUrl="http://18.143.150.140:4500/api"
 // export const adminUrl="http://localhost:4500/api"
 export function getFinalData(uniqueArr, isDate, length) {
   // Add early return if input array is empty or undefined

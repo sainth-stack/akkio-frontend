@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from "react";
-import "./styles.css";
+import "../Sidebar/akkioSidebar.scss";
+import "../Sidebar/akkioSidebarLayout.scss";
 import { GiArtificialIntelligence } from 'react-icons/gi'
 import { MdDashboard } from "react-icons/md";
 import { Link } from "react-router-dom";
@@ -14,6 +15,7 @@ import { MdOutlineFindInPage } from "react-icons/md";
 import { TbReportSearch } from "react-icons/tb";
 import { IoHome } from "react-icons/io5";
 import { GoProjectRoadmap } from "react-icons/go";
+import WorkspaceUsageCard from "../Sidebar/WorkspaceUsageCard";
 
 export default function SidebarAdmin() {
   const location = useLocation()
@@ -47,7 +49,7 @@ export default function SidebarAdmin() {
   }
   return (
     <>
-      <div class="shadow sidebar-scroll sticky-top mt-2" style={{ overflow: 'auto', width: '220px', position: "fixed", left: 0, top: 60, background: '#000', zIndex: 10, height: '92vh' }}>
+      <div className="shadow sticky-top mt-2 akkioSidebar akkioSidebarLayout akkioSidebarLayout--admin">
         {/* <div style={{ padding: '8px', paddingTop: '24px', display: 'flex', alignItems: 'center', gap: '5px' }}>
           <IoLocationSharp size={30} style={{ color: 'white' }} />
           <div>
@@ -55,32 +57,28 @@ export default function SidebarAdmin() {
             <h2 style={{ fontSize: '12px', fontWeight: 400, color: 'white' }}>U.S</h2>
           </div>
         </div> */}
-        <hr style={{ border: '1px solid white', padding: 0, margin: 0, marginTop: '0px' }} />
-        <ul class="sidebar-list-items pt-2" id="menu">
+        <hr className="akkioSidebar__divider" />
+        <ul className="akkioSidebar__list pt-2" id="menu">
           {data.map((item) => {
             let NewIcon = (item.id === 2 && expand.expand1) || (item.id === 3 && expand.expand2) || (item.id === 5 && expand.expand3) ? FaAngleDown : FaAngleRight
             return (
               <div>
-                <li class={`sidebar-list-item cursor-pointer p-2 mt-1 ${location.pathname === item.path ? 'backgroundSelected' : ''}`} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Link to={item?.children?.length > 0 ? '#' : item.path} onClick={() => item?.children?.length > 0 ? () => { } : handleClickExpand(item.id)} class="nav-link align-middle px-2 nav-item" >
-                    <div>
-                      <item.icon size={20} style={{ color: location.pathname === item.path ? 'black' : 'white' }} />
-                      <span class="ms-1 d-none d-sm-inline link-text px-1" style={{ color: location.pathname === item.path ? 'black' : 'white' }}>{item.name}</span>
-                    </div>
+                <li className={`akkioSidebar__item cursor-pointer p-2 mt-1 ${location.pathname === item.path ? 'akkioSidebar__item--active' : ''}`}>
+                  <Link to={item?.children?.length > 0 ? '#' : item.path} onClick={() => item?.children?.length > 0 ? () => { } : handleClickExpand(item.id)} className="akkioSidebar__link" >
+                      <item.icon size={20} className="akkioSidebar__icon" />
+                      <span className="akkioSidebar__text">{item.name}</span>
                   </Link>
-                  {item?.children?.length > 0 && <NewIcon size={20} style={{ color: 'white', cursor: 'pointer' }} onClick={() => handleClickExpand(item.id)} />}
+                  {item?.children?.length > 0 && <NewIcon size={20} className="akkioSidebar__chev" onClick={() => handleClickExpand(item.id)} />}
                 </li>
                 {
                   ((item.id === 2 && expand.expand1) || (item.id === 3 && expand.expand2) || (item.id === 5 && expand.expand3)) && <>
-                    <ul class="sidebar-list-items ps-4" id="menu">
+                    <ul className="akkioSidebar__list ps-4" id="menu">
                       {item?.children?.map((item) => {
                         return (
-                          <li class={`sidebar-list-item cursor-pointer p-2 mt-1 ${location.pathname === item.path ? 'backgroundSelected' : ''}`} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Link to={item.path} class="nav-link align-middle px-2 nav-item" >
-                              <div>
-                                <item.icon size={20} style={{ color: location.pathname === item.path ? 'black' : 'white' }} />
-                                <span class="ms-1 d-none d-sm-inline link-text px-1" style={{ color: location.pathname === item.path ? 'black' : 'white' }}>{item.name}</span>
-                              </div>
+                          <li className={`akkioSidebar__item cursor-pointer p-2 mt-1 ${location.pathname === item.path ? 'akkioSidebar__item--active' : ''}`}>
+                            <Link to={item.path} className="akkioSidebar__link" >
+                                <item.icon size={20} className="akkioSidebar__icon" />
+                                <span className="akkioSidebar__text">{item.name}</span>
                             </Link>
                           </li>
                         )
@@ -92,6 +90,7 @@ export default function SidebarAdmin() {
             )
           })}
         </ul >
+        <WorkspaceUsageCard />
       </div >
     </>
   );

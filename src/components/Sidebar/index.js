@@ -1,154 +1,145 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useState } from "react";
-import "./styles.css";
-import { GiArtificialIntelligence } from 'react-icons/gi'
-import { MdDashboard } from "react-icons/md";
-import { Link } from "react-router-dom";
-import { IoSettingsOutline } from "react-icons/io5";
-import { useLocation } from "react-router-dom";
-import { FaAngleDown, FaAngleRight } from "react-icons/fa6";
-import { IoLocationSharp } from "react-icons/io5";
-import { BiSolidData } from "react-icons/bi";
-import { BiSolidAnalyse } from "react-icons/bi";
+import React, { useEffect, useState, useMemo } from "react";
+import "./akkioSidebar.scss";
+import "./akkioSidebarLayout.scss";
+import { Link, useLocation } from "react-router-dom";
+import { IoSettingsOutline, IoHome } from "react-icons/io5";
+import { FaAngleDown, FaAngleRight, FaBrain } from "react-icons/fa6";
+import { BiSolidData, BiSolidAnalyse } from "react-icons/bi";
 import { MdOutlineFindInPage } from "react-icons/md";
 import { TbReportSearch } from "react-icons/tb";
-import { IoHome } from "react-icons/io5";
 import { GoProjectRoadmap } from "react-icons/go";
-import { FaBrain } from "react-icons/fa";
+import WorkspaceUsageCard from "./WorkspaceUsageCard";
+
+const MENU_ITEMS = [
+  { name: 'Home', icon: IoHome, path: '/welcome', id: 1, permission: 'home' },
+  { name: 'Connect', icon: BiSolidData, path: '/data-source', permission: 'connect' },
+  { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
+  { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
+  { name: 'Insights', icon: TbReportSearch, path: '/insights', permission: 'reports' },
+  { name: 'Analytics', icon: MdOutlineFindInPage, path: '/train', permission: 'predict' },
+  { name: 'Automate', icon: TbReportSearch, path: '/explore', permission: 'reports' },
+  { name: 'Multi Agent', icon: FaBrain, path: '/multi-agent', permission: 'reports' },
+  { name: 'Reports', icon: TbReportSearch, path: '/reports', id: 6, permission: 'reports' },
+  { name: 'Settings', icon: IoSettingsOutline, path: '/settings', permission: 'home' },
+];
+
+const RESTRICTED_FILE_TYPES = new Set(['image', 'pdf', 'word', 'doc', 'docx', 'xml', 'audio', 'url', 'video']);
+const RESTRICTED_VIEWS = ['multi-model', 'multi-agent'];
+const RESTRICTED_VIEW_HIDDEN_ITEMS = new Set(['Discover', 'Insights', 'Analytics', 'Automate', 'Reports']);
+const FILE_TYPE_ALLOWED_ITEMS = new Set(['Connect', 'Workspace', 'Automate']);
 
 export default function Sidebar() {
-  const location = useLocation()
-  const [expand, setExpand] = useState({
-    expand1: false,
-    expand2: false,
-    expand3: false
-  })
+  const location = useLocation();
+
+  // State for expanded menus (keeping original ID logic)
+  const [expandedMenus, setExpandedMenus] = useState({
+    2: false, // Workspace
+    3: false, // Gen AI (previously)
+    5: false  // unused?
+  });
 
   const hasPermission = (feature) => {
-    const userData = JSON.parse(localStorage.getItem('user'));
-    if (!userData?.roles) return false;
-
-    const allPermissions = [...new Set(userData.roles.flatMap(role => role.permissions))];
-
-    return allPermissions.some(permission =>
-      permission.startsWith(`${feature}_read`) || permission.startsWith(`${feature}_write`)
-    );
+    try {
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (!userData?.roles) return false;
+      const allPermissions = new Set(userData.roles.flatMap(role => role.permissions || []));
+      return allPermissions.has(`${feature}_read`) || allPermissions.has(`${feature}_write`) ||
+        [...allPermissions].some(p => p.startsWith(`${feature}_`));
+    } catch (e) {
+      return false;
+    }
   };
 
-  const finData = [
-    { name: 'Home', icon: IoHome, path: '/welcome', id: 1, permission: 'home' },
-    // {
-    //   name: 'Gen AI', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
-    //     { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
-    //     { name: 'Connect', icon: BiSolidData, path: '/connect', permission: 'connect' },
-    //     { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
-    //     // { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
-    //     { name: 'AI Agents', icon: GiArtificialIntelligence, path: '/ai-agents', permission: 'genAi' },
-    //     // { name: 'KPI', icon: GiArtificialIntelligence, path: '/kpi', permission: 'kpi' },
-    //     { name: 'Predict', icon: MdOutlineFindInPage, path: '/predict', permission: 'predict' },
-    //     // { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
-    //     { name: 'Reports', icon: TbReportSearch, path: '/reports', permission: 'reports' },
-    //   ]
-    // },
-    { name: 'Connect', icon: BiSolidData, path: '/data-source', permission: 'connect' },
-    { name: 'Workspace', icon: GoProjectRoadmap, path: '/projects', id: 2, permission: 'projects' },
-    { name: 'Discover', icon: BiSolidAnalyse, path: '/discover', permission: 'discover' },
-    // { name: 'Visualize', icon: GiArtificialIntelligence, path: '/gen-ai', permission: 'genAi' },
-    // { name: 'Model Training', icon: FaBrain, path: '/model-training', permission: 'predict' },
-    { name: 'Insights', icon: TbReportSearch, path: '/insights', permission: 'reports' },
-    { name: 'Analytics', icon: MdOutlineFindInPage, path: '/train', permission: 'predict' },
-    { name: 'Automate', icon: TbReportSearch, path: '/explore', permission: 'reports' },
+  const menuItems = useMemo(() => {
+    // 1. Filter by permissions
+    const permissionFiltered = MENU_ITEMS.map(item => {
+      if (item.children) {
+        const visibleChildren = item.children.filter(child => hasPermission(child.permission));
+        if (visibleChildren.length === 0) return null;
+        return { ...item, children: visibleChildren };
+      }
+      return hasPermission(item.permission) ? item : null;
+    }).filter(Boolean);
 
-// {
-//   name: 'AIAgents + MCP + A2A', icon: GiArtificialIntelligence, id: 3, permission: 'genbi', children: [
-//     // { name: 'AI Agents', icon: GiArtificialIntelligence, path: '/ai-agents', permission: 'genAi' },
-//     { name: 'Anomaly', icon: BiSolidData, path: '/manufa-anomaly', permission: 'connect' },
-//     // { name: 'Healthcare Anomaly', icon: BiSolidData, path: '/healthcare-anomaly', permission: 'connect' },
-//   ]
-// },
-    // { name: 'KPI', icon: GiArtificialIntelligence, path: '/kpi', permission: 'kpi' },
-    // { name: 'Forecast', icon: MdOutlineFindInPage, path: '/forecast', permission: 'forecast' },
-    // { name: 'Dashboard', icon: MdDashboard, path: '/gen-dashboard', id: 4, permission: 'dashboard' },
-    { name: 'Reports', icon: TbReportSearch, path: '/reports', id: 6, permission: 'reports' },
-    { name: 'Settings', icon: IoSettingsOutline, path: '/settings/team/general', id: 5, permission: 'settings' },
-  ]
+    // 2. Filter by Context (File Type / View Type)
+    let finalItems = permissionFiltered;
+    let selectedType = '';
+    try {
+      selectedType = String(localStorage.getItem('selectedFileType') || '').toLowerCase();
+    } catch (e) { }
 
-  const filteredData = finData.map(item => {
-    if (item.children) {
-      return {
-        ...item,
-        children: item.children.filter(child => hasPermission(child.permission)),
-        show: item.children.some(child => hasPermission(child.permission))
-      };
+    if (RESTRICTED_FILE_TYPES.has(selectedType)) {
+      finalItems = finalItems.filter(item => FILE_TYPE_ALLOWED_ITEMS.has(item.name));
+    } 
+
+    return finalItems;
+  }, [location.pathname]); // Re-evaluate when location changes (or if localstorage changes which usually triggers re-render if managed correctly, but sticking to existing logic pattern)
+
+  const toggleExpand = (id) => {
+    setExpandedMenus(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const isActive = (item) => {
+    if (item.name === "Analytics" && ["/train", "/predict", "/forecast"].some(p => location.pathname.startsWith(p))) {
+      return true;
     }
-    return {
-      ...item,
-      show: hasPermission(item.permission)
-    };
-  }).filter(item => item.show);
+    return location.pathname === item.path;
+  };
 
-  const [data, setData] = useState(filteredData)
-
-  const handleClickExpand = (id) => {
-    if (id === 2) {
-      setExpand({
-        ...expand, expand1: !expand.expand1
-      })
-    } else if (id === 3) {
-      setExpand({
-        ...expand, expand2: !expand.expand2
-      })
-    } else if (id === 5) {
-      setExpand({
-        ...expand, expand3: !expand.expand3
-      })
-    }
-  }
   return (
-    <>
-      <div class="shadow sidebar-scroll sticky-top mt-2" style={{ overflow: 'auto', width: '240px', position: "fixed", left: 0, top: 70, background: '#000', zIndex: 10, height: '92vh' }}>
-        <hr style={{ border: '1px solid white', padding: 0, margin: 0, marginTop: '0px' }} />
-        <ul class="sidebar-list-items pt-2" id="menu">
-          {data.map((item) => {
-            let NewIcon = (item.id === 2 && expand.expand1) || (item.id === 3 && expand.expand2) || (item.id === 5 && expand.expand3) ? FaAngleDown : FaAngleRight
-            return (
-              <div>
-                <li class={`sidebar-list-item cursor-pointer p-2 mt-1 ${
-                  (item.name === 'Analytics' && ['/train', '/predict', '/forecast'].some(p => location.pathname.startsWith(p)))
-                    ? 'backgroundSelected'
-                    : (location.pathname === item.path ? 'backgroundSelected' : '')
-                }`} onClick={() => handleClickExpand(item.id)} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Link to={item?.children?.length > 0 ? '#' : item.path} onClick={() => item?.children?.length > 0 ? () => { } : handleClickExpand(item.id)} class="nav-link align-middle px-2 nav-item" >
-                    <div>
-                      <item.icon size={20} style={{ color: (item.name === 'Analytics' && ['/train', '/predict', '/forecast'].some(p => location.pathname.startsWith(p))) ? 'black' : (location.pathname === item.path ? 'black' : 'white') }} />
-                      <span class="ms-1 d-none d-sm-inline link-text px-1" style={{ color: (item.name === 'Analytics' && ['/train', '/predict', '/forecast'].some(p => location.pathname.startsWith(p))) ? 'black' : (location.pathname === item.path ? 'black' : 'white') }}>{item.name}</span>
-                    </div>
-                  </Link>
-                  {item?.children?.length > 0 && <NewIcon size={20} style={{ color: 'white', cursor: 'pointer' }} />}
-                </li>
-                {
-                  ((item.id === 2 && expand.expand1) || (item.id === 3 && expand.expand2) || (item.id === 5 && expand.expand3)) && <>
-                    <ul class="sidebar-list-items ps-4" id="menu">
-                      {item?.children?.map((item) => {
-                        return (
-                          <li class={`sidebar-list-item cursor-pointer p-2 mt-1 ${location.pathname === item.path ? 'backgroundSelected' : ''}`} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Link to={item.path} class="nav-link align-middle px-2 nav-item" >
-                              <div>
-                                <item.icon size={20} style={{ color: location.pathname === item.path ? 'black' : 'white' }} />
-                                <span class="ms-1 d-none d-sm-inline link-text px-1" style={{ color: location.pathname === item.path ? 'black' : 'white' }}>{item.name}</span>
-                              </div>
-                            </Link>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </>
-                }
-              </div>
-            )
-          })}
-        </ul>
+    <div className="akkioSidebar akkioSidebarLayout akkioSidebarLayout--main shadow">
+      <div className="akkioSidebar__header">
+        {/* Placeholder for optional branding or title if needed later */}
       </div>
-    </>
+      <hr className="akkioSidebar__divider" />
+
+      <ul className="akkioSidebar__list" id="menu">
+        {menuItems.map((item) => {
+          const isExpanded = expandedMenus[item.id];
+          const hasChildren = item.children && item.children.length > 0;
+          const ExpandIcon = isExpanded ? FaAngleDown : FaAngleRight;
+
+          return (
+            <div key={item.name}>
+              <li
+                className={`akkioSidebar__item ${isActive(item) ? "akkioSidebar__item--active" : ""}`}
+                onClick={() => hasChildren ? toggleExpand(item.id) : null}
+              >
+                <Link
+                  to={hasChildren ? "#" : item.path}
+                  className="akkioSidebar__link"
+                  onClick={(e) => hasChildren && e.preventDefault()}
+                >
+                  <item.icon size={20} className="akkioSidebar__icon" />
+                  <span className="akkioSidebar__text">{item.name}</span>
+                </Link>
+                {hasChildren && <ExpandIcon size={16} className="akkioSidebar__chev" />}
+              </li>
+
+              {hasChildren && isExpanded && (
+                <ul className="akkioSidebar__sublist">
+                  {item.children.map((child) => (
+                    <li
+                      key={child.name}
+                      className={`akkioSidebar__item akkioSidebar__item--sub ${location.pathname === child.path ? "akkioSidebar__item--active" : ""}`}
+                    >
+                      <Link to={child.path} className="akkioSidebar__link">
+                        <child.icon size={18} className="akkioSidebar__icon" />
+                        <span className="akkioSidebar__text">{child.name}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </ul>
+
+      <div className="akkioSidebar__footer">
+        <WorkspaceUsageCard />
+      </div>
+    </div>
   );
 }

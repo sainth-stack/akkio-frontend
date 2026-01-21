@@ -27,11 +27,11 @@ const DisplayData = () => {
   const [open, setOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-  const [value, setValue] = useState(0); 
+  const [value, setValue] = useState(0);
   const [columnsView, setColumnsView] = useState('');
   const [columnsLoading, setColumnsLoad] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [loading,setLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate();
   const { displayContent, handleCleanData, handlePrepareData } = useDataAPI();
 
@@ -82,7 +82,7 @@ const DisplayData = () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-  
+
   const fetchColumnDescriptions = async () => {
     setColumnsLoad(true);
     try {
@@ -112,40 +112,40 @@ const DisplayData = () => {
     setPopup(displaypopup);
   }, [displaypopup]);
 
-  const handleChange = async(event, newValue) => {
+  const handleChange = async (event, newValue) => {
     setValue(newValue);
-    if(newValue === 3){
+    if (newValue === 3) {
       setColumnsLoad(true)
-      const res=await axios.post(`${akkiourl}/getting_column_description`)
+      const res = await axios.post(`${akkiourl}/getting_column_description`)
       setColumnsLoad(false)
-       setColumnsView(res?.data?.Column_description)
+      setColumnsView(res?.data?.Column_description)
     }
   };
 
 
 
   return (
-    <div style={{ minHeight: "90vh", overflow: "auto" }}>
+    <div style={{ minHeight: "90vh", overflow: "auto", paddingLeft: '20px' }}>
       <Navbar />
-      
+
       {!filename && !initialLoading ? (
         <EmptyState />
       ) : (
         <div className="professional-table">
-          
-      
+
+
 
           {initialLoading ? (
-            <div style={{display:'flex',justifyContent:'center',width:'100%'}}>
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
               <Spin className="spinner" size={"large"} />
             </div>
           ) : (
             <div className="">
               {value === 0 && filename && (
-            <GeneralView {...{headers,data}} />
+                <GeneralView {...{ headers, data }} />
               )}
-              
-              
+
+
               {/* {value === 1 &&filename&& <MissingValues />} */}
               {/* {value === 2 && <Explore />} */}
 

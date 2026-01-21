@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react"
-import { Card } from "react-bootstrap"
+import { useEffect, useState, useCallback } from "react"
 import { akkiourl } from "../../../../../utils/const";
 import axios from 'axios';
-import { LoadingOutlined } from '@ant-design/icons';
 import './index.css'
 import { Spin } from "antd";
 import Plot from 'react-plotly.js';
@@ -10,13 +8,15 @@ import ChatDataPrep from "../popups/chatdataprep";
 import { IconButton } from "@mui/material";
 import { FaRobot } from "react-icons/fa6";
 import Bot from "../../../../bot";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export const PredictionAndForecast = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     // Determine mode based on path
     const isPredict = location.pathname.includes('/predict');
     const isForecast = location.pathname.includes('/forecast');
+    const pageTitle = isForecast ? 'Forecast' : 'Prediction';
     const [targetColumn, setTargetColumn] = useState("");
     const [targetOptions, setTargetOptions] = useState([])
     const [loading, setLoading] = useState(false)
@@ -27,8 +27,9 @@ export const PredictionAndForecast = () => {
     const [tenure, setTenure] = useState('1');
     const [show, setShow] = useState(false)
     const [showModel, setShowModel] = useState(false)
-    const [mainTab, setMainTab] = useState('Models');
-    
+    const mainTab = 'Models';
+    const [predictModel, setPredictModel] = useState('AutoML'); // 'RandomForest' | 'AutoML'
+
     const frequencyOptions = [
         { value: 'days', label: 'Days' },
         { value: 'weeks', label: 'Weeks' },
@@ -39,19 +40,36 @@ export const PredictionAndForecast = () => {
 
     const tenureOptions = [1, 3, 5, 7, 10];
 
+    const modelOptions = [
+        { value: 'AutoML', label: 'AutoML (Best Model)' },
+        { value: 'RandomForest', label: 'Random Forest' },
+        { value: 'XGBoost', label: 'XGBoost' },
+        { value: 'LightGBM', label: 'LightGBM' },
+        { value: 'GradientBoosting', label: 'Gradient Boosting' }
+    ];
+
     // Function to fetch columns from API
-    const fetchColumns = async () => {
+    const fetchColumns = useCallback(async () => {
         setColumnsLoading(true);
         try {
             const response = await axios.get(`${akkiourl}/get_columns`, {
                 headers: { 'accept': 'application/json' }
             });
-            
+
             if (response.data.status === 'success' && response.data.columns) {
-                const columnOptions = response.data.columns.map((column) => ({
-                    label: column,
-                    value: column
-                }));
+                let columnOptions = []
+                if (isPredict) {
+                    columnOptions = response?.data?.predictable_columns?.map((column) => ({
+                        label: column,
+                        value: column
+                    }));
+                } else {
+                    columnOptions = response?.data?.forecastable_columns?.map((column) => ({
+                        label: column,
+                        value: column
+                    }));
+                }
+
                 setTargetOptions(columnOptions);
             } else {
                 console.error("Failed to fetch columns:", response.data);
@@ -63,7 +81,7 @@ export const PredictionAndForecast = () => {
         } finally {
             setColumnsLoading(false);
         }
-    };
+    }, [isPredict]);
 
     // Unified submit handler for predict/forecast
     const handleSubmit = async (e) => {
@@ -90,6 +108,7 @@ export const PredictionAndForecast = () => {
                 const predictForm = new FormData();
                 predictForm.append('form_name', 'arima');
                 predictForm.append('targetColumn', targetColumn);
+                predictForm.append('col', targetColumn);
                 predictForm.append('frequency', frequency);
                 predictForm.append('tenure', tenure);
                 const predictRes = await axios.post(`${akkiourl}/model_predict`, predictForm);
@@ -103,19 +122,22 @@ export const PredictionAndForecast = () => {
                 console.error('Forecast error:', error);
             }
         } else {
-            // Predict (RandomForest) - unchanged
+            // Predict setup (train + get feature columns)
             setLoading(true)
             setShow(true)
             try {
-                let model = 'RandomForest';
                 let payload = {
-                    model,
+                    model: predictModel,
                     col: targetColumn,
                 };
                 const response = await axios.post(`${akkiourl}/models`, payload, {
                     headers: { 'Content-Type': 'application/json' }
                 });
                 setResponse(response.data);
+                // Pre-fill form with row_data if available
+                if (response.data.row_data) {
+                    setFormData(response.data.row_data);
+                }
                 setLoading(false);
             } catch (error) {
                 setLoading(false);
@@ -127,7 +149,25 @@ export const PredictionAndForecast = () => {
 
     useEffect(() => {
         fetchColumns();
-    }, []);
+    }, [fetchColumns]);
+
+    // Reset form and response when target column changes
+    useEffect(() => {
+        if (targetColumn) {
+            setFormData({});
+            setResponse(null);
+            setShow(false);
+        }
+    }, [targetColumn]);
+
+    // Reset form and response when predict model changes
+    useEffect(() => {
+        if (predictModel && isPredict) {
+            setFormData({});
+            setResponse(null);
+            setShow(false);
+        }
+    }, [predictModel, isPredict]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -137,14 +177,32 @@ export const PredictionAndForecast = () => {
         }));
     };
 
-    // For RandomForest prediction form (if needed)
-    const handleRandomForestSubmit = async (e) => {
+    // Predict submit (RandomForest or AutoML)
+    const handlePredictSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
+            // Ensure model is trained for the selected target before prediction
+            const trainPayload = {
+                model: predictModel,
+                col: targetColumn,
+            };
+            await axios.post(`${akkiourl}/models`, trainPayload, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+
             const formDataToSend = new FormData();
-            formDataToSend.append('form_name', 'rf');
+            // Map model to form_name
+            let formName = 'supervised'; // default for AutoML
+            if (predictModel === 'RandomForest') formName = 'rf';
+            else if (predictModel === 'XGBoost') formName = 'xgboost';
+            else if (predictModel === 'LightGBM') formName = 'lightgbm';
+            else if (predictModel === 'GradientBoosting') formName = 'gradientboosting';
+            
+            formDataToSend.append('form_name', formName);
             formDataToSend.append('targetColumn', targetColumn);
+            formDataToSend.append('col', targetColumn);
+            formDataToSend.append('model', predictModel);
             Object.entries(formData).forEach(([key, value]) => {
                 formDataToSend.append(key, value);
             });
@@ -171,38 +229,57 @@ export const PredictionAndForecast = () => {
     // Render response for predict/forecast
     const renderResponse = () => {
         if (!response) return null;
-    
+
         if (response.msg) {
             return <div className="error-message">{response.msg}</div>;
         }
-    
+
         if (isPredict) {
-            // Prediction result rendering (RandomForest)
+            // Prediction result rendering (RandomForest / AutoML)
             return (
                 <div className="rf-results-container modern-business-ui">
                     <div className="prediction-form-container section-card">
                         <h2 className="results-title">Get a {((response?.prediction_result?.target_column || targetColumn) || 'New').replace(/_/g, ' ')} Prediction</h2>
-                        <form onSubmit={handleRandomForestSubmit} className="prediction-form">
+                        <form onSubmit={handlePredictSubmit} className="prediction-form" target="_self">
+                            {response?.best_model && (
+                                <div style={{ marginBottom: 12, color: '#374151', fontSize: 13 }}>
+                                    <strong>{['RandomForest', 'XGBoost', 'LightGBM', 'GradientBoosting'].includes(response.best_model) ? 'Model:' : 'AutoML Best Model:'}</strong> {response.best_model}
+                                    {response.metric_type != null && response.metric != null ? (
+                                        <span> • <strong>{response.metric_type}:</strong> {response.metric}</span>
+                                    ) : null}
+                                </div>
+                            )}
                             <div className="form-grid">
-                                {response.rf_cols?.map((col) => (
+                                {response?.feature_columns?.map((col) => (
                                     <div key={col} className="form-field">
                                         <label className="field-label">
                                             {col.replace(/_/g, ' ')}
                                             <input
-                                                type={col.toLowerCase().includes('date') ? 'date' : 'text'}
+                                                type={col.toLowerCase().includes('date') || col.toLowerCase().includes('timestamp') ? 'text' : 'text'}
                                                 name={col}
                                                 value={formData[col] || ''}
                                                 onChange={handleInputChange}
                                                 className="field-input"
+                                                placeholder={`Enter ${col.replace(/_/g, ' ')}`}
                                                 required
                                             />
                                         </label>
                                     </div>
                                 ))}
                             </div>
-                            <button type="submit" className="submit-btn">
-                                Get Prediction
-                            </button>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                                <button type="submit" className="submit-btn">
+                                    Get Prediction
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData(response.row_data || {})}
+                                    className="submit-btn"
+                                    style={{ background: '#6b7280' }}
+                                >
+                                    Reset to Defaults
+                                </button>
+                            </div>
                         </form>
                     </div>
                     <div className="prediction-output">
@@ -217,77 +294,115 @@ export const PredictionAndForecast = () => {
                                     </p>
                                     <span className="model-type-chip">{response.prediction_result.model_type}</span>
                                 </div>
-                                {response.model_performance && (
-                                    <div className="performance-metrics section-card modern-card">
-                                        <h4 className="modern-subtitle">Model Performance</h4>
-                                        <ul className="modern-metrics-list">
-                                            {(response.model_performance.regression_metrics?.r2_score ?? response.model_performance.performance_metrics?.r2_score) != null && (
-                                                <li>
-                                                    <span>R² Score</span>
-                                                    <span>{response.model_performance.regression_metrics?.r2_score ?? response.model_performance.performance_metrics?.r2_score}</span>
-                                                </li>
+                                {/* Output Levels */}
+                                {response.output_levels && (
+                                    <div className="section-card modern-card">
+                                        <h4 className="modern-subtitle">Output Levels</h4>
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 10,
+                                            marginBottom: 12
+                                        }}>
+                                            <div style={{
+                                                border: '1px solid #e5e7eb',
+                                                borderRadius: 8,
+                                                padding: '10px 12px',
+                                                background: '#fff'
+                                            }}>
+                                                <strong>Value:</strong>{" "}
+                                                Predicted {String(response?.prediction_result?.target_column || targetColumn).replace(/_/g, ' ')} value is{" "}
+                                                <strong>{String(response?.prediction_result?.predicted_value)}</strong>
+                                            </div>
+                                            {response.predicted_level && (
+                                                <div style={{
+                                                    alignSelf: 'flex-start',
+                                                    padding: '6px 12px',
+                                                    borderRadius: 999,
+                                                    border: '1px solid #fecaca',
+                                                    background: '#fee2e2',
+                                                    color: '#991b1b',
+                                                    fontWeight: 600,
+                                                    fontSize: 13
+                                                }}>
+                                                    Predicted: {response.predicted_level}
+                                                </div>
                                             )}
-                                            {(response.model_performance.regression_metrics?.mae ?? response.model_performance.performance_metrics?.mae) != null && (
-                                                <li>
-                                                    <span>MAE</span>
-                                                    <span>{response.model_performance.regression_metrics?.mae ?? response.model_performance.performance_metrics?.mae}</span>
-                                                </li>
-                                            )}
-                                            {(response.model_performance.regression_metrics?.rmse ?? response.model_performance.performance_metrics?.rmse) != null && (
-                                                <li>
-                                                    <span>RMSE</span>
-                                                    <span>{response.model_performance.regression_metrics?.rmse ?? response.model_performance.performance_metrics?.rmse}</span>
-                                                </li>
-                                            )}
-                                            {response.model_performance.total_samples != null && (
-                                                <li>
-                                                    <span>Samples</span>
-                                                    <span>{response.model_performance.total_samples}</span>
-                                                </li>
-                                            )}
-                                            {response.model_performance.cross_validation?.mean_score != null && (
-                                                <li>
-                                                    <span>CV Mean</span>
-                                                    <span>{response.model_performance.cross_validation.mean_score}</span>
-                                                </li>
-                                            )}
-                                            {response.model_performance.cross_validation?.std_score != null && (
-                                                <li>
-                                                    <span>CV Std</span>
-                                                    <span>{response.model_performance.cross_validation.std_score}</span>
-                                                </li>
-                                            )}
-                                        </ul>
-                                        <p className="baseline-comparison modern-baseline">{response.model_performance.baseline_comparison}</p>
+                                        </div>
+
+                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                            <thead>
+                                                <tr style={{ background: '#f4f7fb' }}>
+                                                    <th style={{ padding: '10px 12px', textAlign: 'left' }}>Level</th>
+                                                    <th style={{ padding: '10px 12px', textAlign: 'left' }}>Range</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {Object.entries(response.output_levels).map(([level, range]) => (
+                                                    <tr key={level}>
+                                                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                                                            {String(level).toUpperCase()}
+                                                        </td>
+                                                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>
+                                                            {range?.min} – {range?.max}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 )}
-                                {response.feature_analysis && (
-                                    <div className="feature-analysis section-card modern-card">
-                                        <h4 className="modern-subtitle">Top Influencing Features</h4>
-                                        <ul className="feature-list modern-feature-list">
-                                            {response.feature_analysis.top_influencing_features?.map(field => (
-                                                <li key={field.feature} className="modern-feature-item">
-                                                    <span className="feature-name modern-feature-name">{field.feature}</span>
-                                                    <div className="importance-bar-container modern-bar-container">
-                                                        <div
-                                                            className="importance-bar modern-bar"
-                                                            style={{ width: `${field.importance}%` }}
-                                                        ></div>
-                                                    </div>
-                                                    <span className="feature-percentage modern-feature-percentage">{field.importance.toFixed(1)}%</span>
+
+                                {/* Input Analysis */}
+                                {Array.isArray(response.input_analysis) && response.input_analysis.length > 0 && (
+                                    <div className="section-card modern-card">
+                                        <h4 className="modern-subtitle">Input Analysis</h4>
+                                        <ul className="modern-input-list">
+                                            {response.input_analysis.map((t, i) => (
+                                                <li key={i} className="modern-input-item">
+                                                    {t}
                                                 </li>
                                             ))}
                                         </ul>
                                     </div>
                                 )}
-                                {response.feature_analysis?.input_features && (
-                                    <div className="section-card modern-card input-features-card">
-                                        <h4 className="modern-subtitle">Input Features</h4>
+
+                                {/* Prediction Interpretation */}
+                                {Array.isArray(response.prediction_interpretation) && response.prediction_interpretation.length > 0 && (
+                                    <div className="section-card modern-card">
+                                        <h4 className="modern-subtitle">Prediction Interpretation</h4>
                                         <ul className="modern-input-list">
-                                            {Object.entries(response.feature_analysis.input_features).map(([key, value]) => (
-                                                <li key={key} className="modern-input-item">
-                                                    <span className="modern-input-key">{key}</span>
-                                                    <span className="modern-input-value">{value}</span>
+                                            {response.prediction_interpretation.map((t, i) => (
+                                                <li key={i} className="modern-input-item">
+                                                    {t}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {/* Business Insights */}
+                                {Array.isArray(response.business_insights) && response.business_insights.length > 0 && (
+                                    <div className="section-card modern-card">
+                                        <h4 className="modern-subtitle">Business Insights</h4>
+                                        <ul className="modern-input-list">
+                                            {response.business_insights.map((t, i) => (
+                                                <li key={i} className="modern-input-item">
+                                                    {t}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {/* Recommended Actions */}
+                                {Array.isArray(response.recommended_actions) && response.recommended_actions.length > 0 && (
+                                    <div className="section-card modern-card" style={{ border: '1px solid #f59e0b', background: '#fffbeb' }}>
+                                        <h4 className="modern-subtitle">Recommended Actions</h4>
+                                        <ul className="modern-input-list">
+                                            {response.recommended_actions.map((t, i) => (
+                                                <li key={i} className="modern-input-item">
+                                                    {t}
                                                 </li>
                                             ))}
                                         </ul>
@@ -336,12 +451,12 @@ export const PredictionAndForecast = () => {
                                     xaxis: { title: 'Date' },
                                     yaxis: { title: response.prediction_result.target_column },
                                 }}
-                                config={{ responsive: true }}
+                                config={{ responsive: true, displaylogo: false, modeBarButtonsToRemove: ['sendDataToCloud'] }}
                                 style={{ width: '100%', height: '60vh' }}
                             />
                         </div>
                         <div className="forecast-table section-card modern-card" style={{ marginTop: 32 }}>
-                            <h4 className="modern-subtitle">Forecast Table</h4>
+                            <h4 className="modern-subtitle">Forecast List</h4>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
                                     <tr style={{ background: '#f4f7fb' }}>
@@ -371,8 +486,26 @@ export const PredictionAndForecast = () => {
     return (
         <>
             <div className={mainTab === 'Models' ? "prediction-container" : "prediction-container full-width"}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                    <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        className="back-button"
+                        style={{
+                            padding: '6px 12px',
+                            borderRadius: 6,
+                            border: '1px solid #e5e7eb',
+                            background: '#fff',
+                            color: '#333',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        ← Back
+                    </button>
+                    <h2 style={{ margin: 0 }}>{pageTitle}</h2>
+                </div>
                 {/* First-level tabs */}
-                <div className="main-tabs">
+                {/* <div className="main-tabs">
                     <button
                         type="button"
                         className={`main-tab-button ${mainTab === 'Models' ? 'active' : ''}`}
@@ -391,11 +524,11 @@ export const PredictionAndForecast = () => {
                     >
                         Agent
                     </button>
-                </div>
+                </div> */}
 
                 {mainTab === 'Models' && (
                     <>
-                        <form onSubmit={handleSubmit} className="analysis-form">
+                        <form onSubmit={handleSubmit} className="analysis-form" target="_self">
                             <div className="form-content">
                                 <div className="form-field">
                                     <label className="field-label">
@@ -420,6 +553,23 @@ export const PredictionAndForecast = () => {
                                         )}
                                     </label>
                                 </div>
+
+                                {isPredict && (
+                                    <div className="form-field">
+                                        <label className="field-label">
+                                            Prediction Model
+                                            <select
+                                                value={predictModel}
+                                                onChange={(e) => setPredictModel(e.target.value)}
+                                                className="field-select"
+                                            >
+                                                {modelOptions.map(option => (
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                    </div>
+                                )}
 
                                 {isForecast && (
                                     <>
@@ -455,12 +605,12 @@ export const PredictionAndForecast = () => {
                                     </>
                                 )}
 
-                                <button 
-                                    type="submit" 
+                                <button
+                                    type="submit"
                                     className="analyze-btn"
                                     disabled={loading || !targetColumn || columnsLoading}
                                 >
-                                    {loading ? (isForecast ? (forecastStep === 'training' ? 'Training Model...' : 'Generating Forecast...') : 'Analyzing...') : `Train Model`}
+                                    {loading ? (isForecast ? (forecastStep === 'training' ? 'Training Model...' : 'Generating Forecast...') : 'Training Model...') : `Train Model`}
                                 </button>
                             </div>
                         </form>

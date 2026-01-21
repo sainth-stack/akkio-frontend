@@ -13,11 +13,9 @@ const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>
-    <React.StrictMode>
-      <GetDataApi>
-        <App />
-      </GetDataApi>
-    </React.StrictMode>
+    <GetDataApi>
+      <App />
+    </GetDataApi>
   </QueryClientProvider>
 )
 

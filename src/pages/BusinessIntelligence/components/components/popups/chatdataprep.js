@@ -12,7 +12,7 @@ import AnswersChat2 from "./answers";
 import { useLocation } from "react-router-dom";
 import { utils } from 'xlsx';
 
-const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReportMode=false }) => {
+const ChatDataPrep = ({ showModel, setShowModel, index = 0, chartData = [], isReportMode = false }) => {
     const fileName = localStorage.getItem('filename')?.replace(/\.[^/.]+$/, '');
     const [search, setSearch] = useState('')
     const [answers, setAnswers] = useState([]);
@@ -48,7 +48,7 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
         const descriptionQuestion = "description";
         const data = [{ question: descriptionQuestion, answer: "", loading: true }];
         setAnswers(data);
-        
+
         // Check if we have valid report data
         if (!chartData || chartData.length === 0 || index < 0 || index >= chartData.length) {
             const ans = data.map((item) => {
@@ -63,21 +63,21 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
             setAnswers(ans);
             return;
         }
-        
+
         try {
             // Get user email from localStorage
             const userEmail = JSON.parse(localStorage.getItem("user")).email;
             const reportId = chartData[index].id;
-            
+
             const formData = new FormData();
             formData.append('email', userEmail);
             formData.append('id', reportId.toString());
-            
+
             const res = await axios.post(
                 `${akkiourl}/get_report_description`,
                 formData
             );
-            
+
             const ans = data.map((item) => {
                 if (item.question === descriptionQuestion) {
                     return {
@@ -111,26 +111,36 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
         setAnswers(data);
 
         try {
+            // Get user email from localStorage
+            const userEmail = JSON.parse(localStorage.getItem("user"))?.email || 'anonymous';
+
             const formData = new FormData();
             formData.append('chart_id', index.toString());
             formData.append('question', question);
-            
+            formData.append('email', userEmail);
+
             const res = await axios.post(
                 `${akkiourl}/analyze_chart`,
                 formData
             );
+
+            console.log('[ChatDataPrep] analyze_chart API response:', res.data);
+            console.log('[ChatDataPrep] plot_data from response:', res?.data?.plot_data);
 
             const ans = data.map((item) => {
                 if (item.question === question) {
                     return {
                         ...item,
                         view: "Text",
-                        answer: res?.data?.response || "No answer available",
+                        answer: res?.data?.response ?? "No answer available",
+                        plotData: res?.data?.plot_data || null, // Capture plot data from response
                         loading: false
                     };
                 }
                 return item;
             });
+            
+            console.log('[ChatDataPrep] Updated answers with plotData:', ans);
             setAnswers(ans);
         } catch (err) {
             console.error(`Error analyzing chart for question: "${question}"`, err);
@@ -166,14 +176,14 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
 
         try {
             let res;
-            
+
             if (isReportMode) {
                 // Report question API
                 const reportId = chartData[index]?.id;
                 if (!reportId) {
                     throw new Error('Report ID not found');
                 }
-                
+
                 formData.append('report_id', reportId.toString());
                 formData.append('question', question);
                 res = await axios.post(
@@ -184,7 +194,7 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
                 // This is now handled by analyzeChart, but we call it from handleQuestionClick
                 // to keep the flow consistent. The actual API call will be made there.
                 // We are setting the state here to show the user's question immediately.
-                setAnswers(data); 
+                setAnswers(data);
                 analyzeChart(question);
                 return; // Return early as analyzeChart handles the rest
             } else if (location.pathname === '/data-source') {
@@ -197,13 +207,17 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
                 );
             } else {
                 // Existing gen_txt_response functionality
+                const userEmail = JSON.parse(localStorage.getItem("user"))?.email || 'anonymous';
                 formData.append('prompt', question);
                 res = await axios.post(
                     `${akkiourl}/ai_bot`,
-                    { prompt: question }
+                    {
+                        prompt: question,
+                        email: userEmail
+                    }
                 );
             }
-            
+
             const handleDownload = (data) => {
                 if (typeof data === 'string') {
                     // Handle existing file path case
@@ -220,10 +234,10 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
                         });
                         return row;
                     });
-                    
+
                     // Create worksheet using the transformed data
                     const worksheet = utils.json_to_sheet(rowData);
-                    
+
                     // Create a download link for the Excel file
                     const excelBuffer = utils.sheet_to_csv(worksheet);
                     const blob = new Blob([excelBuffer], { type: 'text/csv' });
@@ -235,27 +249,53 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
                     window.URL.revokeObjectURL(url);
                 }
             }
-            
+
             // Handle download for non-chart mode and non-report mode
             if (!isChartMode && !isReportMode && res?.data.file_path?.[1]) {
                 handleDownload(res?.data.file_path?.[1]);
             }
-            
+
             console.log(res, 'API Response');
             const ans = data.map((item) => {
                 if (item.question === question) {
                     let answer;
+                    let responseData = null;
+                    let plotData = null;
+
                     if (isReportMode || isChartMode) {
                         answer = res?.data?.answer || "No answer available";
                     } else {
-                        answer = (res?.data?.answer|| res?.data?.code) || (res?.data.file_path?.[1] ? "Data Downloaded Successfully" : "No Data found");
+                        // Check for prediction result
+                        if (res?.data?.prediction_result) {
+                            answer = res?.data?.text_pre_code_response ||
+                                `Predicted ${res.data.prediction_result.target_column}: ${res.data.prediction_result.predicted_value}`;
+                        }
+                        // Check for forecast result
+                        else if (res?.data?.data && res?.data?.plot) {
+                            answer = res?.data?.description || "Forecast generated successfully";
+                            responseData = res.data.data;
+                            plotData = res.data.plot;
+                        }
+                        // Check for error messages or text responses
+                        else if (res?.data?.text_pre_code_response) {
+                            answer = res.data.text_pre_code_response;
+                        }
+                        else if (res?.data?.text_output) {
+                            answer = res.data.text_output;
+                        }
+                        // Check for general answer or code
+                        else {
+                            answer = (res?.data?.answer || res?.data?.code) ||
+                                (res?.data.file_path?.[1] ? "Data Downloaded Successfully" : "No Data found");
+                        }
                     }
-                    
+
                     return {
                         ...item,
                         view: "Text",
                         answer: answer,
-                        data: (isReportMode || isChartMode) ? null : res.data?.file_path?.[1],
+                        data: (isReportMode || isChartMode) ? null : (responseData || res.data?.file_path?.[1]),
+                        plotData: plotData,
                         loading: false
                     }
                 } else return item;
@@ -279,7 +319,7 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
     const handleQuestionClick = async (question) => {
         const data = [...answers, { question, answer: "", loading: true }]
         if (isChartMode) {
-             analyzeChart(question);
+            analyzeChart(question);
         } else {
             setAnswers(data);
             handleGetAnswer(question, data);
@@ -303,8 +343,8 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
     const getHeaderTitle = () => {
         if (isReportMode && chartData && chartData.length > 0 && index >= 0 && index < chartData.length) {
             return `Report ${index + 1}`;
-        } else if (chartData && chartData.length > 0 && index > 0 && chartData[index-1]) {
-            return chartData[index-1].chart_data?.layout?.title?.text || `Chart ${index}`;
+        } else if (chartData && chartData.length > 0 && index > 0 && chartData[index - 1]) {
+            return chartData[index - 1].chart_data?.layout?.title?.text || `Chart ${index}`;
         } else if (isChartMode) {
             return `Chart ${index}`;
         } else {
@@ -313,130 +353,124 @@ const ChatDataPrep = ({ showModel, setShowModel, index=0, chartData=[], isReport
     };
 
     return (
-      showModel && (
-        <Box
-          title=""
-          sx={{
-            position: "fixed",
-            top: "69%",
-            right: "1rem",
-            transform: "translateY(-50%)",
-            width: "550px",
-            height: "60vh",
-            background: "#fff",
-            borderRadius: "12px",
-            boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.15)",
-            overflow: "hidden",
-            zIndex: 1300,
-            display: "flex",
-            flexDirection: "column"
-          }}
-        >
-          {/* Header */}
-          <Box sx={{
-            padding: "16px",
-            borderBottom: "1px solid #e0e0e0",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between"
-          }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <span style={{ fontWeight: 600 }}>
-                {getHeaderTitle()}
-              </span>
-            </Box>
-            <IconButton
-              onClick={() => setShowModel(false)}
-              sx={{ color: "#666" }}
+        showModel && (
+            <Box
+                title=""
+                sx={{
+                    position: "fixed",
+                    bottom: "2rem",
+                    right: "1rem",
+                    width: "550px",
+                    height: "600px",
+                    background: "#fff",
+                    borderRadius: "12px",
+                    boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.15)",
+                    overflow: "hidden",
+                    zIndex: 1000,
+                    display: "flex",
+                    flexDirection: "column"
+                }}
             >
-              <IoMdClose size={20} />
-            </IconButton>
-          </Box>
-
-          {/* Chat Messages Area */}
-          <Box sx={{
-            flex: 1,
-            overflow: "auto",
-            padding: "16px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px"
-          }}>
-            {answers?.map((item, index) => (
-              <div key={index} style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px"
-              }}>
-                {/* User Message */}
+                {/* Header */}
                 <Box sx={{
-                  alignSelf: "flex-end",
-                  maxWidth: "80%",
-                  backgroundColor: "#f0f0f0",
-                  padding: "12px",
-                  borderRadius: "12px 12px 0 12px",
+                    padding: "16px",
+                    borderBottom: "1px solid #e0e0e0",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between"
                 }}>
-                  {item.question}
-                </Box>
-
-                {/* AI Response */}
-                <Box sx={{
-                  alignSelf: "flex-start",
-                  maxWidth: "80%",
-                  backgroundColor: "#fff",
-                  padding: "12px",
-                  borderRadius: "12px 12px 12px 0",
-                  // border: "1px solid #e0e0e0",
-                }}>
-                  <AnswersChat2
-                    question={item.question}
-                    answer={item.answer}
-                    loading={item?.loading}
-                    type={item.view}
-                    name={"genbi"}
-                  />
-                </Box>
-              </div>
-            ))}
-          </Box>
-
-          {/* Input Area */}
-          <Box sx={{
-            padding: "16px",
-            borderTop: "1px solid #e0e0e0",
-            backgroundColor: "#fff"
-          }}>
-            <TextField
-              fullWidth
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={isReportMode ? "Ask a question about the report..." : isChartMode ? "Ask a question about the chart..." : "Type your message here..."}
-              variant="outlined"
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "24px",
-                  backgroundColor: "#f5f5f5",
-                }
-              }}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <span style={{ fontWeight: 600 }}>
+                            {getHeaderTitle()}
+                        </span>
+                    </Box>
                     <IconButton
-                      onClick={handleSendMessage}
-                      sx={{
-                        color: search ? "primary.main" : "#bbb"
-                      }}
+                        onClick={() => setShowModel(false)}
+                        sx={{ color: "#666" }}
                     >
-                      <IoMdSend />
+                        <IoMdClose size={20} />
                     </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Box>
-        </Box>
-      )
+                </Box>
+
+                {/* Chat Messages Area */}
+                <Box sx={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: "auto",
+                    padding: "16px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "16px",
+                    maxHeight: "460px"
+                }}>
+                    {answers?.map((item, index) => (
+                        <div key={index} style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px"
+                        }}>
+                            {/* User Message */}
+                            <Box sx={{
+                                alignSelf: "flex-end",
+                                maxWidth: "80%",
+                                backgroundColor: "#f0f0f0",
+                                padding: "12px",
+                                borderRadius: "12px 12px 0 12px",
+                            }}>
+                                {item.question}
+                            </Box>
+
+                            {/* AI Response */}
+                            <AnswersChat2
+                                question={item.question}
+                                answer={item.answer}
+                                loading={item?.loading}
+                                type={item.view}
+                                name={"genbi"}
+                                plotData={item?.plotData}
+                                data={item?.data}
+                            />
+                        </div>
+                    ))}
+                </Box>
+
+                {/* Input Area */}
+                <Box sx={{
+                    padding: "16px",
+                    borderTop: "1px solid #e0e0e0",
+                    backgroundColor: "#fff"
+                }}>
+                    <TextField
+                        fullWidth
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder={isReportMode ? "Ask a question about the report..." : isChartMode ? "Ask a question about the chart..." : "Type your message here..."}
+                        variant="outlined"
+                        sx={{
+                            "& .MuiOutlinedInput-root": {
+                                borderRadius: "24px",
+                                backgroundColor: "#f5f5f5",
+                            }
+                        }}
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={handleSendMessage}
+                                        sx={{
+                                            color: search ? "primary.main" : "#bbb"
+                                        }}
+                                    >
+                                        <IoMdSend />
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                </Box>
+            </Box>
+        )
     );
 }
 

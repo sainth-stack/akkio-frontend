@@ -1,22 +1,17 @@
 import React, { useState } from 'react';
 import { Modal, Select } from "antd";
-import { IconButton } from "@mui/material";
-import { FaRobot, FaUser, FaDatabase, FaServer, FaTable } from "react-icons/fa";
-import { MdSend, MdRefresh } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
-import { useDataAPI } from "../../contexts/GetDataApi";
 import { akkiourl } from "../../../../../utils/const";
 
 const { Option } = Select;
 
-export const ConnectData = ({ 
-  isOpen, 
-  onClose, 
-  onDataLoaded 
+export const ConnectData = ({
+  isOpen,
+  onClose,
+  onDataLoaded
 }) => {
   const navigate = useNavigate();
-  const { showContent } = useDataAPI();
-  
+
   // State for chat and connection
   const [connectPrompt, setConnectPrompt] = useState("");
   const [connectLoading, setConnectLoading] = useState(false);
@@ -32,7 +27,7 @@ export const ConnectData = ({
     }
   ]);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
-  
+
   // State for table selection
   const [showTableSelection, setShowTableSelection] = useState(false);
   const [availableTables, setAvailableTables] = useState([]);
@@ -40,8 +35,8 @@ export const ConnectData = ({
   const [connectionDetails, setConnectionDetails] = useState(null);
   const [tableSelectionLoading, setTableSelectionLoading] = useState(false);
 
-// Parse tables from response - Updated to handle both HTML and plain text formats
-const parseTablesFromResponse = (jsonResponse) => {
+  // Parse tables from response - Updated to handle both HTML and plain text formats
+  const parseTablesFromResponse = (jsonResponse) => {
     try {
       const response = typeof jsonResponse === 'string' ? JSON.parse(jsonResponse) : jsonResponse;
       // Handle new response structure
@@ -57,13 +52,13 @@ const parseTablesFromResponse = (jsonResponse) => {
         const tables = Array.isArray(data.tables) ? data.tables : [];
         return { tables, connectionDetails: details };
       }
-      
+
       if (!response || !response.response) {
         return { tables: [], connectionDetails: null };
       }
-  
+
       const responseText = response.response;
-      
+
       // Extract connection details from HTML format
       const details = {};
       const detailsHtml = {
@@ -73,27 +68,27 @@ const parseTablesFromResponse = (jsonResponse) => {
         database: /<li><strong>Database name:<\/strong>\s*([^<]+)/i,
         password: /<li><strong>Password:<\/strong>\s*([^<]+)/i
       };
-  
+
       for (const [key, regex] of Object.entries(detailsHtml)) {
         const match = responseText.match(regex);
         if (match && match[1]) {
           details[key] = match[1].trim();
         }
       }
-      
+
       // Create a temporary div to parse the HTML
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = responseText;
-      
+
       // Find all list items in the nested unordered lists
       let tables = [];
       const lists = tempDiv.querySelectorAll('ul');
-      
+
       // The tables are in the most nested ul
       if (lists.length > 0) {
         const lastList = lists[lists.length - 1];
         const listItems = lastList.querySelectorAll('li');
-        
+
         listItems.forEach(li => {
           // Get just the text content without any HTML tags
           const tableName = li.textContent.trim();
@@ -102,16 +97,16 @@ const parseTablesFromResponse = (jsonResponse) => {
           }
         });
       }
-      
+
       // Clean up table names and remove duplicates
       tables = [...new Set(tables
         .map(table => table.trim())
         .filter(table => table && table.length > 0)
       )];
-  
+
       console.log('Parsed details:', details);
       console.log('Parsed tables:', tables);
-  
+
       return { tables, connectionDetails: details };
     } catch (error) {
       console.error('Error parsing tables from response:', error);
@@ -136,7 +131,7 @@ const parseTablesFromResponse = (jsonResponse) => {
     };
 
     setChatMessages(prev => [...prev, userMessage]);
-    
+
     const currentPrompt = connectPrompt.trim();
     setConnectPrompt("");
     setConnectLoading(true);
@@ -171,18 +166,18 @@ const parseTablesFromResponse = (jsonResponse) => {
       }
 
       const data = await response.json();
-      
+
       // Remove typing indicator
       setChatMessages(prev => prev.filter(msg => msg.status !== 'typing'));
-      
+
       // Parse tables from response
       const { tables, connectionDetails } = parseTablesFromResponse(data);
-      
+
       if (tables.length > 0 && connectionDetails) {
         setAvailableTables(tables);
         setConnectionDetails(connectionDetails);
         setShowTableSelection(true);
-        
+
         const botMessage = {
           id: Date.now() + 1,
           type: 'assistant',
@@ -198,22 +193,20 @@ const parseTablesFromResponse = (jsonResponse) => {
         const botMessage = {
           id: Date.now() + 1,
           type: 'assistant',
-          message: data.response || 'Connection processed successfully! However, I couldn\'t extract the table information properly. Please try rephrasing your connection request.',
+          message: data?.response?.data?.content || 'Connection processed successfully! However, I couldn\'t extract the table information properly. Please try rephrasing your connection request.',
           timestamp: new Date(),
           status: 'delivered',
           success: false
         };
         setChatMessages(prev => [...prev, botMessage]);
-        setConnectionStatus('error');
-        setConnectError("Could not extract table information. Please try again.");
       }
 
     } catch (err) {
       console.error('Connect Data Error:', err);
-      
+
       // Remove typing indicator
       setChatMessages(prev => prev.filter(msg => msg.status !== 'typing'));
-      
+
       const errorMessage = {
         id: Date.now() + 1,
         type: 'assistant',
@@ -223,16 +216,15 @@ const parseTablesFromResponse = (jsonResponse) => {
         error: true
       };
       setChatMessages(prev => [...prev, errorMessage]);
-      setConnectError("Connection failed. Please check your details and try again.");
-      setConnectionStatus('error');
+
     }
-    
+
     setConnectLoading(false);
   };
 
   // Handle table selection and data fetching
   const handleTableSelection = async () => {
-    console.log(connectionDetails,'sdfsdfj')
+    console.log(connectionDetails, 'sdfsdfj')
     if (!selectedTable || !connectionDetails) {
       setConnectError("Please select a table");
       return;
@@ -273,7 +265,7 @@ const parseTablesFromResponse = (jsonResponse) => {
         throw new Error(`Failed to fetch table data with status: ${response.status}`);
       }
 
-      
+
       // Add success message to chat
       const successMessage = {
         id: Date.now() + 3,
@@ -284,11 +276,11 @@ const parseTablesFromResponse = (jsonResponse) => {
         success: true
       };
       setChatMessages(prev => [...prev, successMessage]);
- localStorage.setItem('filename',selectedTable)
-navigate('/discover')
+      localStorage.setItem('filename', selectedTable)
+      navigate('/discover')
     } catch (err) {
       console.error('Table Selection Error:', err);
-      
+
       const errorMessage = {
         id: Date.now() + 3,
         type: 'assistant',
@@ -298,9 +290,8 @@ navigate('/discover')
         error: true
       };
       setChatMessages(prev => [...prev, errorMessage]);
-      setConnectError(`Failed to load table data: ${err.message}`);
     }
-    
+
     setTableSelectionLoading(false);
   };
 
@@ -341,62 +332,34 @@ navigate('/discover')
   return (
     <Modal
       title={
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 0'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
-            }}>
-              <FaRobot color="white" size={18} />
-            </div>
             <div>
-              <div style={{ 
-                fontSize: 18, 
-                fontWeight: 600, 
-                color: '#1a1a1a',
-                marginBottom: 2
+              <div style={{
+                fontSize: 20,
+                fontWeight: 600,
+                color: '#0f172a',
+                marginBottom: 4
               }}>
                 AI Data Connection Assistant
               </div>
-              <div style={{ 
-                fontSize: 12, 
-                color: '#666',
+              <div style={{
+                fontSize: 12,
+                color: '#64748b',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6
               }}>
-                <div style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  backgroundColor: connectionStatus === 'connected' ? '#4caf50' : 
-                                  connectionStatus === 'connecting' ? '#ff9800' :
-                                  connectionStatus === 'error' ? '#f44336' : '#9e9e9e'
-                }}></div>
-                {connectionStatus === 'connected' ? 'Connected' :
-                 connectionStatus === 'connecting' ? 'Connecting...' :
-                 connectionStatus === 'error' ? 'Connection Failed' : 'Ready to Connect'}
+
+
               </div>
             </div>
           </div>
-          <IconButton 
-            onClick={resetConnectDataChat}
-            size="small"
-            style={{ color: '#666' }}
-          >
-            <MdRefresh size={18} />
-          </IconButton>
         </div>
       }
       open={isOpen}
@@ -405,47 +368,35 @@ navigate('/discover')
       width={900}
       style={{ top: 20 }}
       styles={{
-        header: { 
-          borderBottom: '1px solid #f0f0f0',
-          padding: '16px 24px' 
+        header: {
+          borderBottom: '1px solid #e5e7eb',
+          padding: '16px 24px'
         },
-        body: { 
-          padding: 0 
+        body: {
+          padding: 0
         }
       }}
     >
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
         height: '80vh',
-        backgroundColor: '#fafafa'
+        backgroundColor: '#f8fafc'
       }}>
         {/* Connection Status Bar */}
-        <div style={{
-          padding: '12px 24px',
-          backgroundColor: 'white',
-          borderBottom: '1px solid #f0f0f0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8
-        }}>
-          <FaServer size={14} color="#666" />
-          <span style={{ fontSize: 13, color: '#666' }}>
-            Supported: PostgreSQL, MySQL, MongoDB, S3 Bucket
-          </span>
-        </div>
+
 
         {/* Chat Messages Area */}
-        <div style={{ 
+        <div style={{
           flex: 1,
-          padding: '20px 24px',
+          padding: '24px 24px',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: 16
+          gap: 20
         }}>
           {chatMessages.map((msg) => (
-            <div 
+            <div
               key={msg.id}
               style={{
                 display: 'flex',
@@ -456,67 +407,45 @@ navigate('/discover')
               }}
             >
               <div style={{
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                background: msg.type === 'user' 
-                  ? 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)'
-                  : msg.error 
-                  ? 'linear-gradient(135deg, #f44336 0%, #ef5350 100%)'
-                  : msg.success
-                  ? 'linear-gradient(135deg, #4caf50 0%, #66bb6a 100%)'
-                  : 'linear-gradient(135deg, #6c63ff 0%, #9c88ff 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontSize: 14,
-                flexShrink: 0,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-              }}>
-                {msg.type === 'user' ? <FaUser size={14} /> : <FaRobot size={14} />}
-              </div>
-              
-              <div style={{
                 maxWidth: '75%',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 4
               }}>
                 <div style={{
-                  padding: '14px 18px',
-                  borderRadius: msg.type === 'user' ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
-                  backgroundColor: msg.type === 'user' ? '#1976d2' : 'white',
-                  color: msg.type === 'user' ? 'white' : '#333',
-                  boxShadow: msg.type === 'user' 
-                    ? '0 2px 12px rgba(25, 118, 210, 0.3)' 
-                    : '0 2px 12px rgba(0,0,0,0.1)',
+                  padding: '16px 18px',
+                  borderRadius: msg.type === 'user' ? '16px 16px 6px 16px' : '16px 16px 16px 6px',
+                  backgroundColor: msg.type === 'user' ? '#2563eb' : '#ffffff',
+                  color: msg.type === 'user' ? 'white' : '#0f172a',
+                  boxShadow: msg.type === 'user'
+                    ? '0 6px 16px rgba(37, 99, 235, 0.25)'
+                    : '0 6px 16px rgba(2, 6, 23, 0.08)',
                   fontSize: 14,
                   lineHeight: 1.5,
                   wordBreak: 'break-word',
-                  border: msg.error ? '1px solid #ffcdd2' : 
-                         msg.success ? '1px solid #c8e6c9' : 'none',
+                  border: msg.error ? '1px solid #fecaca' :
+                    msg.success ? '1px solid #bbf7d0' : '1px solid #e5e7eb',
                   position: 'relative'
                 }}>
                   {msg.status === 'typing' ? (
-                    <div style={{ 
-                      display: 'flex', 
+                    <div style={{
+                      display: 'flex',
                       gap: 4,
                       alignItems: 'center',
-                      color: '#666'
+                      color: '#94a3b8'
                     }}>
-                      <div style={{ 
-                        display: 'flex', 
+                      <div style={{
+                        display: 'flex',
                         gap: 2,
                       }}>
                         {[0, 1, 2].map(i => (
-                          <div 
+                          <div
                             key={i}
-                            style={{ 
-                              width: 6, 
-                              height: 6, 
-                              borderRadius: '50%', 
-                              backgroundColor: '#666',
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: '50%',
+                              backgroundColor: '#94a3b8',
                               animation: `bounce 1.4s infinite ease-in-out both`,
                               animationDelay: `${i * 0.16}s`
                             }}
@@ -526,16 +455,14 @@ navigate('/discover')
                     </div>
                   ) : (
                     <>
-                      {msg.success && <span style={{ marginRight: 8 }}>✅</span>}
-                      {msg.error && <span style={{ marginRight: 8 }}>❌</span>}
                       <div dangerouslySetInnerHTML={{ __html: msg.message }} />
                     </>
                   )}
                 </div>
-                
+
                 <div style={{
                   fontSize: 11,
-                  color: '#999',
+                  color: '#94a3b8',
                   textAlign: msg.type === 'user' ? 'right' : 'left',
                   paddingLeft: msg.type === 'user' ? 0 : 4,
                   paddingRight: msg.type === 'user' ? 4 : 0
@@ -552,19 +479,18 @@ navigate('/discover')
           {showTableSelection && (
             <div style={{
               padding: '20px',
-              backgroundColor: 'white',
-              borderRadius: 12,
-              border: '2px solid #e3f2fd',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              backgroundColor: '#ffffff',
+              borderRadius: 16,
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 10px 24px rgba(2, 6, 23, 0.08)',
               animation: 'slideIn 0.3s ease-out'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <FaTable color="#1976d2" size={20} />
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#1976d2' }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#2563eb' }}>
                   Select Table ({availableTables.length} available)
                 </h3>
               </div>
-              
+
               <div style={{ marginBottom: 16 }}>
                 <Select
                   placeholder="Choose a table from the database"
@@ -580,14 +506,13 @@ navigate('/discover')
                   {availableTables.map(table => (
                     <Option key={table} value={table}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <FaTable size={12} color="#666" />
                         {table}
                       </div>
                     </Option>
                   ))}
                 </Select>
               </div>
-              
+
               <div style={{ display: 'flex', gap: 12 }}>
                 <button
                   onClick={handleTableSelection}
@@ -595,18 +520,19 @@ navigate('/discover')
                   style={{
                     padding: '12px 24px',
                     background: !selectedTable || tableSelectionLoading
-                      ? 'linear-gradient(135deg, #ccc 0%, #ddd 100%)'
-                      : 'linear-gradient(135deg, #4caf50 0%, #66bb6a 100%)',
+                      ? 'linear-gradient(135deg, #d1d5db 0%, #e5e7eb 100%)'
+                      : 'linear-gradient(135deg, #22c55e 0%, #86efac 100%)',
                     color: 'white',
                     border: 'none',
-                    borderRadius: 8,
+                    borderRadius: 10,
                     cursor: !selectedTable || tableSelectionLoading ? 'not-allowed' : 'pointer',
                     fontSize: 14,
-                    fontWeight: 500,
+                    fontWeight: 600,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    boxShadow: !selectedTable || tableSelectionLoading ? 'none' : '0 6px 16px rgba(22, 163, 74, 0.25)'
                   }}
                 >
                   {tableSelectionLoading ? (
@@ -622,13 +548,10 @@ navigate('/discover')
                       Loading...
                     </>
                   ) : (
-                    <>
-                      <FaDatabase size={14} />
-                      Load Table Data
-                    </>
+                    <>Load Table Data</>
                   )}
                 </button>
-                
+
                 <button
                   onClick={() => {
                     setShowTableSelection(false);
@@ -637,20 +560,20 @@ navigate('/discover')
                   style={{
                     padding: '12px 20px',
                     background: 'transparent',
-                    color: '#666',
-                    border: '1px solid #ddd',
-                    borderRadius: 8,
+                    color: '#0f172a',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 10,
                     cursor: 'pointer',
                     fontSize: 14,
                     transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={e => {
-                    e.target.style.backgroundColor = '#f5f5f5';
-                    e.target.style.borderColor = '#999';
+                    e.target.style.backgroundColor = '#f8fafc';
+                    e.target.style.borderColor = '#94a3b8';
                   }}
                   onMouseLeave={e => {
                     e.target.style.backgroundColor = 'transparent';
-                    e.target.style.borderColor = '#ddd';
+                    e.target.style.borderColor = '#e2e8f0';
                   }}
                 >
                   Cancel
@@ -659,23 +582,23 @@ navigate('/discover')
             </div>
           )}
         </div>
-        
+
         {/* Input Area - Hide when table selection is active */}
         {!showTableSelection && (
-          <div style={{ 
+          <div style={{
             padding: '20px 24px',
             backgroundColor: 'white',
-            borderTop: '1px solid #f0f0f0'
+            borderTop: '1px solid #e5e7eb'
           }}>
             {connectError && (
-              <div style={{ 
-                color: '#f44336', 
-                fontSize: 13, 
+              <div style={{
+                color: '#ef4444',
+                fontSize: 13,
                 marginBottom: 12,
                 padding: '8px 12px',
-                backgroundColor: '#ffebee',
+                backgroundColor: '#fee2e2',
                 borderRadius: 8,
-                border: '1px solid #ffcdd2',
+                border: '1px solid #fecaca',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8
@@ -684,7 +607,7 @@ navigate('/discover')
                 {connectError}
               </div>
             )}
-            
+
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <div style={{ flex: 1, position: 'relative' }}>
                 <textarea
@@ -693,22 +616,22 @@ navigate('/discover')
                   onChange={e => setConnectPrompt(e.target.value)}
                   onKeyPress={handleKeyPress}
                   disabled={connectLoading}
-                  style={{ 
+                  style={{
                     width: '100%',
                     padding: '14px 16px',
                     fontSize: 14,
-                    border: '2px solid #e8e8e8',
-                    borderRadius: 12,
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 16,
                     resize: 'none',
-                    minHeight: 100,
+                    minHeight: 96,
                     maxHeight: 150,
                     fontFamily: 'inherit',
                     transition: 'border-color 0.2s ease',
-                    backgroundColor: connectLoading ? '#f5f5f5' : 'white',
+                    backgroundColor: connectLoading ? '#f8fafc' : 'white',
                     outline: 'none'
                   }}
-                  onFocus={e => e.target.style.borderColor = '#1976d2'}
-                  onBlur={e => e.target.style.borderColor = '#e8e8e8'}
+                  onFocus={e => e.target.style.borderColor = '#2563eb'}
+                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
                   rows={1}
                 />
                 <div style={{
@@ -716,20 +639,20 @@ navigate('/discover')
                   bottom: 8,
                   right: 12,
                   fontSize: 11,
-                  color: '#999'
+                  color: '#94a3b8'
                 }}>
                   {connectPrompt.length}/500
                 </div>
               </div>
-              
+
               <button
                 onClick={handleConnectDataSubmit}
                 disabled={connectLoading || !connectPrompt.trim() || connectPrompt.length > 500}
                 style={{
                   padding: '14px 20px',
                   background: connectLoading || !connectPrompt.trim() || connectPrompt.length > 500
-                    ? 'linear-gradient(135deg, #ccc 0%, #ddd 100%)'
-                    : 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)',
+                    ? 'linear-gradient(135deg, #d1d5db 0%, #e5e7eb 100%)'
+                    : 'linear-gradient(135deg, #2563eb 0%, #60a5fa 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: 12,
@@ -742,20 +665,20 @@ navigate('/discover')
                   transition: 'all 0.2s ease',
                   boxShadow: connectLoading || !connectPrompt.trim() || connectPrompt.length > 500
                     ? 'none'
-                    : '0 2px 8px rgba(25, 118, 210, 0.3)',
+                    : '0 6px 16px rgba(37, 99, 235, 0.25)',
                   minWidth: 100
                 }}
                 onMouseEnter={e => {
                   if (!connectLoading && connectPrompt.trim() && connectPrompt.length <= 500) {
                     e.target.style.transform = 'translateY(-1px)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(25, 118, 210, 0.4)';
+                    e.target.style.boxShadow = '0 10px 20px rgba(37, 99, 235, 0.35)';
                   }
                 }}
                 onMouseLeave={e => {
                   e.target.style.transform = 'translateY(0)';
                   e.target.style.boxShadow = connectLoading || !connectPrompt.trim() || connectPrompt.length > 500
                     ? 'none'
-                    : '0 2px 8px rgba(25, 118, 210, 0.3)';
+                    : '0 6px 16px rgba(37, 99, 235, 0.25)';
                 }}
               >
                 {connectLoading ? (
@@ -771,10 +694,7 @@ navigate('/discover')
                     Connecting...
                   </>
                 ) : (
-                  <>
-                    <MdSend size={16} />
-                    Connect
-                  </>
+                  <>Connect</>
                 )}
               </button>
             </div>

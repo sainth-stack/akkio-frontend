@@ -11,8 +11,9 @@ export const useFileUpload = () => {
       console.log(file)
       formData.append("file", file);
       formData.append("mail", JSON.parse(localStorage.getItem("user"))?.email);
-      
-      const response = await fetch(`${akkiourl}/upload_only`, {
+
+      const endpoint = `${akkiourl}/upload_only`;
+      const response = await fetch(endpoint, {
         method: "POST",
         body: formData,
       });

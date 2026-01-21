@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Plot from "react-plotly.js";
 import { akkiourl } from "../../../../../utils/const";
-import { Spin } from "antd";
+import { Spin, message } from "antd";
 import { useQuery } from "react-query";
 import { IconButton } from "@mui/material";
 import { FaRobot, FaEye } from "react-icons/fa";
@@ -82,6 +82,83 @@ export const Insights = () => {
     setChartType(type);
   };
 
+  // Save individual chart as image
+  const handleSaveChart = async (chartIndex) => {
+    try {
+      const plotElement = document.querySelector(`.plot-container-${chartIndex}`);
+      if (!plotElement) {
+        message.error('Chart not found');
+        return;
+      }
+
+      const svgElement = plotElement.querySelector('.js-plotly-plot .plot-container .svg-container svg');
+      if (!svgElement) {
+        message.error('Chart SVG not found');
+        return;
+      }
+
+      message.loading({ content: 'Saving chart...', key: `saveChart-${chartIndex}` });
+
+      await new Promise((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const img = new Image();
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(svgBlob);
+
+        img.onload = () => {
+          try {
+            canvas.width = svgElement.getBoundingClientRect().width * 2;
+            canvas.height = svgElement.getBoundingClientRect().height * 2;
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            const imageData = canvas.toDataURL('image/png');
+            URL.revokeObjectURL(url);
+
+            const savedImages = JSON.parse(localStorage.getItem('savedImages') || '[]');
+            
+            if (!savedImages.includes(imageData)) {
+              savedImages.push(imageData);
+              localStorage.setItem('savedImages', JSON.stringify(savedImages));
+              message.success({ 
+                content: 'Chart saved to reports!', 
+                key: `saveChart-${chartIndex}`,
+                duration: 2
+              });
+            } else {
+              message.info({ 
+                content: 'Chart already saved', 
+                key: `saveChart-${chartIndex}`,
+                duration: 2
+              });
+            }
+            resolve();
+          } catch (err) {
+            URL.revokeObjectURL(url);
+            reject(err);
+          }
+        };
+
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('Failed to load image'));
+        };
+
+        img.src = url;
+      });
+    } catch (error) {
+      console.error(`Error saving chart ${chartIndex}:`, error);
+      message.error({ 
+        content: 'Failed to save chart', 
+        key: `saveChart-${chartIndex}`,
+        duration: 2
+      });
+    }
+  };
+
   const handleClick = (chartIndex) => {
     setIndex(chartIndex);
     setShowModel(true)
@@ -112,19 +189,19 @@ export const Insights = () => {
         <div>No data available</div>
       ) : (
       <>
-      {/* Tabs for Simple/Advanced */}
+      {/* Tabs for Basic/Advance */}
       <div className="main-tabs" style={{marginTop: 16}}>
         <button
           className={`main-tab-button${chartType === "basic" ? " active" : ""}`}
           onClick={() => handleTabChange("basic")}
         >
-          Simple
+          Basic
         </button>
         <button
           className={`main-tab-button${chartType === "advanced" ? " active" : ""}`}
           onClick={() => handleTabChange("advanced")}
         >
-          Advanced
+          Advance
         </button>
       </div>
       {/* Header */}
@@ -184,7 +261,6 @@ export const Insights = () => {
                   width: "100%",
                   overflow: "hidden",
                   height: "480px",
-                  cursor: "pointer",
                   backgroundColor: "transparent",
                   position: "relative",
                   border: "none",
@@ -192,6 +268,39 @@ export const Insights = () => {
                   outline: "none",
                 }}
               >
+                {/* Save button positioned at top right */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSaveChart(index);
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: "10px",
+                    right: "10px",
+                    zIndex: 10,
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #3b82f6",
+                    background: "white",
+                    color: "#3b82f6",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = "#3b82f6";
+                    e.currentTarget.style.color = "white";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = "white";
+                    e.currentTarget.style.color = "#3b82f6";
+                  }}
+                >
+                  Save
+                </button>
                 <div
                   onClick={() => handleClick(index + 1)}
                   style={{
@@ -201,6 +310,7 @@ export const Insights = () => {
                     boxShadow: "none",
                     outline: "none",
                     backgroundColor: "transparent",
+                    cursor: "pointer",
                   }}
                 >
                   <Plot

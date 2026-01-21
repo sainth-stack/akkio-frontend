@@ -91,6 +91,20 @@ const renderForecastDetails = (details) => {
 
     return (
         <div className="forecast-response">
+            {/* Description Section */}
+            {details.description && (
+                <div className="forecast-description section-card" style={{
+                    padding: '16px',
+                    marginBottom: '20px',
+                    backgroundColor: '#f8fafc',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0'
+                }}>
+                    <h4 style={{ marginBottom: '8px', color: '#334155' }}>Forecast Summary</h4>
+                    <p style={{ margin: 0, color: '#64748b', lineHeight: '1.6' }}>{details.description}</p>
+                </div>
+            )}
+
             <div className="forecast-table section-card">
                 <h4>Forecast Data</h4>
                 <div className="table-wrapper">
@@ -328,12 +342,16 @@ const Bot = () => {
         let response;
         if (!isChat) {
           // Send JSON for ai_bot
+          const userEmail = JSON.parse(localStorage.getItem("user"))?.email || 'anonymous';
           response = await fetch(endpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ prompt: message }),
+            body: JSON.stringify({ 
+              prompt: message,
+              email: userEmail 
+            }),
           });
         } else {
           // Keep as FormData for chat

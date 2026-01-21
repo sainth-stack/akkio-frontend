@@ -12,23 +12,18 @@ const { Dragger } = Upload;
 
 const GENERATE_EXAMPLE_PROMPTS = [
   "Generate a table with 25 rows of sales data with columns: Order ID, Product Name, Quantity, Unit Price, Total Amount, Customer Name, Order Date",
-  "Generate 2 images related to X-ray of a human.",
-  "Create a PDF with 3 pages about Artificial Intelligence with sections: Introduction, Methodology, Conclusion"
+  "Create 50 rows of employee data with columns: Employee ID, Name, Department, Salary, Join Date, Email",
+  "Generate 100 rows of inventory data with columns: Item ID, Item Name, Category, Stock, Price, Supplier"
 ];
 
 const EXTEND_EXAMPLE_PROMPTS = {
-  pdf: [
-    "Extend the document up to 7 pages",
-    "Add more sections about machine learning applications",
-    "Expand the conclusion with future research directions"
-  ],
-  image: [
-    "Create 5 images with the help of above images",
-    "Generate variations of the uploaded images",
-    "Create similar style images with different subjects"
-  ],
   excel: [
     "Extend 1000 rows for the given dataset",
+    "Add more realistic data following the same pattern",
+    "Generate additional columns with related data"
+  ],
+  csv: [
+    "Extend 500 rows for the given dataset",
     "Add more realistic data following the same pattern",
     "Generate additional columns with related data"
   ]
@@ -794,8 +789,7 @@ const SyntheticData = ({ isOpen, onClose }) => {
               style={{ width: "100%" }}
               options={[
                 { value: "excel", label: "Excel" },
-                { value: "image", label: "Image" },
-                { value: "pdf", label: "PDF" },
+                { value: "csv", label: "CSV" },
               ]}
             />
           </div>
@@ -814,7 +808,7 @@ const SyntheticData = ({ isOpen, onClose }) => {
               beforeUpload={() => false}
               onChange={handleFileUpload}
               fileList={uploadedFiles}
-              accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png"
+              accept=".xlsx,.xls,.csv"
               style={{ backgroundColor: '#fafafa' }}
             >
               <p className="ant-upload-drag-icon">
@@ -822,7 +816,7 @@ const SyntheticData = ({ isOpen, onClose }) => {
               </p>
               <p className="ant-upload-text">Click or drag files to this area to upload</p>
               <p className="ant-upload-hint">
-                Support for PDF, Excel, CSV, and Image files
+                Support for Excel and CSV files
               </p>
             </Dragger>
           </div>

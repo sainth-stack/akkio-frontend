@@ -40,8 +40,9 @@
   }
 
   &.active {
-    color: #1a1a1a;
-    border-bottom-color: #1a1a1a;
+    color: white;
+    background-color: #3b82f6;
+    border-radius: 4px;
     font-weight: 500;
   }
 }

@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import styles from './Settings.module.scss';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { FaCheck } from 'react-icons/fa';
+import { FaCheck, FaEye, FaEyeSlash } from 'react-icons/fa';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useLocation } from 'react-router-dom';
+import Select from 'react-select';
 
 const TABS = [
   { id: 'plan', label: 'Plan & Billing' },
   { id: 'general', label: 'General' },
   { id: 'analytics', label: 'AI Credits Analytics' },
+  { id: 'llm', label: 'LLM Configuration' },
 ];
 
 export default function Settings() {
@@ -31,6 +33,13 @@ export default function Settings() {
   });
   const [chartData, setChartData] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  
+  // LLM Configuration State
+  const [provider, setProvider] = useState('openai');
+  const [apiKey, setApiKey] = useState('');
+  const [modelName, setModelName] = useState('gpt-4o-mini');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [providersInfo, setProvidersInfo] = useState({});
   
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -56,6 +65,9 @@ export default function Settings() {
     } catch (e) {
       console.error("Error parsing user from local storage", e);
     }
+    
+    // Fetch providers info
+    fetchProvidersInfo();
   }, []);
 
   useEffect(() => {
@@ -64,6 +76,8 @@ export default function Settings() {
         fetchAnalytics(userEmail);
       } else if (activeTab === 'general') {
         fetchSettings(userEmail);
+      } else if (activeTab === 'llm') {
+        fetchLLMSettings(userEmail);
       }
     }
   }, [activeTab, userEmail]);
@@ -132,6 +146,71 @@ export default function Settings() {
     } catch (error) {
       toast.error("Failed to upgrade plan");
     }
+  };
+
+  const fetchProvidersInfo = async () => {
+    try {
+      const res = await axios.get('http://localhost:8000/api/settings/llm/providers');
+      if (res.data) {
+        setProvidersInfo(res.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch providers info", error);
+    }
+  };
+
+  const fetchLLMSettings = async (email) => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`http://localhost:8000/api/settings/llm?email=${email}`);
+      if (res.data) {
+        const selectedProvider = res.data.provider || 'openai';
+        setProvider(selectedProvider);
+        setApiKey(res.data.api_key || '');
+        setModelName(res.data.model_name || providersInfo[selectedProvider]?.default_model || 'gpt-4o-mini');
+      }
+    } catch (error) {
+      console.error("Failed to fetch LLM settings", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveLLMSettings = async () => {
+    try {
+      await axios.post('http://localhost:8000/api/settings/llm', {
+        email: userEmail,
+        provider: provider,
+        api_key: apiKey || null,
+        model_name: modelName || providersInfo[provider]?.default_model
+      });
+      toast.success("LLM settings saved successfully");
+    } catch (error) {
+      toast.error("Failed to save LLM settings");
+    }
+  };
+
+  const resetLLMSettings = async () => {
+    if (window.confirm('Are you sure you want to reset to default settings?')) {
+      setProvider('openai');
+      setApiKey('');
+      setModelName('gpt-4o-mini');
+      try {
+        await axios.delete(`http://localhost:8000/api/settings/llm?email=${userEmail}`);
+        toast.success("LLM settings reset to defaults");
+      } catch (error) {
+        toast.error("Failed to reset LLM settings");
+      }
+    }
+  };
+
+  const handleProviderChange = (newProvider) => {
+    setProvider(newProvider);
+    // Set default model for the new provider
+    const defaultModel = providersInfo[newProvider]?.default_model || 'gpt-4o-mini';
+    setModelName(defaultModel);
+    // Clear API key when switching providers
+    setApiKey('');
   };
 
   const renderAnalytics = () => (
@@ -325,6 +404,175 @@ export default function Settings() {
     </div>
   );
 
+  const renderLLM = () => {
+    const currentProviderInfo = providersInfo[provider] || {};
+    const availableModels = currentProviderInfo.models || [];
+    
+    // Prepare options for react-select
+    const modelOptions = availableModels.map((model) => {
+      const isRecommended = model === currentProviderInfo.default_model;
+      return {
+        value: model,
+        label: `${model}${isRecommended ? ' ⭐ (Recommended)' : ''}`
+      };
+    });
+    
+    // Get current selected option
+    const selectedOption = modelOptions.find(opt => opt.value === modelName) || null;
+    
+    // Custom styles for react-select
+    const customSelectStyles = {
+      control: (provided) => ({
+        ...provided,
+        minHeight: '44px',
+        border: '1px solid #d1d5db',
+        borderRadius: '6px',
+        boxShadow: 'none',
+        '&:hover': {
+          border: '1px solid #d1d5db'
+        },
+        '&:focus-within': {
+          border: '1px solid #6366f1',
+          boxShadow: '0 0 0 3px rgba(99, 102, 241, 0.1)'
+        }
+      }),
+      menu: (provided) => ({
+        ...provided,
+        maxHeight: '300px',
+        border: '1px solid #d1d5db',
+        borderRadius: '6px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      }),
+      menuList: (provided) => ({
+        ...provided,
+        maxHeight: '300px',
+        '::-webkit-scrollbar': {
+          width: '8px'
+        },
+        '::-webkit-scrollbar-track': {
+          background: '#f1f1f1',
+          borderRadius: '4px'
+        },
+        '::-webkit-scrollbar-thumb': {
+          background: '#888',
+          borderRadius: '4px'
+        },
+        '::-webkit-scrollbar-thumb:hover': {
+          background: '#555'
+        }
+      }),
+      option: (provided, state) => ({
+        ...provided,
+        backgroundColor: state.isSelected ? '#6366f1' : state.isFocused ? '#f3f4f6' : 'white',
+        color: state.isSelected ? 'white' : '#1a1a1a',
+        cursor: 'pointer',
+        padding: '10px 12px'
+      }),
+      placeholder: (provided) => ({
+        ...provided,
+        color: '#9ca3af'
+      })
+    };
+    
+    return (
+      <div>
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>LLM Configuration</div>
+          <p style={{color: '#6b7280', marginBottom: '1.5rem'}}>
+            Configure your AI provider, API key, and preferred model. If not set, the system will use the default configuration.
+          </p>
+          
+          <div className={styles.formGroup}>
+            <label>AI Provider</label>
+            <select 
+              className={styles.input}
+              value={provider}
+              onChange={(e) => handleProviderChange(e.target.value)}
+            >
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="google">Google (Gemini)</option>
+            </select>
+            <small style={{color: '#6b7280', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem'}}>
+              {currentProviderInfo.description || 'Select your AI provider'}
+            </small>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label>
+              {provider === 'openai' && 'OpenAI API Key'}
+              {provider === 'anthropic' && 'Anthropic API Key'}
+              {provider === 'google' && 'Google API Key'}
+            </label>
+            <div style={{position: 'relative'}}>
+              <input 
+                type={showApiKey ? "text" : "password"}
+                className={styles.input} 
+                placeholder={
+                  provider === 'openai' ? 'sk-...' : 
+                  provider === 'anthropic' ? 'sk-ant-...' : 
+                  'AIza...'
+                }
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                style={{paddingRight: '45px'}}
+              />
+              <button
+                onClick={() => setShowApiKey(!showApiKey)}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  padding: '5px'
+                }}
+              >
+                {showApiKey ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+              </button>
+            </div>
+            <small style={{color: '#6b7280', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem'}}>
+              Leave empty to use the default system API key
+            </small>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label>Model Name ({availableModels.length} models available)</label>
+            
+            {/* Searchable Select Dropdown */}
+            <Select
+              options={modelOptions}
+              value={selectedOption}
+              onChange={(option) => setModelName(option.value)}
+              styles={customSelectStyles}
+              placeholder="Search and select a model..."
+              isSearchable={true}
+              noOptionsMessage={() => "No models found"}
+            />
+            
+            <small style={{color: '#6b7280', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem'}}>
+              Default: {currentProviderInfo.default_model}
+            </small>
+          </div>
+
+          <div style={{display: 'flex', gap: '1rem'}}>
+            <button className={styles.saveBtn} onClick={saveLLMSettings}>Save Changes</button>
+            <button 
+              className={styles.deleteBtn} 
+              onClick={resetLLMSettings}
+              style={{background: '#f59e0b'}}
+            >
+              Reset to Defaults
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -346,6 +594,7 @@ export default function Settings() {
         {activeTab === 'plan' && renderPlan()}
         {activeTab === 'general' && renderGeneral()}
         {activeTab === 'analytics' && renderAnalytics()}
+        {activeTab === 'llm' && renderLLM()}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import Logo from "../../assets/images/Logo2.jpg";
+import Logo from "../../assets/images/OtamatLogo.png";
 import loginbg from "../../assets/svg/bg.jpg";
 import eye from "../../assets/svg/eye-fill.svg";
 import eye2 from "../../assets/svg/eye-slash.svg";

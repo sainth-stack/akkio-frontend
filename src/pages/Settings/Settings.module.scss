@@ -36,7 +36,9 @@
   white-space: nowrap;
 
   &:hover {
-    color: #374151;
+    color: white;
+    background-color: #3b82f6;
+    border-radius: 4px;
   }
 
   &.active {

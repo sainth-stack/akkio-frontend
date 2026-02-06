@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
 import Spinner from 'react-bootstrap/Spinner';
 import { Collapse, Tag, Progress, Button, message as antdMessage, Tooltip as AntdTooltip, Modal, Dropdown, Menu, Tabs, Input, Empty, Switch } from 'antd';
-import { FaCheckCircle, FaBrain, FaDownload, FaTrashAlt, FaInfoCircle, FaThermometerHalf, FaPlus, FaEllipsisV, FaFolderPlus, FaSearch } from 'react-icons/fa';
+import { FaCheckCircle, FaBrain, FaDownload, FaTrashAlt, FaInfoCircle, FaThermometerHalf, FaPlus, FaEllipsisV, FaFolderPlus, FaSearch, FaMicrophone } from 'react-icons/fa';
 import { akkiourl } from '../../utils/const';
 import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
@@ -48,7 +48,7 @@ const PlanContent = ({ planText }) => {
 
   // Split text by lines and process each line
   const lines = planText.split('\n');
-  
+
   return (
     <div>
       {lines.map((line, lineIdx) => {
@@ -63,7 +63,7 @@ const PlanContent = ({ planText }) => {
           if (match.index > lastIndex) {
             parts.push({ type: 'text', content: line.substring(lastIndex, match.index) });
           }
-          
+
           // Add URL as link
           parts.push({ type: 'link', content: match[0], url: match[0] });
           lastIndex = match.index + match[0].length;
@@ -2345,6 +2345,50 @@ const MultiAgent = ({ initialSessionId }) => {
   const [shareInfo, setShareInfo] = useState(null);
   const [shareLoading, setShareLoading] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  const handleVoiceInput = () => {
+    if (isListening) {
+      if (window.recognition) {
+        window.recognition.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Your browser does not support voice input. Please use Chrome or Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    window.recognition = recognition;
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setMessage(prev => (prev ? prev + ' ' + transcript : transcript));
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
 
   // agentTemplates moved to AgentTemplates.jsx
 
@@ -3877,13 +3921,13 @@ const MultiAgent = ({ initialSessionId }) => {
                   value={message}
                   onChange={handleMessageChange}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask something..."
+                  placeholder={isListening ? "Listening..." : "Ask something..."}
                   rows={1}
                   style={{
                     width: '100%',
                     minHeight: '44px',
                     maxHeight: '200px',
-                    padding: '12px 16px',
+                    padding: '12px 40px 12px 16px',
                     border: '1px solid #d1d5db',
                     borderRadius: '12px',
                     fontSize: '15px',
@@ -3903,6 +3947,27 @@ const MultiAgent = ({ initialSessionId }) => {
                   }}
                   disabled={isLoading}
                 />
+                <div
+                  onClick={handleVoiceInput}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    bottom: '12px',
+                    cursor: 'pointer',
+                    color: isListening ? '#ef4444' : '#6b7280',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '5px',
+                    borderRadius: '50%',
+                    backgroundColor: isListening ? '#fee2e2' : 'transparent',
+                    transition: 'all 0.2s',
+                    zIndex: 10
+                  }}
+                  title="Voice Input"
+                >
+                  <FaMicrophone size={16} />
+                </div>
               </div>
               <button
                 type="submit"

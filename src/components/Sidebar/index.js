@@ -4,7 +4,7 @@ import "./akkioSidebar.scss";
 import "./akkioSidebarLayout.scss";
 import { Link, useLocation } from "react-router-dom";
 import { IoSettingsOutline, IoHome } from "react-icons/io5";
-import { FaAngleDown, FaAngleRight, FaBrain } from "react-icons/fa6";
+import { FaAngleDown, FaAngleRight, FaBrain, FaPuzzlePiece } from "react-icons/fa6";
 import { BiSolidData, BiSolidAnalyse } from "react-icons/bi";
 import { MdOutlineFindInPage } from "react-icons/md";
 import { TbReportSearch } from "react-icons/tb";
@@ -20,6 +20,7 @@ const MENU_ITEMS = [
   { name: 'Analytics', icon: MdOutlineFindInPage, path: '/train', permission: 'predict' },
   { name: 'Automate', icon: TbReportSearch, path: '/explore', permission: 'reports' },
   { name: 'Multi Agent', icon: FaBrain, path: '/multi-agent', permission: 'reports' },
+  { name: 'App Builder', icon: FaPuzzlePiece, path: '/app-builder', permission: 'reports' },
   { name: 'Reports', icon: TbReportSearch, path: '/reports', id: 6, permission: 'reports' },
   { name: 'Settings', icon: IoSettingsOutline, path: '/settings', permission: 'home' },
 ];
@@ -82,6 +83,9 @@ export default function Sidebar() {
 
   const isActive = (item) => {
     if (item.name === "Analytics" && ["/train", "/predict", "/forecast"].some(p => location.pathname.startsWith(p))) {
+      return true;
+    }
+    if (item.name === "App Builder" && (location.pathname === "/app-builder" || location.pathname.startsWith("/app-builder/"))) {
       return true;
     }
     return location.pathname === item.path;

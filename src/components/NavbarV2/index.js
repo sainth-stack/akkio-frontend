@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 // import "./styles.scss";
 // import userprofile from '../../assets/images/userprofile.png'
 import { useNavigate } from "react-router-dom";
-import Logo from '../../assets/images/Logo2.png'
+import Logo from '../../assets/images/OtamatLogo.svg'
 import avatar from '../../assets/svg/avatar.svg'
 function NavbarV2() {
   const navigate = useNavigate()
@@ -20,11 +20,12 @@ function NavbarV2() {
         right:0
       }}>
         <div class="collapse navbar-collapse" style={{ marginLeft: '0px' }} id="navbarNav">
-          {/* <img
+          <img
             src={Logo}
-            style={{ width: '160px' }}
+            style={{ width: '80px', height: '40px', marginLeft: '10px' }}
             id="logo_RL"
-          /> */}
+            alt="Otamat"
+          />
           <div style={{
             marginLeft:'10px',
             marginTop:'0px',

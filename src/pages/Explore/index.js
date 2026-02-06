@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
 import Spinner from 'react-bootstrap/Spinner';
 import { Collapse, Tag, Progress } from 'antd';
-import { FaCheckCircle, FaRobot, FaBrain } from 'react-icons/fa';
+import { FaCheckCircle, FaRobot, FaBrain, FaMicrophone } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi';
 import { akkiourl } from '../../utils/const';
 import axios from 'axios';
@@ -1096,24 +1096,24 @@ const AnswerTable = ({ rows, explanation }) => {
                   }}>
                     {row && row[col] !== undefined && row[col] !== null
                       ? (() => {
-                          const value = row[col];
-                          // Format dates nicely if they're ISO date strings
-                          if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-                            try {
-                              const date = new Date(value);
-                              if (!isNaN(date.getTime())) {
-                                return date.toLocaleDateString();
-                              }
-                            } catch (e) {
-                              // Fall through to string conversion
+                        const value = row[col];
+                        // Format dates nicely if they're ISO date strings
+                        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+                          try {
+                            const date = new Date(value);
+                            if (!isNaN(date.getTime())) {
+                              return date.toLocaleDateString();
                             }
+                          } catch (e) {
+                            // Fall through to string conversion
                           }
-                          // Format numbers with commas for readability
-                          if (typeof value === 'number') {
-                            return value.toLocaleString();
-                          }
-                          return String(value);
-                        })()
+                        }
+                        // Format numbers with commas for readability
+                        if (typeof value === 'number') {
+                          return value.toLocaleString();
+                        }
+                        return String(value);
+                      })()
                       : ''}
                   </td>
                 ))}
@@ -1320,17 +1320,17 @@ const AnswerPlotly = ({ figure, explanation }) => {
     font: { family: 'Inter, system-ui, sans-serif', size: 12, color: '#374151', ...(rawLayout?.font || {}) },
     showlegend: rawLayout?.showlegend ?? true,
     legend: { orientation: 'h', x: 0.5, xanchor: 'center', y: -0.2, ...(rawLayout?.legend || {}) },
-    xaxis: { 
-      gridcolor: '#f3f4f6', 
+    xaxis: {
+      gridcolor: '#f3f4f6',
       zerolinecolor: '#e5e7eb',
       tickangle: -45,
       ...(rawLayout?.xaxis || {}),
       // Preserve tickangle from rawLayout if it exists
       tickangle: rawLayout?.xaxis?.tickangle ?? -45
     },
-    yaxis: { 
-      gridcolor: '#f3f4f6', 
-      zerolinecolor: '#e5e7eb', 
+    yaxis: {
+      gridcolor: '#f3f4f6',
+      zerolinecolor: '#e5e7eb',
       ...(rawLayout?.yaxis || {}),
       // Preserve or override type for categorical data
       type: isCategoricalY ? 'category' : (rawLayout?.yaxis?.type || undefined)
@@ -1737,8 +1737,68 @@ const Reports = ({ initialSessionId }) => {
   const [loadingMultiFiles, setLoadingMultiFiles] = useState(false);
   const [showPremiumOverlay, setShowPremiumOverlay] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const textareaRef = useRef(null);
+  const submissionLock = useRef(false);
+
+  const handleVoiceInput = () => {
+    if (isListening) {
+      if (window.recognition) {
+        window.recognition.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Your browser does not support voice input. Please use Chrome or Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    window.recognition = recognition;
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setMessage(prev => (prev ? prev + ' ' + transcript : transcript));
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
   const handleMessageChange = (e) => {
     setMessage(e.target.value);
+    // Auto-resize textarea
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!isLoading && message.trim()) {
+        handleSubmit(e);
+      }
+    }
   };
 
   // Function to fetch data summary on page load
@@ -1905,7 +1965,10 @@ const Reports = ({ initialSessionId }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!message.trim() || loadingSummary) return;
+    if (submissionLock.current || isLoading || loadingSummary) return;
+    if (!message.trim()) return;
+
+    submissionLock.current = true; // LOCK
 
     const userMessage = message;
     setMessage('');
@@ -1913,9 +1976,9 @@ const Reports = ({ initialSessionId }) => {
     // Add user message and placeholder bot message for streaming
     setMessages(prev => {
       return [...prev, {
-      type: 'user',
+        type: 'user',
         content: userMessage,
-      question: true,
+        question: true,
         isLoading: false
       }, {
         type: 'bot',
@@ -1934,7 +1997,7 @@ const Reports = ({ initialSessionId }) => {
     const isImage = selectedType.includes('image');
 
     // For image classification, keep using HTTP POST (can be migrated later)
-      if (isImage) {
+    if (isImage) {
       try {
         const img = (() => {
           try { return JSON.parse(localStorage.getItem('image_classification_data') || 'null'); }
@@ -1961,12 +2024,12 @@ const Reports = ({ initialSessionId }) => {
           streaming: false
         };
 
-        setMessages(prev => prev.map((msg, idx) => 
+        setMessages(prev => prev.map((msg, idx) =>
           idx === (prev.length - 1) ? botResponse : msg
         ));
       } catch (error) {
         console.error('Error:', error);
-        setMessages(prev => prev.map((msg, idx) => 
+        setMessages(prev => prev.map((msg, idx) =>
           idx === (prev.length - 1) ? {
             type: 'bot',
             content: '{"answer": "Sorry, there was an error processing your request."}',
@@ -1975,6 +2038,7 @@ const Reports = ({ initialSessionId }) => {
         ));
       } finally {
         setIsLoading(false);
+        submissionLock.current = false;
       }
       return;
     }
@@ -2011,12 +2075,12 @@ const Reports = ({ initialSessionId }) => {
           streaming: false
         };
 
-        setMessages(prev => prev.map((msg, idx) => 
+        setMessages(prev => prev.map((msg, idx) =>
           idx === (prev.length - 1) ? botResponse : msg
         ));
       } catch (error) {
         console.error('Error:', error);
-        setMessages(prev => prev.map((msg, idx) => 
+        setMessages(prev => prev.map((msg, idx) =>
           idx === (prev.length - 1) ? {
             type: 'bot',
             content: '{"answer": "Sorry, there was an error processing your request."}',
@@ -2025,6 +2089,7 @@ const Reports = ({ initialSessionId }) => {
         ));
       } finally {
         setIsLoading(false);
+        submissionLock.current = false;
       }
       return;
     }
@@ -2062,7 +2127,7 @@ const Reports = ({ initialSessionId }) => {
           currentResponseType = data.type;
           setMessages(prev => {
             const botIdx = prev.length - 1;
-            return prev.map((msg, idx) => 
+            return prev.map((msg, idx) =>
               idx === botIdx ? {
                 ...msg,
                 responseType: currentResponseType
@@ -2075,7 +2140,7 @@ const Reports = ({ initialSessionId }) => {
           currentResponseType = data.type;
           setMessages(prev => {
             const botIdx = prev.length - 1;
-            return prev.map((msg, idx) => 
+            return prev.map((msg, idx) =>
               idx === botIdx ? {
                 ...msg,
                 responseType: currentResponseType
@@ -2086,7 +2151,7 @@ const Reports = ({ initialSessionId }) => {
           accumulatedContent += data.chunk || '';
           setMessages(prev => {
             const botIdx = prev.length - 1;
-            return prev.map((msg, idx) => 
+            return prev.map((msg, idx) =>
               idx === botIdx ? {
                 ...msg,
                 content: accumulatedContent,
@@ -2098,7 +2163,7 @@ const Reports = ({ initialSessionId }) => {
           currentExplanation += data.chunk || '';
           setMessages(prev => {
             const botIdx = prev.length - 1;
-            return prev.map((msg, idx) => 
+            return prev.map((msg, idx) =>
               idx === botIdx ? {
                 ...msg,
                 explanation: currentExplanation
@@ -2110,7 +2175,7 @@ const Reports = ({ initialSessionId }) => {
           currentResponseType = 'plotly'; // Update response type when plotly data arrives
           setMessages(prev => {
             const botIdx = prev.length - 1;
-            return prev.map((msg, idx) => 
+            return prev.map((msg, idx) =>
               idx === botIdx ? {
                 ...msg,
                 responseType: 'plotly',
@@ -2123,7 +2188,7 @@ const Reports = ({ initialSessionId }) => {
           currentResponseType = 'table'; // Update response type when table data arrives
           setMessages(prev => {
             const botIdx = prev.length - 1;
-            return prev.map((msg, idx) => 
+            return prev.map((msg, idx) =>
               idx === botIdx ? {
                 ...msg,
                 responseType: 'table',
@@ -2139,7 +2204,7 @@ const Reports = ({ initialSessionId }) => {
           };
           setMessages(prev => {
             const botIdx = prev.length - 1;
-            return prev.map((msg, idx) => 
+            return prev.map((msg, idx) =>
               idx === botIdx ? {
                 ...msg,
                 responseType: 'report',
@@ -2152,7 +2217,7 @@ const Reports = ({ initialSessionId }) => {
           if (data.session_id && data.session_id !== sessionId) {
             setSessionId(data.session_id);
           }
-          
+
           // Finalize the message
           setMessages(prev => {
             const botIdx = prev.length - 1;
@@ -2169,7 +2234,7 @@ const Reports = ({ initialSessionId }) => {
                 } else if (currentResponseType === 'report') {
                   finalContent = JSON.stringify({ report: currentPayload?.report || {}, title: currentPayload?.title, description: currentPayload?.description });
                 }
-                
+
                 return {
                   ...msg,
                   streaming: false,
@@ -2181,16 +2246,17 @@ const Reports = ({ initialSessionId }) => {
           });
 
           // Dispatch usage update event
-      window.dispatchEvent(new Event('usage_updated'));
+          window.dispatchEvent(new Event('usage_updated'));
 
           ws.close();
           setIsLoading(false);
+          submissionLock.current = false;
         } else if (messageType === 'error') {
           setMessages(prev => {
             const botIdx = prev.length - 1;
-            return prev.map((msg, idx) => 
+            return prev.map((msg, idx) =>
               idx === botIdx ? {
-        type: 'bot',
+                type: 'bot',
                 content: JSON.stringify({ answer: data.message || 'An error occurred' }),
                 streaming: false
               } : msg
@@ -2198,6 +2264,7 @@ const Reports = ({ initialSessionId }) => {
           });
           ws.close();
           setIsLoading(false);
+          submissionLock.current = false;
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -2208,19 +2275,21 @@ const Reports = ({ initialSessionId }) => {
       console.error('WebSocket error:', error);
       setMessages(prev => {
         const botIdx = prev.length - 1;
-        return prev.map((msg, idx) => 
+        return prev.map((msg, idx) =>
           idx === botIdx ? {
-        type: 'bot',
+            type: 'bot',
             content: JSON.stringify({ answer: 'Connection error. Please try again.' }),
             streaming: false
           } : msg
         );
       });
       setIsLoading(false);
+      submissionLock.current = false;
     };
 
     ws.onclose = () => {
       setIsLoading(false);
+      submissionLock.current = false;
     };
   };
 
@@ -2305,19 +2374,19 @@ const Reports = ({ initialSessionId }) => {
 
     // Track the last filename we fetched summary for
     const lastSummaryFilename = sessionStorage.getItem('last_summary_filename');
-    
+
     // Only fetch if filename has changed or we haven't fetched yet
     if (lastSummaryFilename !== filename) {
       // Update tracking
       sessionStorage.setItem('last_summary_filename', filename);
-      
+
       // Fetch summary (will use cache if available)
       fetchDataSummary();
     } else {
       // Same file - try to load from cache
       const cacheKey = `data_summary_${email}_${filename}`;
       const cachedSummary = localStorage.getItem(cacheKey);
-      
+
       if (cachedSummary) {
         try {
           const parsedCache = JSON.parse(cachedSummary);
@@ -2393,7 +2462,7 @@ const Reports = ({ initialSessionId }) => {
                               (() => {
                                 if (msg.responseType === 'plotly' && msg.payload) {
                                   // Ensure plotly figure has proper structure
-                                  const figure = msg.payload && typeof msg.payload === 'object' 
+                                  const figure = msg.payload && typeof msg.payload === 'object'
                                     ? (msg.payload.figure || msg.payload)
                                     : null;
                                   if (figure && (figure.data || figure.layout)) {
@@ -2439,18 +2508,93 @@ const Reports = ({ initialSessionId }) => {
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSubmit} className="chat-input-form">
-            <div className="input-container">
-              <input
-                type="text"
+          <form onSubmit={handleSubmit} className="chat-input-form" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', padding: '1rem', borderTop: '1px solid #e5e7eb', backgroundColor: '#ffffff' }}>
+            <div className="input-container3" style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'flex-end' }}>
+              <textarea
+                ref={textareaRef}
                 className="chat-input"
                 value={message}
                 onChange={handleMessageChange}
-                placeholder={loadingSummary ? "Loading data summary..." : "Ask something..."}
-                disabled={loadingSummary}
+                onKeyDown={handleKeyDown}
+                placeholder={loadingSummary ? "Loading data summary..." : (isListening ? "Listening..." : "Ask something...")}
+                rows={1}
+                style={{
+                  width: '100%',
+                  minHeight: '44px',
+                  maxHeight: '200px',
+                  padding: '12px 40px 12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '12px',
+                  fontSize: '15px',
+                  fontFamily: 'inherit',
+                  resize: 'none',
+                  overflowY: 'auto',
+                  outline: 'none',
+                  lineHeight: '1.5',
+                  backgroundColor: '#ffffff',
+                  transition: 'border-color 0.2s',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#2563eb';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#d1d5db';
+                }}
+                disabled={loadingSummary || isLoading}
               />
+              <div
+                onClick={handleVoiceInput}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  bottom: '12px',
+                  cursor: 'pointer',
+                  color: isListening ? '#ef4444' : '#6b7280',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '5px',
+                  borderRadius: '50%',
+                  backgroundColor: isListening ? '#fee2e2' : 'transparent',
+                  transition: 'all 0.2s',
+                  zIndex: 10
+                }}
+                title="Voice Input"
+              >
+                <FaMicrophone size={16} />
+              </div>
             </div>
-            <button type="submit" className="send-button" disabled={isLoading || loadingSummary}>
+            <button
+              type="submit"
+              className="send-button"
+              disabled={isLoading || loadingSummary || !message.trim()}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: (isLoading || loadingSummary || !message.trim()) ? '#9ca3af' : '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: (isLoading || loadingSummary || !message.trim()) ? 'not-allowed' : 'pointer',
+                fontSize: '15px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: '80px',
+                transition: 'background-color 0.2s',
+                height: '44px'
+              }}
+              onMouseEnter={(e) => {
+                if (!isLoading && !loadingSummary && message.trim()) {
+                  e.target.style.backgroundColor = '#1d4ed8';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isLoading && !loadingSummary && message.trim()) {
+                  e.target.style.backgroundColor = '#2563eb';
+                }
+              }}
+            >
               {(isLoading || loadingSummary) ? (
                 <Spinner
                   animation="border"

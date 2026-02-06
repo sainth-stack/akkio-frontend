@@ -1,8 +1,8 @@
-export const akkiourl = "http://localhost:8000/api";
+// export const akkiourl = "http://localhost:8000/api";
 // export const akkiourl = "https://akkio-fastapi-td5f.onrender.com/api";
-// export const akkiourl = "http://18.143.150.140:3001/api";
+export const akkiourl = "http://18.143.150.140:3001/api";
 export const keypulseurl = "http://18.143.174.1:8000/api";
-export const adminUrl="http://18.143.150.140:4500/api"
+export const adminUrl = "http://18.143.150.140:4500/api"
 // export const adminUrl="http://localhost:4500/api"
 export function getFinalData(uniqueArr, isDate, length) {
   // Add early return if input array is empty or undefined
@@ -38,7 +38,7 @@ export function getFinalData(uniqueArr, isDate, length) {
 
   // Calculate the size of each segment and ensure it's at least 1
   const segmentSize = Math.max(1, Math.ceil(sortedArr.length / length));
-  
+
   // Adjust length if necessary to prevent empty segments
   const actualLength = Math.min(length, sortedArr.length);
 
@@ -95,25 +95,25 @@ export const transformData = (data) => {
 };
 
 export const transformData2 = (arrayData) => {
-    // Initialize an object to store the transformed data
-    const result = {};
-    
-    // Get all unique keys from the first object
-    const keys = Object.keys(arrayData[0] || {});
-    
-    // Initialize empty objects for each key
+  // Initialize an object to store the transformed data
+  const result = {};
+
+  // Get all unique keys from the first object
+  const keys = Object.keys(arrayData[0] || {});
+
+  // Initialize empty objects for each key
+  keys.forEach(key => {
+    result[key] = {};
+  });
+
+  // Populate the data
+  arrayData.forEach((item, index) => {
     keys.forEach(key => {
-        result[key] = {};
+      result[key][index.toString()] = item[key];
     });
-    
-    // Populate the data
-    arrayData.forEach((item, index) => {
-        keys.forEach(key => {
-            result[key][index.toString()] = item[key];
-        });
-    });
-    
-    return result;
+  });
+
+  return result;
 };
 
 export const arrayToCSV = (data) => {

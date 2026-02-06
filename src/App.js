@@ -55,6 +55,8 @@ import { Insights } from './pages/BusinessIntelligence/components/components/ins
 import Train from './pages/BusinessIntelligence/components/components/prediction/train';
 import Settings from './pages/Settings';
 import { UsageProvider } from './contexts/UsageContext';
+import AppBuilder from './app_creator/AppBuilder';
+import AppBuilderList from './app_creator/AppBuilderList';
 
 function App() {
   const clientId = '573823221354-d175srri1ta9un581atkp7b9qenst32u.apps.googleusercontent.com';
@@ -62,68 +64,72 @@ function App() {
 
     <BrowserRouter>
       <UsageProvider>
-      <GoogleOAuthProvider clientId={clientId}>
-        <ToastContainer />
-        <Routes>
-          <Route path="/" element={<Login />} />
-          {/* Public share link route (MindPal-style) */}
-          <Route path="/chatbot/:publicId" element={<PublicChatbot />} />
-          <Route path="/new-deployment" element={<NewDeploymentData />} />
-          <Route path="/" element={<AdminLayout />}>
-            <Route path='/welcome' Component={MiddleContent} />
-            <Route path='/gen-dashboard' Component={DashboardReports} />
-            {/* <Route path='/review-report' element={<HtmlReport />} /> */}
-            <Route path='/gen-ai' element={<GenAi />} />
-            <Route path='/ai-agents' element={<Bot />} />
-            <Route path='/manufa-anomaly' element={<Bot />} />
-            <Route path='/healthcare-anomaly' element={<Bot />} />
-            <Route path='/kpi' element={<KPI />} />
-            <Route path='/projects' Component={Projects} />
-            <Route path='/connect' Component={Connect} />
-            <Route path='/discover' Component={DisplayData} />
-            <Route path='/train' Component={Train} />
-            <Route path='/predict' Component={PredictionAndForecast} />
-            <Route path='/forecast' Component={PredictionAndForecast} />
-            <Route path='/explore' Component={Explore} />
-            <Route path='/reports' Component={Reports} />
-            <Route path='/multi-agent' Component={MultiAgent} />
-            <Route path='/insights' Component={Insights} />
-            <Route path='/data-source' element={<DataSource />} />
-            <Route path='/deployment' Component={DeploymentData} />
-            <Route path='/business-intelligence' element={<BusinessIntelligence />} />
-            <Route path='/datasets' element={<Datasets />} />
-            <Route path='/model-training' element={<ModelTraining />} />
-            <Route path='/settings' Component={Settings} />
-          </Route>
+        <GoogleOAuthProvider clientId={clientId}>
+          <ToastContainer />
+          <Routes>
+            <Route path="/" element={<Login />} />
+            {/* Public share link route (MindPal-style) */}
+            <Route path="/chatbot/:publicId" element={<PublicChatbot />} />
+            <Route path="/new-deployment" element={<NewDeploymentData />} />
+            {/* App Builder create/edit: full screen, no sidebar */}
+            <Route path="/app-builder/new" element={<AppBuilder />} />
+            <Route path="/app-builder/edit/:id" element={<AppBuilder />} />
+            <Route path="/" element={<AdminLayout />}>
+              <Route path='/welcome' Component={MiddleContent} />
+              <Route path='/gen-dashboard' Component={DashboardReports} />
+              {/* <Route path='/review-report' element={<HtmlReport />} /> */}
+              <Route path='/gen-ai' element={<GenAi />} />
+              <Route path='/ai-agents' element={<Bot />} />
+              <Route path='/manufa-anomaly' element={<Bot />} />
+              <Route path='/healthcare-anomaly' element={<Bot />} />
+              <Route path='/kpi' element={<KPI />} />
+              <Route path='/projects' Component={Projects} />
+              <Route path='/connect' Component={Connect} />
+              <Route path='/discover' Component={DisplayData} />
+              <Route path='/train' Component={Train} />
+              <Route path='/predict' Component={PredictionAndForecast} />
+              <Route path='/forecast' Component={PredictionAndForecast} />
+              <Route path='/explore' Component={Explore} />
+              <Route path='/reports' Component={Reports} />
+              <Route path='/multi-agent' Component={MultiAgent} />
+              <Route path='/app-builder' element={<AppBuilderList />} />
+              <Route path='/insights' Component={Insights} />
+              <Route path='/data-source' element={<DataSource />} />
+              <Route path='/deployment' Component={DeploymentData} />
+              <Route path='/business-intelligence' element={<BusinessIntelligence />} />
+              <Route path='/datasets' element={<Datasets />} />
+              <Route path='/model-training' element={<ModelTraining />} />
+              <Route path='/settings' Component={Settings} />
+            </Route>
 
-          <Route path="/" element={<AdminLayout2 />}>
-            <Route path='/settings/team/general' element={<GeneralTeam />} />
-            <Route path='/settings/team/members' element={<MembersTeam />} />
-            <Route path='/settings/team/api-keys' element={<ApiKeys />} />
-            <Route path='/settings/organization/general' element={<GeneralOrganization />} />
-            <Route path='/settings/organization/members' element={<MembersOrganization />} />
-            <Route path='/settings/organization/usage' element={<Usage />} />
-            <Route path='/settings/organization/billing' element={<Billing />} />
-            <Route path='/settings/organization/whitelabeling' element={<WhiteLabeling />} />
-            <Route path='/settings/account/notification' element={<Notification />} />
-            <Route path='/settings/account/legal' element={<Legal />} />
-            <Route path='/settings/account/general' element={<GeneralAccount />} />
-          </Route>
+            <Route path="/" element={<AdminLayout2 />}>
+              <Route path='/settings/team/general' element={<GeneralTeam />} />
+              <Route path='/settings/team/members' element={<MembersTeam />} />
+              <Route path='/settings/team/api-keys' element={<ApiKeys />} />
+              <Route path='/settings/organization/general' element={<GeneralOrganization />} />
+              <Route path='/settings/organization/members' element={<MembersOrganization />} />
+              <Route path='/settings/organization/usage' element={<Usage />} />
+              <Route path='/settings/organization/billing' element={<Billing />} />
+              <Route path='/settings/organization/whitelabeling' element={<WhiteLabeling />} />
+              <Route path='/settings/account/notification' element={<Notification />} />
+              <Route path='/settings/account/legal' element={<Legal />} />
+              <Route path='/settings/account/general' element={<GeneralAccount />} />
+            </Route>
 
-          <Route path="/" element={<AdminLayout3 />}>
-            <Route path='/admin/organizations' element={<Organization />} />
-            <Route path='/admin/users' element={<Users />} />
-            <Route path='/admin/roles' element={<Roles />} />
-            <Route path='/admin/permissions' element={<Permissions />} />
-            <Route path='/admin/api-key' element={<ApiKeyManager />} />
-          </Route>
+            <Route path="/" element={<AdminLayout3 />}>
+              <Route path='/admin/organizations' element={<Organization />} />
+              <Route path='/admin/users' element={<Users />} />
+              <Route path='/admin/roles' element={<Roles />} />
+              <Route path='/admin/permissions' element={<Permissions />} />
+              <Route path='/admin/api-key' element={<ApiKeyManager />} />
+            </Route>
 
-          <Route path="/terms" element={<TermsConst />} />
-          <Route path="/legal" element={<LegalConst />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-        </Routes>
-      </GoogleOAuthProvider>
+            <Route path="/terms" element={<TermsConst />} />
+            <Route path="/legal" element={<LegalConst />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Routes>
+        </GoogleOAuthProvider>
       </UsageProvider>
 
     </BrowserRouter>

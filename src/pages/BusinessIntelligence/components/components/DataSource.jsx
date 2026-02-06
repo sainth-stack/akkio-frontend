@@ -395,40 +395,6 @@ export const DataSource = () => {
                 <div style={{ color: 'red', marginTop: '8px' }}>{uploadError}</div>
               )}
             </div>
-            {file && file.type?.startsWith('image/') && (
-              <div style={{ marginTop: 16 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>
-                  Use Trained Model for Prediction (Optional)
-                </label>
-                <Select
-                  placeholder={loadingModels ? "Loading models..." : "Select a trained model (optional)"}
-                  style={{ width: '100%' }}
-                  size="large"
-                  value={selectedModel}
-                  onChange={setSelectedModel}
-                  loading={loadingModels}
-                  allowClear
-                >
-                  {trainedModels.map((model) => (
-                    <Select.Option key={model.safe_model_name} value={model.safe_model_name}>
-                      {model.model_name} ({model.num_classes} classes: {model.class_names.join(', ')})
-                    </Select.Option>
-                  ))}
-                </Select>
-                <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-                  Select a model to automatically predict image classification.
-                  <span
-                    style={{ color: '#1890ff', cursor: 'pointer', marginLeft: 4 }}
-                    onClick={() => {
-                      setOpen(false);
-                      navigate('/train');
-                    }}
-                  >
-                    Train a new model →
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
         </Modal>
       )}

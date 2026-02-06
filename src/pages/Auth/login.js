@@ -1,4 +1,4 @@
-// import Logo from "../../assets/images/Logo2.jpg";
+import Logo from "../../assets/images/OtamatLogo.png";
 import loginbg from "../../assets/svg/bg.jpg";
 import eye from "../../assets/svg/eye-fill.svg";
 import eye2 from "../../assets/svg/eye-slash.svg";
@@ -11,7 +11,6 @@ import { useNavigate } from "react-router-dom";
 import { adminUrl } from "../../utils/const";
 import { message } from "antd";
 import { useGoogleLogin } from "@react-oauth/google";
-import Logo from '../../assets/images/Logo.jpeg'
 
 export const Login = () => {
   const [loading, setLoading] = useState(false)
@@ -109,7 +108,7 @@ export const Login = () => {
     <div className="container-fluid row m-0 p-0 vh-100">
       <div className="col-md-6 col-xs-12 col-sm-12 text-center pt-lg-5 mt-lg-5">
         <div className="pt-5">
-          <img className="logo1" src={Logo} alt="Logo" width={200} />
+          <img className="logo1" src={Logo} alt="Logo" width={160}  height={130}/>
         </div>
         <div className="row mt-3">
           <div className="col-md-9 col-lg-9 col-sm-12 col-xs-12 mx-auto">

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 // import "./styles.scss";
 // import userprofile from '../../assets/images/userprofile.png'
 import { useNavigate } from "react-router-dom";
-import Logo from '../../assets/images/Logo.jpeg'
+import Logo from '../../assets/images/OtamatLogo.png'
 import { useLocation } from "react-router-dom";
 import { useDataAPI } from "../../pages/BusinessIntelligence/components/contexts/GetDataApi";
 function Navbar() {
@@ -48,7 +48,7 @@ function Navbar() {
             src={Logo}
             style={{ width: '100px',height:'60px',marginLeft:'50px' }}
             id="logo_RL"
-            alt="Akkio"
+            alt="Otamat"
           />
           {/* {name == "KProcess" && <div style={{
             marginLeft: '80px',

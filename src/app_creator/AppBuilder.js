@@ -4,13 +4,15 @@ import Spinner from 'react-bootstrap/Spinner';
 import ChatInterface from './ChatInterface';
 import TabPanel from './TabPanel';
 import './AppBuilder.css';
+import { akkiourl } from '../utils/const';
 
 const AppBuilder = () => {
     const { id: editId } = useParams();
     const navigate = useNavigate();
     const email = useMemo(() => {
         try {
-            return JSON.parse(localStorage.getItem('user') || '{}')?.email || '';
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            return user?.email || localStorage.getItem('email') || '';
         } catch (e) { return ''; }
     }, []);
 
@@ -34,10 +36,7 @@ const AppBuilder = () => {
     const [appId, setAppId] = useState(null); // DB app id after create
     const [loadingApp, setLoadingApp] = useState(!!editId);
 
-    const apiBase = useMemo(
-        () => process.env.REACT_APP_API_URL || 'http://localhost:8000',
-        []
-    );
+    const apiBase = akkiourl;
 
     // Save section content to DB when each section completes (for edit load)
     const updateAppInDb = useCallback(async (updates) => {
@@ -45,7 +44,7 @@ const AppBuilder = () => {
         if (!id || !email) return;
         try {
             await fetch(
-                `${apiBase}/api/app-builder/apps/${id}?user_email=${encodeURIComponent(email)}`,
+                `${apiBase}/app-builder/apps/${id}?user_email=${encodeURIComponent(email)}`,
                 { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) }
             );
         } catch (e) {
@@ -61,6 +60,7 @@ const AppBuilder = () => {
 
     // State for new planning steps
     const [generatedUIUX, setGeneratedUIUX] = useState('');
+    const [clarifiedRequirement, setClarifiedRequirement] = useState('');
 
     // Generic function to append to AI message
     const appendAi = useRef((delta) => {
@@ -101,6 +101,7 @@ const AppBuilder = () => {
         setRunState(null);
         setCurrentPhase('prd');
         setCurrentRequirement(text);
+        setClarifiedRequirement('');
 
         const localProjectName = "generated_app_" + Date.now();
         setProjectName(localProjectName);
@@ -111,7 +112,7 @@ const AppBuilder = () => {
         if (userEmail) {
             try {
                 const appName = (text || '').slice(0, 100) || localProjectName;
-                const createRes = await fetch(`${apiBase}/api/app-builder/apps`, {
+                const createRes = await fetch(`${apiBase}/app-builder/apps`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -161,7 +162,7 @@ const AppBuilder = () => {
             if (createdAppId && userEmail && lastPrd) {
                 try {
                     await fetch(
-                        `${apiBase}/api/app-builder/apps/${createdAppId}?user_email=${encodeURIComponent(userEmail)}`,
+                        `${apiBase}/app-builder/apps/${createdAppId}?user_email=${encodeURIComponent(userEmail)}`,
                         {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
@@ -186,6 +187,167 @@ const AppBuilder = () => {
         }
     };
 
+    const handleUpdateCode = async (text) => {
+        if (!projectName) return;
+
+        const newMessage = { role: 'user', content: text };
+        setMessages(prev => [...prev, newMessage, { role: 'ai', content: "Updating code based on your request...\n" }]);
+        setIsLoading(true);
+        setActiveTab('Build');
+        setActiveBuildTab('Multi Agents');
+
+        const sessionId = `session_update_${Date.now()}`;
+        const wsUrl = apiBase.replace(/^http/, 'ws') + `/agents/update-code-ws/${sessionId}`;
+
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            ws.send(JSON.stringify({
+                user_request: text,
+                project_name: projectName,
+                app_id: appId || null
+            }));
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                if (data.event === 'agent_start') {
+                    setAgents(prev => ({
+                        ...prev,
+                        [data.agent]: {
+                            status: 'running',
+                            message: data.message,
+                            progress: [{ type: 'start', text: data.message, timestamp: Date.now() }],
+                            started_at: Date.now()
+                        }
+                    }));
+                }
+
+                if (data.event === 'agent_progress') {
+                    setAgents(prev => ({
+                        ...prev,
+                        [data.agent]: {
+                            ...prev[data.agent],
+                            message: data.message,
+                            progress: [
+                                ...(prev[data.agent]?.progress || []),
+                                { type: 'progress', text: data.message, timestamp: Date.now() }
+                            ]
+                        }
+                    }));
+                }
+
+                if (data.event === 'prd_updated') {
+                    setPrd(data.data);
+                }
+
+                if (data.event === 'architecture_updated') {
+                    setGeneratedArchitecture(data.data);
+                }
+
+                if (data.event === 'agent_complete') {
+                    setAgents(prev => ({
+                        ...prev,
+                        [data.agent]: {
+                            ...prev[data.agent],
+                            status: 'complete',
+                            message: data.message,
+                            data: data.data,
+                            progress: [
+                                ...(prev[data.agent]?.progress || []),
+                                { type: 'complete', text: data.message, timestamp: Date.now() }
+                            ],
+                            completed_at: Date.now()
+                        }
+                    }));
+
+                    const responseData = data.data;
+
+                    setMessages(prev => {
+                        const next = [...prev];
+                        const lastIdx = next.map(m => m.role).lastIndexOf('ai');
+                        if (lastIdx !== -1) {
+                            const filesList = (responseData.updated_files || []).map(f => `  • ${f}`).join('\n');
+                            next[lastIdx].content = `\n✅ Code updated!\n\n${responseData.analysis}\n\nFiles updated:\n${filesList || '  (none)'}\n\nRun the app again to see your changes.`;
+                        }
+                        return next;
+                    });
+
+                    // Evict updated files from the local cache so FileExplorer re-fetches fresh content
+                    if (responseData.updated_files && responseData.updated_files.length > 0) {
+                        setFiles(prev => {
+                            const next = { ...prev };
+                            responseData.updated_files.forEach(f => {
+                                delete next[f];
+                            });
+                            return next;
+                        });
+                    }
+
+                    // Switch to Code tab so user sees the changes immediately
+                    setActiveTab('Build');
+                    setActiveBuildTab('Code');
+
+                    // Reload project tree to reflect new/changed files
+                    if (projectName) loadProjectTree(projectName);
+
+                    setIsLoading(false);
+                    ws.close();
+                }
+
+                if (data.event === 'error') {
+                    setMessages(prev => {
+                        const next = [...prev];
+                        const lastIdx = next.map(m => m.role).lastIndexOf('ai');
+                        if (lastIdx !== -1) {
+                            next[lastIdx].content = `\nError updating code: ${data.message}`;
+                        }
+                        return next;
+                    });
+                    setIsLoading(false);
+                    ws.close();
+                }
+
+            } catch (e) {
+                console.error("Error parsing WebSocket message: ", e);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            setMessages(prev => {
+                const next = [...prev];
+                const lastIdx = next.map(m => m.role).lastIndexOf('ai');
+                if (lastIdx !== -1) {
+                    next[lastIdx].content = (next[lastIdx].content || "") + `\nWebSocket connection error`;
+                }
+                return next;
+            });
+            setIsLoading(false);
+        };
+
+        ws.onclose = () => {
+            // Just in case it closed unexpectedly
+            setIsLoading(false);
+        }
+    };
+
+    const handleChatMessage = (text) => {
+        // If we already have a project and code has been generated, treat as an update request
+        const hasGeneratedCode = currentPhase === 'code_generated'
+            || currentPhase === 'agents_complete'
+            || Object.keys(files).length > 0
+            || fileTree !== null;
+
+        if (projectName && hasGeneratedCode) {
+            handleUpdateCode(text);
+        } else {
+            handleStartPlanning(text);
+        }
+    };
+
     const handleStopPlanning = () => {
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -193,6 +355,7 @@ const AppBuilder = () => {
         }
         setIsLoading(false);
     };
+
 
     const handleStopCodegen = () => {
         if (codegenWsRef.current) {
@@ -220,7 +383,7 @@ const AppBuilder = () => {
 
     const streamPlanningStep = async (step, body, append, onData) => {
         try {
-            const response = await fetch(`${apiBase}/api/planning/${step}`, {
+            const response = await fetch(`${apiBase}/planning/${step}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
@@ -400,10 +563,9 @@ const AppBuilder = () => {
 
     const executeAgentsWithWebSocket = async (requirement, plan, projectName, prdText, appendAi) => {
         return new Promise((resolve, reject) => {
+            let lastClarifiedRequirement = requirement;
             const sessionId = `session_${Date.now()}`;
-            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsHost = apiBase.replace('http://', '').replace('https://', '');
-            const wsUrl = `${wsProtocol}//${wsHost}/api/agents/execute/${sessionId}`;
+            const wsUrl = apiBase.replace(/^http/, 'ws') + `/agents/execute/${sessionId}`;
 
             appendAi(`Connecting to agent execution service...\n`);
 
@@ -413,19 +575,25 @@ const AppBuilder = () => {
             ws.onopen = () => {
                 appendAi("Connected to agents.\n\n");
 
-                // Send initial request with PRD
+                // Send initial request with PRD, UI/UX, and app_id for DB fallback when local empty
                 ws.send(JSON.stringify({
                     requirement,
                     plan,
-                    prd: prdText || "",  // Include PRD text
+                    prd: prdText || "",
                     uiux: generatedUIUX || "",
-                    project_name: projectName
+                    project_name: projectName,
+                    app_id: appId || null,
+                    user_email: email || ''
                 }));
             };
 
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
+
+                    if (data.project_name && data.project_name !== projectName) {
+                        setProjectName(data.project_name);
+                    }
 
                     if (data.event === 'execution_start') {
                         appendAi(`${data.message}\n\n`);
@@ -476,20 +644,34 @@ const AppBuilder = () => {
                         }));
                         appendAi(`${data.agent}: ${data.message}\n\n`);
 
-                        // Save architecture and auto-start code generation after architecture agent
+                        if (data.agent === 'requirement_agent' && data.data) {
+                            lastClarifiedRequirement = data.data;
+                            setClarifiedRequirement(data.data);
+                        }
+
+                        // Save architecture
                         if ((data.agent === 'planning_agent_step3_arch' || data.agent === 'architecture_agent') && data.data) {
                             setGeneratedArchitecture(data.data);
-                            appendAi("Starting code generation automatically...\n\n");
-                            setIsCodegenLoading(true);
-                            setActiveTab('Build');
-                            setActiveBuildTab('Multi Agents');
-                            executeCodegenWithWebSocket(requirement, plan, data.data, projectName, appendAi)
-                                .then(() => setIsCodegenLoading(false))
-                                .catch((err) => {
-                                    console.error('Auto code generation error:', err);
-                                    appendAi(`\nCode generation error: ${err.message}\n`);
-                                    setIsCodegenLoading(false);
+                        }
+
+                        // Coding agent complete: sync files and switch tab
+                        if (data.agent === 'coding_agent' && data.data) {
+                            const responseData = data.data;
+                            if (responseData.updated_files && responseData.updated_files.length > 0) {
+                                setFiles(prev => {
+                                    const next = { ...prev };
+                                    responseData.updated_files.forEach(f => {
+                                        delete next[f];
+                                    });
+                                    return next;
                                 });
+                            }
+                            // Proactively reload tree for a responsive feel
+                            if (data.project_name) loadProjectTree(data.project_name);
+
+                            // Switch to Code tab
+                            setActiveTab('Build');
+                            setActiveBuildTab('Code');
                         }
                     }
 
@@ -512,9 +694,30 @@ const AppBuilder = () => {
                             appendAi(`Files generated: ${data.data.files_count}\n`);
                         }
                         appendAi("\n");
-                        appendAi("All agents complete. Code generation runs automatically after architecture.\n");
+                        appendAi("All agents complete. You can now test or run the application.\n");
                         setCurrentPhase('agents_complete');
+
+                        // Load files/tree from DB so code displays immediately (avoids tree 404)
+                        const projName = data.data?.project_name;
+                        if (projName) loadProjectTree(projName);
+                        if (appId && email) {
+                            fetch(`${apiBase}/app-builder/apps/${appId}/code?user_email=${encodeURIComponent(email)}`)
+                                .then(res => res.ok ? res.json() : null)
+                                .then(codeData => {
+                                    if (codeData?.status === 'success' && codeData.files) {
+                                        setFiles(codeData.files);
+                                        if (codeData.tree?.length) setFileTree(codeData.tree);
+                                    }
+                                })
+                                .catch(() => {});
+                        }
+
                         ws.close();
+                        // Save agents state to DB
+                        setAgents(prev => {
+                            updateAppInDb({ agents_state: prev });
+                            return prev;
+                        });
                         resolve();
                     }
 
@@ -544,7 +747,7 @@ const AppBuilder = () => {
 
     const loadProjectTree = async (projName) => {
         try {
-            const res = await fetch(`${apiBase}/api/app-builder/projects/${projName}/tree`);
+            const res = await fetch(`${apiBase}/app-builder/projects/${projName}/tree`);
             if (res.ok) {
                 const data = await res.json();
                 setFileTree(data.tree);
@@ -564,7 +767,7 @@ const AppBuilder = () => {
             setLoadingApp(true);
             try {
                 const res = await fetch(
-                    `${apiBase}/api/app-builder/apps/${editId}?user_email=${encodeURIComponent(email)}`
+                    `${apiBase}/app-builder/apps/${editId}?user_email=${encodeURIComponent(email)}`
                 );
                 const data = await res.json();
                 if (data.status === 'success' && data.app) {
@@ -587,6 +790,39 @@ const AppBuilder = () => {
                     if (app.generated_uiux) parts.push('**UI/UX Design** loaded.');
                     if (app.architecture) parts.push('**Architecture** loaded.');
                     if (planArr.length) parts.push('**Implementation Plan** loaded.');
+
+                    // Restore agents state
+                    if (app.agents_state) {
+                        setAgents(app.agents_state);
+                        parts.push('**Agent Logs** loaded.');
+                    }
+
+                    // Restore generated code from DB
+                    if (app.generated_code_json) {
+                        try {
+                            const codeRes = await fetch(
+                                `${apiBase}/app-builder/apps/${editId}/code?user_email=${encodeURIComponent(email)}`
+                            );
+                            const codeData = await codeRes.json();
+                            if (codeData.status === 'success') {
+                                setFiles(codeData.files || {});
+                                setFileTree(codeData.tree || []);
+                                parts.push('**Generated Code** loaded from DB.');
+                            } else {
+                                // Fallback to what was in the main app object
+                                setFiles(app.generated_code_json);
+                                parts.push('**Generated Code** loaded.');
+                                if (app.project_name) loadProjectTree(app.project_name);
+                            }
+                        } catch (err) {
+                            console.error("Error fetching code from DB:", err);
+                            setFiles(app.generated_code_json);
+                            if (app.project_name) loadProjectTree(app.project_name);
+                        }
+                    } else if (app.project_name) {
+                        loadProjectTree(app.project_name);
+                    }
+
                     const summary = parts.length ? parts.join('\n') : 'App loaded. Continue from the Plan tab.';
 
                     setMessages([
@@ -614,9 +850,14 @@ const AppBuilder = () => {
         };
     }, []);
 
+    const filesRef = useRef(files);
+    useEffect(() => { filesRef.current = files; }, [files]);
     const loadFile = useCallback(async (path) => {
+        // Use in-memory files first (from DB) to avoid 404 when project not yet on disk
+        const cached = filesRef.current?.[path];
+        if (cached !== undefined) return cached;
         if (!projectName) return null;
-        const res = await fetch(`${apiBase}/api/app-builder/projects/${projectName}/file?path=${encodeURIComponent(path)}`);
+        const res = await fetch(`${apiBase}/app-builder/projects/${projectName}/file?path=${encodeURIComponent(path)}`);
         if (!res.ok) throw new Error(`Failed to load file: ${path}`);
         const data = await res.json();
         setFiles(prev => ({ ...prev, [path]: data.content }));
@@ -625,7 +866,7 @@ const AppBuilder = () => {
 
     const saveFile = useCallback(async (path, content) => {
         if (!projectName) throw new Error("No project yet");
-        const res = await fetch(`${apiBase}/api/app-builder/projects/${projectName}/file`, {
+        const res = await fetch(`${apiBase}/app-builder/projects/${projectName}/file`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path, content })
@@ -640,7 +881,7 @@ const AppBuilder = () => {
     const handleDownloadCode = useCallback(async () => {
         if (!projectName) return;
         try {
-            const response = await fetch(`${apiBase}/api/app-builder/projects/${projectName}/download`);
+            const response = await fetch(`${apiBase}/app-builder/projects/${projectName}/download`);
             if (!response.ok) throw new Error('Failed to download project');
 
             const blob = await response.blob();
@@ -662,10 +903,11 @@ const AppBuilder = () => {
         if (!projectName) return;
         setLogs(prev => [...prev, `Starting project ${projectName}...`]);
         setIsRunLoading(true);
-        setActiveTab('Logs'); // Show logs immediately
+        setActiveTab('Build');
+        setActiveBuildTab('Build'); // Show App View immediately
 
         try {
-            const response = await fetch(`${apiBase}/api/app-builder/projects/${projectName}/run`, {
+            const response = await fetch(`${apiBase}/app-builder/projects/${projectName}/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ install: true })
@@ -703,6 +945,18 @@ const AppBuilder = () => {
                             setIsRunLoading(false); // Stop loading on error
                         }
 
+                        if (data.event === 'warning') {
+                            setLogs(prev => [...prev, `[Warning] ${data.message}`]);
+                        }
+
+                        if (data.event === 'frontend_url') {
+                            setRunState(prev => ({ ...(prev || {}), frontend_url: data.frontend_url }));
+                            setActiveTab('Build');
+                            setActiveBuildTab('Build');
+                            setLogs(prev => [...prev, `[System] ${data.message || 'Open app: ' + data.frontend_url}`]);
+                            setIsRunLoading(false);
+                        }
+
                         if (data.event === 'ready') {
                             setRunState(data.data);
                             setActiveTab('Build');
@@ -727,9 +981,7 @@ const AppBuilder = () => {
     const executeCodegenWithWebSocket = async (requirement, plan, architecture, project_name, appendAi) => {
         return new Promise((resolve, reject) => {
             const sessionId = `session_${Date.now()}`;
-            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsHost = apiBase.replace('http://', '').replace('https://', '');
-            const wsUrl = `${wsProtocol}//${wsHost}/api/codegen/execute/${sessionId}`;
+            const wsUrl = apiBase.replace(/^http/, 'ws') + `/codegen/execute/${sessionId}`;
 
             appendAi(`Connecting to code generation service...\n`);
 
@@ -744,7 +996,9 @@ const AppBuilder = () => {
                     prd,
                     architecture,
                     uiux: generatedUIUX || "",
-                    project_name
+                    project_name,
+                    app_id: appId || null,
+                    user_email: email || ''
                 }));
             };
 
@@ -803,9 +1057,26 @@ const AppBuilder = () => {
                     if (data.event === 'codegen_complete') {
                         appendAi(`\n${data.message}\n`);
                         appendAi(`Files generated: ${data.data.files_count}\n\n`);
-                        loadProjectTree(project_name);
+                        if (project_name) loadProjectTree(project_name);
+                        // Load files/tree from DB so code displays immediately
+                        if (appId && email) {
+                            fetch(`${apiBase}/app-builder/apps/${appId}/code?user_email=${encodeURIComponent(email)}`)
+                                .then(res => res.ok ? res.json() : null)
+                                .then(codeData => {
+                                    if (codeData?.status === 'success' && codeData.files) {
+                                        setFiles(codeData.files);
+                                        if (codeData.tree?.length) setFileTree(codeData.tree);
+                                    }
+                                })
+                                .catch(() => {});
+                        }
                         setCurrentPhase('code_generated');
                         ws.close();
+                        // Save agents state to DB
+                        setAgents(prev => {
+                            updateAppInDb({ agents_state: prev });
+                            return prev;
+                        });
                         resolve();
                     }
 
@@ -880,7 +1151,7 @@ const AppBuilder = () => {
 
         try {
             appendAi("\n\nStarting code generation...\n\n");
-            await executeCodegenWithWebSocket(currentRequirement, generatedPlan, generatedArchitecture, projectName, appendAi);
+            await executeCodegenWithWebSocket(clarifiedRequirement || currentRequirement, generatedPlan, generatedArchitecture, projectName, appendAi);
             appendAi("\nCode generation complete.\n");
         } catch (error) {
             console.error('Error in code generation:', error);
@@ -907,10 +1178,10 @@ const AppBuilder = () => {
                         ← Back to App Builder
                     </button>
                 </header>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>
-                    <div style={{ textAlign: 'center' }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', padding: 24 }}>
+                    <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
                         <Spinner animation="border" />
-                        <p style={{ marginTop: '1rem' }}>Loading app...</p>
+                        <p style={{ margin: 0, fontSize: 14 }}>Loading app...</p>
                     </div>
                 </div>
             </div>
@@ -919,33 +1190,29 @@ const AppBuilder = () => {
 
     return (
         <div className="app-builder-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-            <header style={{ padding: '12px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 12, backgroundColor: '#fff' }}>
+            <header style={{ padding: '14px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 12, backgroundColor: '#fff', flexShrink: 0 }}>
                 <button
                     type="button"
                     onClick={() => navigate('/app-builder')}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', cursor: 'pointer', fontSize: 14, color: '#374151' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 500, color: '#475569' }}
                 >
                     ← Back to App Builder
                 </button>
             </header>
-            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            <div className="app-builder-main">
                 <ChatInterface
-                    onSendMessage={handleStartPlanning}
+                    onSendMessage={handleChatMessage}
                     messages={messages}
                     isLoading={isLoading}
+                    isUpdateMode={!!(projectName && (currentPhase === 'code_generated' || currentPhase === 'agents_complete' || Object.keys(files).length > 0 || fileTree !== null))}
                 />
                 <TabPanel
                     plan={plan}
                     prd={prd}
-                    generatedUIUX={generatedUIUX}
-                    generatedArchitecture={generatedArchitecture}
                     fileTree={fileTree}
                     files={files}
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
-                    activeBuildTab={activeBuildTab}
-                    onBuildTabChange={setActiveBuildTab}
-                    onDownloadCode={handleDownloadCode}
                     onRun={handleRun}
                     projectName={projectName}
                     agents={agents}
@@ -954,21 +1221,29 @@ const AppBuilder = () => {
                     onLoadFile={loadFile}
                     onSaveFile={saveFile}
                     currentPhase={currentPhase}
-                    onGenerateUIUX={handleGenerateUIUX}
-                    onGenerateArch={handleGenerateArch}
-                    onGeneratePlan={handleGeneratePlan}
                     onCreateAgents={handleCreateAgents}
-                    onStartCodegen={handleStartCodegen}
-                    onRestartCodegen={handleRestartCodegen}
-                    onRegeneratePrd={handleRegeneratePrd}
-                    onRegeneratePlan={handleRegeneratePlan}
-                    onRegenerateAgents={handleRegenerateAgents}
+                    onStartCodegen={null}
+                    onRestartCodegen={null}
+                    onRegeneratePrd={() => handleStartPlanning(currentRequirement)}
+                    onRegeneratePlan={handleGeneratePlan}
+                    onRegenerateAgents={handleCreateAgents}
                     isLoading={isLoading}
                     isCodegenLoading={isCodegenLoading}
                     isRunLoading={isRunLoading}
+                    activeBuildTab={activeBuildTab}
+                    onBuildTabChange={setActiveBuildTab}
+                    generatedUIUX={generatedUIUX}
+                    generatedArchitecture={generatedArchitecture}
+                    onGenerateUIUX={handleGenerateUIUX}
+                    onGenerateArch={handleGenerateArch}
+                    onGeneratePlan={handleGeneratePlan}
                     streamingArchitectureText={streamingArchitectureText}
                     onStopPlanning={handleStopPlanning}
                     onStopCodegen={handleStopCodegen}
+                    onDownloadCode={handleDownloadCode}
+                    appId={appId}
+                    userEmail={email}
+                    apiBase={apiBase}
                 />
             </div>
         </div>

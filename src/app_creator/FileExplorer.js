@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 
 const FileTreeItem = ({ item, onSelect, selectedPath }) => {
     const [isOpen, setIsOpen] = useState(true);
@@ -48,19 +48,41 @@ const FileExplorer = ({ tree, files, onLoadFile, onSaveFile, projectName }) => {
     const [editorValue, setEditorValue] = useState("");
     const [isDirty, setIsDirty] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isLoadingFile, setIsLoadingFile] = useState(false);
     const [loadError, setLoadError] = useState(null);
 
-    const selectedContent = useMemo(() => {
-        if (!selectedPath) return "";
-        return files?.[selectedPath] ?? "";
-    }, [files, selectedPath]);
-
-    useEffect(() => {
-        // When switching files, load current content into editor (and reset dirty flag)
-        setEditorValue(selectedContent);
-        setIsDirty(false);
+    // Load (or re-load) a file by path from the server
+    const loadFileContent = useCallback(async (path) => {
+        if (!path || !onLoadFile) return;
+        setIsLoadingFile(true);
         setLoadError(null);
-    }, [selectedContent, selectedPath]);
+        try {
+            const content = await onLoadFile(path);
+            setEditorValue(content || "");
+            setIsDirty(false);
+        } catch (e) {
+            setLoadError(e?.message || "Failed to load file");
+        } finally {
+            setIsLoadingFile(false);
+        }
+    }, [onLoadFile]);
+
+    // When the selected file's cached content changes (including being evicted → undefined),
+    // re-sync the editor. If evicted (undefined), force a fresh fetch from the server.
+    useEffect(() => {
+        if (!selectedPath) return;
+
+        const cached = files?.[selectedPath];
+        if (cached !== undefined) {
+            // Fresh content available in cache — update editor without marking dirty
+            setEditorValue(cached);
+            setIsDirty(false);
+            setLoadError(null);
+        } else {
+            // Content was evicted (e.g. after a code update) — re-fetch from disk
+            loadFileContent(selectedPath);
+        }
+    }, [files, selectedPath, loadFileContent]);
 
     const handleSelect = async (item) => {
         if (!item) return;
@@ -71,16 +93,9 @@ const FileExplorer = ({ tree, files, onLoadFile, onSaveFile, projectName }) => {
         setSelectedPath(path);
         setLoadError(null);
 
-        // If we don't have file content yet, fetch it.
-        if (files?.[path] === undefined && onLoadFile) {
-            try {
-                const content = await onLoadFile(path);
-                setEditorValue(content || "");
-                setIsDirty(false);
-            } catch (e) {
-                setLoadError(e?.message || "Failed to load file");
-            }
-        }
+        // Always fetch fresh from server when clicking a file
+        // (avoids showing stale cache after code updates)
+        await loadFileContent(path);
     };
 
     const handleSave = async () => {
@@ -113,8 +128,9 @@ const FileExplorer = ({ tree, files, onLoadFile, onSaveFile, projectName }) => {
                 <div className="code-header">
                     <div className="code-header-row">
                         <div className="code-header-title">
-                            {selectedPath ? selectedPath : "Select a file"}
+                            {selectedPath ? selectedPath : "Select a file to view"}
                             {isDirty ? <span className="dirty-indicator">•</span> : null}
+                            {isLoadingFile ? <span style={{ marginLeft: 8, fontSize: 11, color: '#3b82f6' }}>Loading...</span> : null}
                         </div>
                         <div className="code-header-actions">
                             <button
@@ -140,7 +156,8 @@ const FileExplorer = ({ tree, files, onLoadFile, onSaveFile, projectName }) => {
                                 setIsDirty(true);
                             }}
                             spellCheck={false}
-                            placeholder={selectedPath ? "Edit code..." : ""}
+                            placeholder={selectedPath ? (isLoadingFile ? "Loading..." : "Edit code...") : "Select a file from the tree"}
+                            disabled={isLoadingFile}
                         />
                     )}
                 </div>

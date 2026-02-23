@@ -44,9 +44,13 @@ const AgentsView = ({
             'planning_agent_step2_plan': 'Planning Agent (Plan)',
             'planning_agent_step3_arch': 'Planning Agent (Architecture)',
             'requirement_agent': 'Requirement Agent',
+            'structuring_agent': 'Structuring Agent',
             'architecture_agent': 'Architecture Agent',
+            'contract_agent': 'Contract Agent',
+            'schema_agent': 'Schema Agent',
             'code_generator_agent': 'Code Generation Agent',
             'coding_agent': 'Coding Agent',
+            'validation_agent': 'Validation Agent',
             'runner_agent': 'Execution Agent'
         };
         if (mapping[name]) return mapping[name];
@@ -188,7 +192,7 @@ const AgentsView = ({
                                             fontFamily: 'Monaco, Consolas, monospace',
                                             border: '1px solid #e0e0e0'
                                         }}>
-                                            {info.progress.map((item, idx) => (
+                                            {(info?.progress || []).map((item, idx) => (
                                                 <div
                                                     key={idx}
                                                     style={{
@@ -273,25 +277,77 @@ const AgentsView = ({
                                         <div style={{
                                             marginTop: '12px',
                                             padding: '14px',
-                                            backgroundColor: '#f0f7ff',
-                                            borderRadius: '6px',
+                                            backgroundColor: '#f8f9fa',
+                                            borderRadius: '8px',
                                             fontSize: '13px',
-                                            border: '1px solid #d0e7ff'
+                                            border: '1px solid #e9ecef',
+                                            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
                                         }}>
-                                            <strong style={{ color: '#0066cc' }}>Output:</strong>
-                                            <pre style={{
-                                                margin: '8px 0 0 0',
-                                                whiteSpace: 'pre-wrap',
-                                                wordBreak: 'break-word',
-                                                fontSize: '12px',
-                                                color: '#333',
-                                                fontFamily: 'Monaco, Consolas, monospace'
+                                            <div style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                marginBottom: '8px'
                                             }}>
-                                                {typeof info.data === 'string'
-                                                    ? info.data
-                                                    : JSON.stringify(info.data, null, 2)
-                                                }
-                                            </pre>
+                                                <strong style={{ color: '#495057' }}>Output Result:</strong>
+                                                <span style={{ fontSize: '11px', color: '#adb5bd' }}>
+                                                    {typeof info.data === 'object' ? 'Structured Data' : 'Text'}
+                                                </span>
+                                            </div>
+
+                                            <div style={{
+                                                maxHeight: '200px',
+                                                overflowY: 'auto',
+                                                backgroundColor: '#fff',
+                                                padding: '10px',
+                                                borderRadius: '4px',
+                                                border: '1px solid #dee2e6'
+                                            }}>
+                                                {(() => {
+                                                    const data = info.data;
+
+                                                    // Special handling for coding agent files
+                                                    if (data.generated_files) {
+                                                        const fileNames = Object.keys(data.generated_files);
+                                                        return (
+                                                            <div>
+                                                                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#28a745' }}>
+                                                                    ✓ {fileNames.length} files generated successfully
+                                                                </div>
+                                                                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#666' }}>
+                                                                    {fileNames.map(f => <li key={f}>{f}</li>)}
+                                                                </ul>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    // Special handling for db_schema
+                                                    if (data.db_schema?.schema) {
+                                                        return (
+                                                            <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '12px' }}>
+                                                                {data.db_schema.schema}
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    // Fallback to JSON or string
+                                                    return (
+                                                        <pre style={{
+                                                            margin: 0,
+                                                            whiteSpace: 'pre-wrap',
+                                                            wordBreak: 'break-word',
+                                                            fontSize: '12px',
+                                                            color: '#333',
+                                                            fontFamily: 'Monaco, Consolas, monospace'
+                                                        }}>
+                                                            {typeof data === 'string'
+                                                                ? data
+                                                                : JSON.stringify(data, null, 2)
+                                                            }
+                                                        </pre>
+                                                    );
+                                                })()}
+                                            </div>
                                         </div>
                                     )}
 

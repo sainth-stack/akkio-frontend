@@ -332,20 +332,21 @@ const PlanView = ({
                     {title}
                 </h4>
                 {Object.entries(data).map(([key, value]) => {
-                    if (key === 'key_components' || key === 'key_services') return null; // Handle separately if needed
+                    // Only render primitive values in the main list. Skip objects/arrays.
+                    if (key === 'key_components' || key === 'key_services' || (typeof value === 'object' && value !== null)) return null;
                     return (
                         <div key={key} style={{ marginBottom: '12px' }}>
                             <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 600, marginBottom: '4px' }}>{key.replace('_', ' ')}</div>
-                            <div style={{ fontSize: '14px', color: '#334155', fontWeight: 500 }}>{value}</div>
+                            <div style={{ fontSize: '14px', color: '#334155', fontWeight: 500 }}>{String(value)}</div>
                         </div>
                     );
                 })}
                 {/* Key Components Tags */}
-                {(data.key_components || data.key_services) && (
+                {(data?.key_components || data?.key_services) && (
                     <div style={{ marginTop: '16px' }}>
                         <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 600, marginBottom: '8px' }}>Core Components</div>
                         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                            {(data.key_components || data.key_services).map((comp, i) => (
+                            {(data?.key_components || data?.key_services || []).map((comp, i) => (
                                 <span key={i} style={styles.badge}>{comp}</span>
                             ))}
                         </div>
@@ -367,15 +368,15 @@ const PlanView = ({
                         </tr>
                     </thead>
                     <tbody>
-                        {schema.tables.map((table, i) => (
-                            <tr key={i} style={{ borderBottom: i === schema.tables.length - 1 ? 'none' : '1px solid #e2e8f0' }}>
-                                <td style={{ padding: '16px', verticalAlign: 'top', fontWeight: 600, color: '#334155', minWidth: '150px' }}>{table.name}</td>
+                        {(schema?.tables || []).map((table, i) => (
+                            <tr key={i} style={{ borderBottom: i === (schema?.tables?.length || 0) - 1 ? 'none' : '1px solid #e2e8f0' }}>
+                                <td style={{ padding: '16px', verticalAlign: 'top', fontWeight: 600, color: '#334155', minWidth: '150px' }}>{table?.name}</td>
                                 <td style={{ padding: '16px', verticalAlign: 'top' }}>
-                                    {table.columns.map((col, j) => (
+                                    {(table?.columns || []).map((col, j) => (
                                         <div key={j} style={{ marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ fontFamily: 'monospace', color: '#ef4444', fontSize: '13px' }}>{col.name}</span>
-                                            <span style={{ color: '#94a3b8', fontSize: '12px' }}>{col.type}</span>
-                                            {col.primary_key && <span style={{ fontSize: '10px', backgroundColor: '#fef3c7', color: '#d97706', padding: '1px 6px', borderRadius: '4px' }}>PK</span>}
+                                            <span style={{ fontFamily: 'monospace', color: '#ef4444', fontSize: '13px' }}>{col?.name}</span>
+                                            <span style={{ color: '#94a3b8', fontSize: '12px' }}>{col?.type}</span>
+                                            {col?.primary_key && <span style={{ fontSize: '10px', backgroundColor: '#fef3c7', color: '#d97706', padding: '1px 6px', borderRadius: '4px' }}>PK</span>}
                                         </div>
                                     ))}
                                 </td>
@@ -443,10 +444,10 @@ const PlanView = ({
                 {plan && plan.length > 0 && !isLoading && <RegenerateButton onClick={onRegeneratePlan} label="Regenerate Plan" />}
             </div>
 
-            {plan && plan.length > 0 ? (
+            {plan && (plan || []).length > 0 ? (
                 <div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {plan.map((step, index) => (
+                        {(plan || []).map((step, index) => (
                             <div key={index} style={{
                                 display: 'flex',
                                 backgroundColor: '#fff',

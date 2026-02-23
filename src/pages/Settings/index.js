@@ -6,6 +6,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useLocation } from 'react-router-dom';
 import Select from 'react-select';
+import { akkiourl } from '../../utils/const';
 
 const TABS = [
   { id: 'plan', label: 'Plan & Billing' },
@@ -17,13 +18,13 @@ const TABS = [
 export default function Settings() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('plan');
-  
+
   // General Settings State
   const [workspaceName, setWorkspaceName] = useState('');
   const [iconUrl, setIconUrl] = useState('');
   const [themeColor, setThemeColor] = useState('#6366f1');
   const [currentPlan, setCurrentPlan] = useState('free');
-  
+
   // Analytics State
   const [analyticsSummary, setAnalyticsSummary] = useState({
     remaining_credits: 0,
@@ -33,14 +34,14 @@ export default function Settings() {
   });
   const [chartData, setChartData] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  
+
   // LLM Configuration State
   const [provider, setProvider] = useState('openai');
   const [apiKey, setApiKey] = useState('');
   const [modelName, setModelName] = useState('gpt-4o-mini');
   const [showApiKey, setShowApiKey] = useState(false);
   const [providersInfo, setProvidersInfo] = useState({});
-  
+
   const [loading, setLoading] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
@@ -65,7 +66,7 @@ export default function Settings() {
     } catch (e) {
       console.error("Error parsing user from local storage", e);
     }
-    
+
     // Fetch providers info
     fetchProvidersInfo();
   }, []);
@@ -84,14 +85,14 @@ export default function Settings() {
 
   const seedData = async (email) => {
     try {
-        await axios.post('http://localhost:8000/api/settings/seed-data', { email });
-    } catch (e) {}
+      await axios.post(`${akkiourl}/settings/seed-data`, { email });
+    } catch (e) { }
   };
 
   const fetchSettings = async (email) => {
     setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:8000/api/settings/general?email=${email}`);
+      const res = await axios.get(`${akkiourl}/settings/general?email=${email}`);
       if (res.data) {
         setWorkspaceName(res.data.workspace_name || '');
         setIconUrl(res.data.icon_url || '');
@@ -107,7 +108,7 @@ export default function Settings() {
 
   const saveSettings = async () => {
     try {
-      await axios.post('http://localhost:8000/api/settings/general', {
+      await axios.post(`${akkiourl}/settings/general`, {
         email: userEmail,
         workspace_name: workspaceName,
         icon_url: iconUrl,
@@ -122,7 +123,7 @@ export default function Settings() {
   const fetchAnalytics = async (email) => {
     setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:8000/api/settings/analytics?email=${email}`);
+      const res = await axios.get(`${akkiourl}/settings/analytics?email=${email}`);
       if (res.data) {
         setAnalyticsSummary(res.data.summary);
         setChartData(res.data.chart_data);
@@ -137,7 +138,7 @@ export default function Settings() {
 
   const upgradePlan = async (planId) => {
     try {
-      await axios.post('http://localhost:8000/api/settings/plan', {
+      await axios.post(`${akkiourl}/settings/plan`, {
         email: userEmail,
         plan_id: planId
       });
@@ -150,7 +151,7 @@ export default function Settings() {
 
   const fetchProvidersInfo = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/settings/llm/providers');
+      const res = await axios.get(`${akkiourl}/settings/llm/providers`);
       if (res.data) {
         setProvidersInfo(res.data);
       }
@@ -162,7 +163,7 @@ export default function Settings() {
   const fetchLLMSettings = async (email) => {
     setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:8000/api/settings/llm?email=${email}`);
+      const res = await axios.get(`${akkiourl}/settings/llm?email=${email}`);
       if (res.data) {
         const selectedProvider = res.data.provider || 'openai';
         setProvider(selectedProvider);
@@ -178,7 +179,7 @@ export default function Settings() {
 
   const saveLLMSettings = async () => {
     try {
-      await axios.post('http://localhost:8000/api/settings/llm', {
+      await axios.post(`${akkiourl}/settings/llm`, {
         email: userEmail,
         provider: provider,
         api_key: apiKey || null,
@@ -196,7 +197,7 @@ export default function Settings() {
       setApiKey('');
       setModelName('gpt-4o-mini');
       try {
-        await axios.delete(`http://localhost:8000/api/settings/llm?email=${userEmail}`);
+        await axios.delete(`${akkiourl}/settings/llm?email=${userEmail}`);
         toast.success("LLM settings reset to defaults");
       } catch (error) {
         toast.error("Failed to reset LLM settings");
@@ -244,13 +245,13 @@ export default function Settings() {
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id="colorCredits" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} />
-            <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
+            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
             <Tooltip />
             <Area type="monotone" dataKey="credits" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCredits)" strokeWidth={2} />
           </AreaChart>
@@ -259,7 +260,7 @@ export default function Settings() {
 
       <div className={styles.transactions}>
         <div className={styles.chartTitle}>Recent Transactions</div>
-        <div style={{overflowX: 'auto'}}>
+        <div style={{ overflowX: 'auto' }}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -275,19 +276,19 @@ export default function Settings() {
               {transactions.map((tx, i) => (
                 <tr key={i}>
                   <td>
-                    <div style={{fontWeight: 500}}>{tx.date}</div>
-                    <div style={{fontSize: '0.75rem', color: '#6b7280'}}>{tx.time}</div>
+                    <div style={{ fontWeight: 500 }}>{tx.date}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{tx.time}</div>
                   </td>
                   <td>{tx.user}</td>
                   <td><span className={`${styles.badge} ${styles.purple}`}>{tx.source}</span></td>
                   <td><span className={`${styles.badge} ${styles.blue}`}>{tx.type}</span></td>
-                  <td style={{fontWeight: 600}}>{tx.credits.toFixed(2)}</td>
+                  <td style={{ fontWeight: 600 }}>{tx.credits.toFixed(2)}</td>
                   <td>{tx.details}</td>
                 </tr>
               ))}
               {transactions.length === 0 && (
                 <tr>
-                    <td colSpan={6} style={{textAlign: 'center', color: '#6b7280'}}>No transactions found</td>
+                  <td colSpan={6} style={{ textAlign: 'center', color: '#6b7280' }}>No transactions found</td>
                 </tr>
               )}
             </tbody>
@@ -302,36 +303,36 @@ export default function Settings() {
       <div className={`${styles.planCard} ${currentPlan === 'pro' ? styles.activePlan : ''}`}>
         <div className={styles.planName}>Pro</div>
         <div className={styles.planPrice}>$39<span>/month</span></div>
-        <div style={{color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem'}}>Billed $468/year</div>
+        <div style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>Billed $468/year</div>
         <ul className={styles.planFeatures}>
           <li><FaCheck className={styles.checkIcon} /> 6,000 AI credits/mo</li>
           <li><FaCheck className={styles.checkIcon} /> 5 GB storage</li>
           <li><FaCheck className={styles.checkIcon} /> 1 editor seat</li>
           <li><FaCheck className={styles.checkIcon} /> Custom domains available</li>
         </ul>
-        <button 
-            className={`${styles.planBtn} ${currentPlan === 'pro' ? styles.outline : styles.primary}`}
-            onClick={() => upgradePlan('pro')}
+        <button
+          className={`${styles.planBtn} ${currentPlan === 'pro' ? styles.outline : styles.primary}`}
+          onClick={() => upgradePlan('pro')}
         >
-            {currentPlan === 'pro' ? 'Current Plan' : 'Upgrade'}
+          {currentPlan === 'pro' ? 'Current Plan' : 'Upgrade'}
         </button>
       </div>
 
       <div className={`${styles.planCard} ${currentPlan === 'advanced' ? styles.activePlan : ''}`}>
         <div className={styles.planName}>Advanced</div>
         <div className={styles.planPrice}>$149<span>/month</span></div>
-        <div style={{color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem'}}>Billed $1788/year</div>
+        <div style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>Billed $1788/year</div>
         <ul className={styles.planFeatures}>
           <li><FaCheck className={styles.checkIcon} /> 30,000 AI credits/mo</li>
           <li><FaCheck className={styles.checkIcon} /> 25 GB storage</li>
           <li><FaCheck className={styles.checkIcon} /> 5 editor seats</li>
           <li><FaCheck className={styles.checkIcon} /> 20 user seats</li>
         </ul>
-        <button 
-            className={`${styles.planBtn} ${currentPlan === 'advanced' ? styles.outline : styles.primary}`}
-            onClick={() => upgradePlan('advanced')}
+        <button
+          className={`${styles.planBtn} ${currentPlan === 'advanced' ? styles.outline : styles.primary}`}
+          onClick={() => upgradePlan('advanced')}
         >
-            {currentPlan === 'advanced' ? 'Current Plan' : 'Upgrade'}
+          {currentPlan === 'advanced' ? 'Current Plan' : 'Upgrade'}
         </button>
       </div>
 
@@ -339,18 +340,18 @@ export default function Settings() {
         <div className={styles.featuredTag}>Best Value</div>
         <div className={styles.planName}>Ultra</div>
         <div className={styles.planPrice}>$374<span>/month</span></div>
-        <div style={{color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem'}}>Billed $4488/year</div>
+        <div style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>Billed $4488/year</div>
         <ul className={styles.planFeatures}>
           <li><FaCheck className={styles.checkIcon} /> 100,000 AI credits/mo</li>
           <li><FaCheck className={styles.checkIcon} /> 100 GB storage</li>
           <li><FaCheck className={styles.checkIcon} /> Unlimited seats</li>
           <li><FaCheck className={styles.checkIcon} /> Dedicated AI engineer (Bonus)</li>
         </ul>
-        <button 
-            className={`${styles.planBtn} ${currentPlan === 'ultra' ? styles.outline : styles.primary}`}
-            onClick={() => upgradePlan('ultra')}
+        <button
+          className={`${styles.planBtn} ${currentPlan === 'ultra' ? styles.outline : styles.primary}`}
+          onClick={() => upgradePlan('ultra')}
         >
-            {currentPlan === 'ultra' ? 'Current Plan' : 'Upgrade'}
+          {currentPlan === 'ultra' ? 'Current Plan' : 'Upgrade'}
         </button>
       </div>
     </div>
@@ -362,33 +363,33 @@ export default function Settings() {
         <div className={styles.sectionTitle}>Workspace Interface</div>
         <div className={styles.formGroup}>
           <label>Workspace name</label>
-          <input 
-            type="text" 
-            className={styles.input} 
-            value={workspaceName} 
-            onChange={(e) => setWorkspaceName(e.target.value)} 
+          <input
+            type="text"
+            className={styles.input}
+            value={workspaceName}
+            onChange={(e) => setWorkspaceName(e.target.value)}
           />
         </div>
         <div className={styles.formGroup}>
           <label>Icon URL</label>
-          <input 
-            type="text" 
-            className={styles.input} 
-            placeholder="https://..." 
+          <input
+            type="text"
+            className={styles.input}
+            placeholder="https://..."
             value={iconUrl}
             onChange={(e) => setIconUrl(e.target.value)}
           />
         </div>
         <div className={styles.formGroup}>
           <label>Theme color</label>
-          <div style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
-            <input 
-              type="color" 
-              value={themeColor} 
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <input
+              type="color"
+              value={themeColor}
               onChange={(e) => setThemeColor(e.target.value)}
-              style={{height: '40px', width: '60px', padding: 0, border: 'none', background: 'none'}}
+              style={{ height: '40px', width: '60px', padding: 0, border: 'none', background: 'none' }}
             />
-            <span style={{color: '#6b7280'}}>{themeColor}</span>
+            <span style={{ color: '#6b7280' }}>{themeColor}</span>
           </div>
         </div>
         <button className={styles.saveBtn} onClick={saveSettings}>Save Changes</button>
@@ -396,7 +397,7 @@ export default function Settings() {
 
       <div className={`${styles.section} ${styles.dangerZone}`}>
         <div className={styles.sectionTitle}>Delete Workspace</div>
-        <p style={{color: '#4b5563', marginBottom: '1.5rem'}}>
+        <p style={{ color: '#4b5563', marginBottom: '1.5rem' }}>
           Permanently remove your Workspace and all of its contents from MindPal. This action is not reversible — please continue with caution.
         </p>
         <button className={styles.deleteBtn} onClick={() => toast.warn("Delete not implemented yet")}>Delete workspace</button>
@@ -407,7 +408,7 @@ export default function Settings() {
   const renderLLM = () => {
     const currentProviderInfo = providersInfo[provider] || {};
     const availableModels = currentProviderInfo.models || [];
-    
+
     // Prepare options for react-select
     const modelOptions = availableModels.map((model) => {
       const isRecommended = model === currentProviderInfo.default_model;
@@ -416,10 +417,10 @@ export default function Settings() {
         label: `${model}${isRecommended ? ' ⭐ (Recommended)' : ''}`
       };
     });
-    
+
     // Get current selected option
     const selectedOption = modelOptions.find(opt => opt.value === modelName) || null;
-    
+
     // Custom styles for react-select
     const customSelectStyles = {
       control: (provided) => ({
@@ -473,18 +474,18 @@ export default function Settings() {
         color: '#9ca3af'
       })
     };
-    
+
     return (
       <div>
         <div className={styles.section}>
           <div className={styles.sectionTitle}>LLM Configuration</div>
-          <p style={{color: '#6b7280', marginBottom: '1.5rem'}}>
+          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
             Configure your AI provider, API key, and preferred model. If not set, the system will use the default configuration.
           </p>
-          
+
           <div className={styles.formGroup}>
             <label>AI Provider</label>
-            <select 
+            <select
               className={styles.input}
               value={provider}
               onChange={(e) => handleProviderChange(e.target.value)}
@@ -493,7 +494,7 @@ export default function Settings() {
               <option value="anthropic">Anthropic (Claude)</option>
               <option value="google">Google (Gemini)</option>
             </select>
-            <small style={{color: '#6b7280', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem'}}>
+            <small style={{ color: '#6b7280', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem' }}>
               {currentProviderInfo.description || 'Select your AI provider'}
             </small>
           </div>
@@ -504,18 +505,18 @@ export default function Settings() {
               {provider === 'anthropic' && 'Anthropic API Key'}
               {provider === 'google' && 'Google API Key'}
             </label>
-            <div style={{position: 'relative'}}>
-              <input 
+            <div style={{ position: 'relative' }}>
+              <input
                 type={showApiKey ? "text" : "password"}
-                className={styles.input} 
+                className={styles.input}
                 placeholder={
-                  provider === 'openai' ? 'sk-...' : 
-                  provider === 'anthropic' ? 'sk-ant-...' : 
-                  'AIza...'
+                  provider === 'openai' ? 'sk-...' :
+                    provider === 'anthropic' ? 'sk-ant-...' :
+                      'AIza...'
                 }
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                style={{paddingRight: '45px'}}
+                style={{ paddingRight: '45px' }}
               />
               <button
                 onClick={() => setShowApiKey(!showApiKey)}
@@ -534,14 +535,14 @@ export default function Settings() {
                 {showApiKey ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
               </button>
             </div>
-            <small style={{color: '#6b7280', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem'}}>
+            <small style={{ color: '#6b7280', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem' }}>
               Leave empty to use the default system API key
             </small>
           </div>
 
           <div className={styles.formGroup}>
             <label>Model Name ({availableModels.length} models available)</label>
-            
+
             {/* Searchable Select Dropdown */}
             <Select
               options={modelOptions}
@@ -552,18 +553,18 @@ export default function Settings() {
               isSearchable={true}
               noOptionsMessage={() => "No models found"}
             />
-            
-            <small style={{color: '#6b7280', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem'}}>
+
+            <small style={{ color: '#6b7280', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem' }}>
               Default: {currentProviderInfo.default_model}
             </small>
           </div>
 
-          <div style={{display: 'flex', gap: '1rem'}}>
+          <div style={{ display: 'flex', gap: '1rem' }}>
             <button className={styles.saveBtn} onClick={saveLLMSettings}>Save Changes</button>
-            <button 
-              className={styles.deleteBtn} 
+            <button
+              className={styles.deleteBtn}
               onClick={resetLLMSettings}
-              style={{background: '#f59e0b'}}
+              style={{ background: '#f59e0b' }}
             >
               Reset to Defaults
             </button>

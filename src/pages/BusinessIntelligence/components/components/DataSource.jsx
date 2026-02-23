@@ -8,6 +8,7 @@ import { useDataAPI } from "../contexts/GetDataApi";
 import { Modal, Input, Button, Select, message } from "antd";
 import MqttConfig from "./popups/MqttConfig";
 import SapConfig from "./popups/sap";
+import SapOptionsPopup from "./popups/SapOptionsPopup";
 import { useFileUpload } from './useApi';
 import { FaRobot, FaDatabase } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi";
@@ -27,6 +28,7 @@ export const DataSource = () => {
   const [file, setFile] = useState(null);
   const [mqttOpen, setMqttOpen] = useState(false);
   const [sapOpen, setSapOpen] = useState(false);
+  const [sapOptionsOpen, setSapOptionsOpen] = useState(false);
   const { uploadFile, isLoading } = useFileUpload();
   const [uploadError, setUploadError] = useState(null);
   const [changed, setChanged] = useState(false);
@@ -353,6 +355,26 @@ export const DataSource = () => {
             </div>
           </div>
 
+          {/* Connect to SAP */}
+          <div className="outerContainer" onClick={() => setSapOptionsOpen(true)}>
+            <div className="cardContainer" style={{ display: "flex" }}>
+              <div className="stepContainer">
+                <FaDatabase
+                  color="#1976d2"
+                  style={{ width: 28, height: 28, marginTop: "2px" }}
+                  className="step-tile-icon"
+                />
+                <div className="step-tile-text-container">
+                  <div className="textHeader">Connect to SAP</div>
+                  <div className="textDesc">Start SAP Bot automation for SAP OData queries</div>
+                </div>
+              </div>
+              <div className="footerContainer">
+                <span className="footerText">SAP</span>
+              </div>
+            </div>
+          </div>
+
           {/* Build Data */}
           <div className="outerContainer" onClick={() => setSyntheticDataOpen(true)}>
             <div className="cardContainer" style={{ display: "flex" }}>
@@ -446,6 +468,7 @@ export const DataSource = () => {
       {sapOpen && (
         <SapConfig setSapOpen={setSapOpen} onDataReceived={handleNavigate} />
       )}
+      <SapOptionsPopup isOpen={sapOptionsOpen} onClose={() => setSapOptionsOpen(false)} />
       <SyntheticData
         isOpen={syntheticDataOpen}
         onClose={() => setSyntheticDataOpen(false)}

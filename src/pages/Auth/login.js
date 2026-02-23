@@ -31,6 +31,9 @@ export const Login = () => {
         app:'akkio'
       });
       localStorage.setItem('user', JSON.stringify(response.data))
+      if (response.data?.email) {
+        localStorage.setItem('email', response.data.email)
+      }
       if (response.data) {
         if (email === 'superadmin@gmail.com') {
           navigate('/admin/organizations');

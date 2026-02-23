@@ -16,6 +16,7 @@ import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 import mammoth from 'mammoth';
 import PremiumOverlay from '../../components/PremiumOverlay';
+import { useSearchParams } from 'react-router-dom';
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -1722,6 +1723,9 @@ const MessageContent = ({ content }) => {
 };
 
 const Reports = ({ initialSessionId }) => {
+  const [searchParams] = useSearchParams();
+  const isSapMode = (searchParams.get('mode') || '').toLowerCase() === 'sap';
+  const sapType = (searchParams.get('sapType') || localStorage.getItem('sapType') || 's4').toLowerCase();
   const filename = typeof window !== 'undefined' ? (localStorage.getItem('filename') || '') : '';
   const fileType = typeof window !== 'undefined' ? (localStorage.getItem('file_type') || '') : '';
   const [message, setMessage] = useState('');
@@ -1732,7 +1736,7 @@ const Reports = ({ initialSessionId }) => {
   const [fileData, setFileData] = useState(null);
   const [loadingFile, setLoadingFile] = useState(false);
   const [fileError, setFileError] = useState(null);
-  const [showFilePreview, setShowFilePreview] = useState(true);
+  const [showFilePreview, setShowFilePreview] = useState(!isSapMode);
   const [multiModelFiles, setMultiModelFiles] = useState([]);
   const [loadingMultiFiles, setLoadingMultiFiles] = useState(false);
   const [showPremiumOverlay, setShowPremiumOverlay] = useState(false);
@@ -1740,6 +1744,20 @@ const Reports = ({ initialSessionId }) => {
   const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef(null);
   const submissionLock = useRef(false);
+
+  useEffect(() => {
+    if (isSapMode) {
+      setShowFilePreview(false);
+      const sapLabel = sapType === 'btp' ? 'SAP BTP' : sapType === 'batch' ? 'SAP Batch' : 'SAP S/4HANA';
+      setMessages([{
+        type: 'bot',
+        content: `{"answer":"Welcome to ${sapLabel} Bot. Ask a question about the data."}`,
+        streaming: false
+      }]);
+    } else {
+      setShowFilePreview(true);
+    }
+  }, [isSapMode, sapType]);
 
   const handleVoiceInput = () => {
     if (isListening) {
@@ -1991,6 +2009,53 @@ const Reports = ({ initialSessionId }) => {
     });
 
     setIsLoading(true);
+
+    // SAP mode uses dedicated SAP endpoint and bypasses normal explore/file routes.
+    if (isSapMode) {
+      try {
+        let responseData;
+        if (sapType === 's4') {
+          // S4: use existing backend API
+          const response = await axios.post(`${akkiourl}/sap/query`, {
+            input: userMessage,
+            email: email
+          });
+          responseData = response.data;
+        } else {
+          // BTP or Batch: use backend API that fetches data + LLM query
+          const response = await axios.post(`${akkiourl}/sap/query-external`, {
+            input: userMessage,
+            mode: sapType,
+            email: email
+          });
+          responseData = response.data;
+        }
+
+        const botResponse = {
+          type: 'bot',
+          content: '',
+          sapResponse: responseData,
+          streaming: false
+        };
+
+        setMessages(prev => prev.map((msg, idx) =>
+          idx === (prev.length - 1) ? botResponse : msg
+        ));
+      } catch (error) {
+        console.error('SAP query error:', error);
+        setMessages(prev => prev.map((msg, idx) =>
+          idx === (prev.length - 1) ? {
+            type: 'bot',
+            content: '{"answer": "Sorry, there was an error processing your SAP request."}',
+            streaming: false
+          } : msg
+        ));
+      } finally {
+        setIsLoading(false);
+        submissionLock.current = false;
+      }
+      return;
+    }
 
     // Simple routing: if selected type is image -> use image chat API (keep HTTP for now)
     const selectedType = (localStorage.getItem('selectedFileType') || localStorage.getItem('file_type') || '').toLowerCase();
@@ -2370,6 +2435,7 @@ const Reports = ({ initialSessionId }) => {
 
   // Fetch data summary on page load - runs in parallel with file loading
   useEffect(() => {
+    if (isSapMode) return;
     if (!filename || !email) return;
 
     // Track the last filename we fetched summary for
@@ -2406,10 +2472,10 @@ const Reports = ({ initialSessionId }) => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filename, email]);
+  }, [filename, email, isSapMode]);
 
   return (
-    !filename ? <EmptyState /> : <div style={{ display: 'flex', height: '100vh', gap: '1rem', position: 'relative' }}>
+    (!filename && !isSapMode) ? <EmptyState /> : <div style={{ display: 'flex', height: '100vh', gap: '1rem', position: 'relative' }}>
       {showPremiumOverlay && <PremiumOverlay />}
       {/* Main Chat Container - Keep original structure unchanged */}
       <div className="chat-container" style={{ flex: 1, minWidth: 0 }}>
@@ -2454,7 +2520,7 @@ const Reports = ({ initialSessionId }) => {
                         alignItems: msg.question ? "flex-end" : "flex-start",
                       }}
                     >
-                      {(msg?.content || msg?.streaming) && (
+                      {(msg?.content || msg?.streaming || msg?.sapResponse) && (
                         <div style={{ width: '100%', overflow: 'auto' }}>
                           {msg.type === 'bot' ? (
                             msg.streaming ? (
@@ -2485,6 +2551,34 @@ const Reports = ({ initialSessionId }) => {
                                   return <div>Thinking...</div>;
                                 }
                               })()
+                            ) : msg.sapResponse ? (
+                              msg.sapResponse.answer != null ? (
+                                <div style={{
+                                  padding: '12px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #e5e7eb',
+                                  background: '#f9fafb',
+                                  fontSize: '14px',
+                                  lineHeight: 1.6,
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-word'
+                                }}>
+                                  {msg.sapResponse.answer}
+                                </div>
+                              ) : (
+                                <pre style={{
+                                  margin: 0,
+                                  padding: '12px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #e5e7eb',
+                                  background: '#f9fafb',
+                                  fontSize: '12px',
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-word'
+                                }}>
+                                  {JSON.stringify(msg.sapResponse, null, 2)}
+                                </pre>
+                              )
                             ) : (
                               <MessageContent content={msg.content || '{"answer": ""}'} />
                             )
@@ -2611,7 +2705,7 @@ const Reports = ({ initialSessionId }) => {
       </div>
 
       {/* File Preview Panel - Right Side */}
-      {showFilePreview && (
+      {!isSapMode && showFilePreview && (
         <div style={{
           width: '400px',
           minWidth: '300px',
@@ -2701,7 +2795,7 @@ const Reports = ({ initialSessionId }) => {
       )}
 
       {/* Show preview button when hidden */}
-      {!showFilePreview && (
+      {!isSapMode && !showFilePreview && (
         <button
           onClick={() => setShowFilePreview(true)}
           style={{

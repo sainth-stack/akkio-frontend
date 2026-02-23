@@ -4,6 +4,9 @@ import FileExplorer from './FileExplorer';
 import AgentsView from './AgentsView';
 import LogsView from './LogsView';
 import AppView from './AppView';
+import DeploymentView from './DeploymentView';
+import TestView from './TestView';
+import Spinner from 'react-bootstrap/Spinner';
 
 const TabPanel = ({
     plan,
@@ -40,7 +43,11 @@ const TabPanel = ({
     streamingArchitectureText,
     onStopPlanning,
     onStopCodegen,
-    onDownloadCode
+    onDownloadCode,
+    // Deployment Props
+    appId,
+    userEmail,
+    apiBase // Needed for TestView
 }) => {
     const tabs = ['Plan', 'Build', 'Deploy'];
     const resolvedBuildTab = activeBuildTab || 'Multi Agents';
@@ -70,13 +77,20 @@ const TabPanel = ({
                         />
                     );
                 case 'Build': // App View
-                    return <AppView projectName={projectName} runState={runState} />;
+                    return (
+                        <AppView
+                            projectName={projectName}
+                            runState={runState}
+                            isRunLoading={isRunLoading}
+                            logs={logs}
+                        />
+                    );
                 case 'Test':
                     return (
-                        <div style={{ padding: 40, textAlign: 'center', color: '#666' }}>
-                            <h3>Test Suite</h3>
-                            <p>Automated test generation and execution coming soon.</p>
-                        </div>
+                        <TestView
+                            projectName={projectName}
+                            apiBase={apiBase || (window.location.protocol + '//' + window.location.hostname + ':5001/api')}
+                        />
                     );
                 default:
                     return null;
@@ -137,10 +151,11 @@ const TabPanel = ({
                 return renderBuildContent();
             case 'Deploy':
                 return (
-                    <div style={{ padding: 60, textAlign: 'center', color: '#666' }}>
-                        <h2>Deploy</h2>
-                        <p style={{ marginTop: 20 }}>Coming Soon</p>
-                    </div>
+                    <DeploymentView
+                        projectName={projectName}
+                        appId={appId}
+                        userEmail={userEmail}
+                    />
                 );
             default:
                 return null;
@@ -205,6 +220,9 @@ const TabPanel = ({
                                 onClick={onRun}
                                 disabled={!projectName || isRunLoading}
                                 style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
                                     padding: '8px 20px',
                                     fontSize: '13px',
                                     fontWeight: '600',
@@ -213,6 +231,7 @@ const TabPanel = ({
                                     marginLeft: '10px'
                                 }}
                             >
+                                {isRunLoading && <Spinner animation="border" size="sm" />}
                                 {isRunLoading ? 'Starting...' : 'Run App'}
                             </button>
                         </>

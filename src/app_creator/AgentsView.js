@@ -51,7 +51,8 @@ const AgentsView = ({
             'code_generator_agent': 'Code Generation Agent',
             'coding_agent': 'Coding Agent',
             'validation_agent': 'Validation Agent',
-            'runner_agent': 'Execution Agent'
+            'runner_agent': 'Execution Agent',
+            'update_code_agent': 'Code Update Agent'
         };
         if (mapping[name]) return mapping[name];
 

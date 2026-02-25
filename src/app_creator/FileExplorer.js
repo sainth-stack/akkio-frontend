@@ -43,7 +43,7 @@ const FileTreeItem = ({ item, onSelect, selectedPath }) => {
     );
 };
 
-const FileExplorer = ({ tree, files, onLoadFile, onSaveFile, projectName }) => {
+const FileExplorer = ({ tree, files, onLoadFile, onSaveFile, projectName, isTreeLoading }) => {
     const [selectedPath, setSelectedPath] = useState(null);
     const [editorValue, setEditorValue] = useState("");
     const [isDirty, setIsDirty] = useState(false);
@@ -108,6 +108,15 @@ const FileExplorer = ({ tree, files, onLoadFile, onSaveFile, projectName }) => {
             setIsSaving(false);
         }
     };
+
+    if (isTreeLoading) {
+        return (
+            <div style={{ padding: 40, textAlign: 'center', color: '#666', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                <span style={{ display: 'inline-block', width: 24, height: 24, border: '2px solid #e2e8f0', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                <span>Loading file tree...</span>
+            </div>
+        );
+    }
 
     if (!tree) {
         return (

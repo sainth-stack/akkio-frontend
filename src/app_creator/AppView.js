@@ -2,7 +2,7 @@ import React from 'react';
 
 import Spinner from 'react-bootstrap/Spinner';
 
-const AppView = ({ projectName, runState, isRunLoading, logs }) => {
+const AppView = ({ projectName, runState, isRunLoading, logs, appRefreshKey = 0 }) => {
     if (!projectName) {
         return (
             <div style={{ padding: 20, color: '#666' }}>
@@ -105,6 +105,7 @@ const AppView = ({ projectName, runState, isRunLoading, logs }) => {
                 </div>
             </div>
             <iframe
+                key={appRefreshKey}
                 title="Generated App"
                 src={runState.frontend_url}
                 className="app-iframe"

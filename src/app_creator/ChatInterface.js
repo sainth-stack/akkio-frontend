@@ -7,7 +7,7 @@ const SendIcon = () => (
     </svg>
 );
 
-const ChatInterface = ({ onSendMessage, messages, isLoading, isUpdateMode }) => {
+const ChatInterface = ({ onSendMessage, messages, isLoading, isUpdateMode, isUpdateCodeInProgress }) => {
     const [input, setInput] = useState("");
     const textareaRef = useRef(null);
     const messagesEndRef = useRef(null);
@@ -75,7 +75,7 @@ const ChatInterface = ({ onSendMessage, messages, isLoading, isUpdateMode }) => 
                             animation: 'spin 0.7s linear infinite',
                             flexShrink: 0
                         }} />
-                        {isUpdateMode ? 'Updating code...' : 'Thinking...'}
+                        {(isUpdateMode && isUpdateCodeInProgress) ? 'Updating code...' : 'Thinking...'}
                     </div>
                 )}
                 <div ref={messagesEndRef} />

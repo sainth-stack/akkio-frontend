@@ -20,6 +20,7 @@ const TabPanel = ({
     agents,
     logs,
     runState,
+    appRefreshKey,
     onLoadFile,
     onSaveFile,
     currentPhase,
@@ -47,7 +48,8 @@ const TabPanel = ({
     // Deployment Props
     appId,
     userEmail,
-    apiBase // Needed for TestView
+    apiBase, // Needed for TestView
+    isTreeLoading
 }) => {
     const tabs = ['Plan', 'Build', 'Deploy'];
     const resolvedBuildTab = activeBuildTab || 'Multi Agents';
@@ -74,6 +76,7 @@ const TabPanel = ({
                             projectName={projectName}
                             onLoadFile={onLoadFile}
                             onSaveFile={onSaveFile}
+                            isTreeLoading={isTreeLoading}
                         />
                     );
                 case 'Build': // App View
@@ -83,6 +86,7 @@ const TabPanel = ({
                             runState={runState}
                             isRunLoading={isRunLoading}
                             logs={logs}
+                            appRefreshKey={appRefreshKey}
                         />
                     );
                 case 'Test':

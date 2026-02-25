@@ -27,12 +27,15 @@ const AppBuilder = () => {
     const [agents, setAgents] = useState({});
     const [logs, setLogs] = useState([]);
     const [runState, setRunState] = useState(null);
+    const [appRefreshKey, setAppRefreshKey] = useState(0);
     const [currentPhase, setCurrentPhase] = useState('idle'); // idle, prd, prd_complete, agents, agents_complete, code_generated
     const [currentRequirement, setCurrentRequirement] = useState('');
     const [generatedPlan, setGeneratedPlan] = useState([]);
     const [generatedArchitecture, setGeneratedArchitecture] = useState(null);
     const [activeBuildTab, setActiveBuildTab] = useState('Multi Agents');
     const [isCodegenLoading, setIsCodegenLoading] = useState(false);
+    const [isUpdateCodeInProgress, setIsUpdateCodeInProgress] = useState(false);
+    const [isTreeLoading, setIsTreeLoading] = useState(false);
     const [appId, setAppId] = useState(null); // DB app id after create
     const [loadingApp, setLoadingApp] = useState(!!editId);
 
@@ -41,14 +44,20 @@ const AppBuilder = () => {
     // Save section content to DB when each section completes (for edit load)
     const updateAppInDb = useCallback(async (updates) => {
         const id = appIdRef.current;
-        if (!id || !email) return;
+        if (!id || !email) return false;
         try {
-            await fetch(
+            const res = await fetch(
                 `${apiBase}/app-builder/apps/${id}?user_email=${encodeURIComponent(email)}`,
                 { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) }
             );
+            if (!res.ok) {
+                console.error('Error updating app in DB:', res.status, await res.text());
+                return false;
+            }
+            return true;
         } catch (e) {
             console.error('Error updating app in DB:', e);
+            return false;
         }
     }, [apiBase, email]);
 
@@ -56,6 +65,7 @@ const AppBuilder = () => {
     const codegenWsRef = useRef(null); // WebSocket reference for code generation
     const abortControllerRef = useRef(null);
     const appIdRef = useRef(null); // current app id for section-wise save
+    const agentsAccumulatorRef = useRef({}); // mirror of agents state for reliable save
     useEffect(() => { appIdRef.current = appId; }, [appId]);
 
     // State for new planning steps
@@ -193,6 +203,7 @@ const AppBuilder = () => {
         const newMessage = { role: 'user', content: text };
         setMessages(prev => [...prev, newMessage, { role: 'ai', content: "Updating code based on your request...\n" }]);
         setIsLoading(true);
+        setIsUpdateCodeInProgress(true);
         setActiveTab('Build');
         setActiveBuildTab('Multi Agents');
 
@@ -214,19 +225,22 @@ const AppBuilder = () => {
                 const data = JSON.parse(event.data);
 
                 if (data.event === 'agent_start') {
-                    setAgents(prev => ({
-                        ...prev,
+                    const next = {
+                        ...agentsAccumulatorRef.current,
                         [data.agent]: {
                             status: 'running',
                             message: data.message,
                             progress: [{ type: 'start', text: data.message, timestamp: Date.now() }],
                             started_at: Date.now()
                         }
-                    }));
+                    };
+                    agentsAccumulatorRef.current = next;
+                    setAgents(next);
                 }
 
                 if (data.event === 'agent_progress') {
-                    setAgents(prev => ({
+                    const prev = agentsAccumulatorRef.current;
+                    const next = {
                         ...prev,
                         [data.agent]: {
                             ...prev[data.agent],
@@ -236,7 +250,9 @@ const AppBuilder = () => {
                                 { type: 'progress', text: data.message, timestamp: Date.now() }
                             ]
                         }
-                    }));
+                    };
+                    agentsAccumulatorRef.current = next;
+                    setAgents(next);
                 }
 
                 if (data.event === 'prd_updated') {
@@ -248,7 +264,8 @@ const AppBuilder = () => {
                 }
 
                 if (data.event === 'agent_complete') {
-                    setAgents(prev => ({
+                    const prev = agentsAccumulatorRef.current;
+                    const next = {
                         ...prev,
                         [data.agent]: {
                             ...prev[data.agent],
@@ -261,7 +278,13 @@ const AppBuilder = () => {
                             ],
                             completed_at: Date.now()
                         }
-                    }));
+                    };
+                    agentsAccumulatorRef.current = next;
+                    setAgents(next);
+                    // Save agents after update_code completes
+                    if (appIdRef.current && email) {
+                        updateAppInDb({ agents_state: next });
+                    }
 
                     const responseData = data.data;
 
@@ -284,6 +307,7 @@ const AppBuilder = () => {
                             });
                             return next;
                         });
+                        setAppRefreshKey(k => k + 1);
                     }
 
                     // Switch to Code tab so user sees the changes immediately
@@ -294,10 +318,12 @@ const AppBuilder = () => {
                     if (projectName) loadProjectTree(projectName);
 
                     setIsLoading(false);
+                    setIsUpdateCodeInProgress(false);
                     ws.close();
                 }
 
                 if (data.event === 'error') {
+                    setIsUpdateCodeInProgress(false);
                     setMessages(prev => {
                         const next = [...prev];
                         const lastIdx = next.map(m => m.role).lastIndexOf('ai');
@@ -326,11 +352,13 @@ const AppBuilder = () => {
                 return next;
             });
             setIsLoading(false);
+            setIsUpdateCodeInProgress(false);
         };
 
         ws.onclose = () => {
             // Just in case it closed unexpectedly
             setIsLoading(false);
+            setIsUpdateCodeInProgress(false);
         }
     };
 
@@ -563,6 +591,7 @@ const AppBuilder = () => {
 
     const executeAgentsWithWebSocket = async (requirement, plan, projectName, prdText, appendAi) => {
         return new Promise((resolve, reject) => {
+            agentsAccumulatorRef.current = {}; // reset for fresh run
             let lastClarifiedRequirement = requirement;
             const sessionId = `session_${Date.now()}`;
             const wsUrl = apiBase.replace(/^http/, 'ws') + `/agents/execute/${sessionId}`;
@@ -600,20 +629,23 @@ const AppBuilder = () => {
                     }
 
                     if (data.event === 'agent_start') {
-                        setAgents(prev => ({
-                            ...prev,
+                        const next = {
+                            ...agentsAccumulatorRef.current,
                             [data.agent]: {
                                 status: 'running',
                                 message: data.message,
                                 progress: [{ type: 'start', text: data.message, timestamp: Date.now() }],
                                 started_at: Date.now()
                             }
-                        }));
+                        };
+                        agentsAccumulatorRef.current = next;
+                        setAgents(next);
                         appendAi(`${data.agent}: ${data.message}\n`);
                     }
 
                     if (data.event === 'agent_progress') {
-                        setAgents(prev => ({
+                        const prev = agentsAccumulatorRef.current;
+                        const next = {
                             ...prev,
                             [data.agent]: {
                                 ...prev[data.agent],
@@ -623,12 +655,15 @@ const AppBuilder = () => {
                                     { type: 'progress', text: data.message, timestamp: Date.now() }
                                 ]
                             }
-                        }));
+                        };
+                        agentsAccumulatorRef.current = next;
+                        setAgents(next);
                         appendAi(`  ${data.message}\n`);
                     }
 
                     if (data.event === 'agent_complete') {
-                        setAgents(prev => ({
+                        const prev = agentsAccumulatorRef.current;
+                        const next = {
                             ...prev,
                             [data.agent]: {
                                 ...prev[data.agent],
@@ -641,7 +676,9 @@ const AppBuilder = () => {
                                 ],
                                 completed_at: Date.now()
                             }
-                        }));
+                        };
+                        agentsAccumulatorRef.current = next;
+                        setAgents(next);
                         appendAi(`${data.agent}: ${data.message}\n\n`);
 
                         if (data.agent === 'requirement_agent' && data.data) {
@@ -676,14 +713,17 @@ const AppBuilder = () => {
                     }
 
                     if (data.event === 'agent_error') {
-                        setAgents(prev => ({
+                        const prev = agentsAccumulatorRef.current;
+                        const next = {
                             ...prev,
                             [data.agent]: {
                                 ...prev[data.agent],
                                 status: 'error',
                                 error: data.error
                             }
-                        }));
+                        };
+                        agentsAccumulatorRef.current = next;
+                        setAgents(next);
                         appendAi(`${data.agent} error: ${data.error}\n\n`);
                     }
 
@@ -713,11 +753,9 @@ const AppBuilder = () => {
                         }
 
                         ws.close();
-                        // Save agents state to DB
-                        setAgents(prev => {
-                            updateAppInDb({ agents_state: prev });
-                            return prev;
-                        });
+                        // Save agents state to DB (use ref to ensure we have latest)
+                        const agentsToSave = agentsAccumulatorRef.current;
+                        updateAppInDb({ agents_state: agentsToSave });
                         resolve();
                     }
 
@@ -746,6 +784,8 @@ const AppBuilder = () => {
     };
 
     const loadProjectTree = async (projName) => {
+        if (!projName) return;
+        setIsTreeLoading(true);
         try {
             const res = await fetch(`${apiBase}/app-builder/projects/${projName}/tree`);
             if (res.ok) {
@@ -754,6 +794,8 @@ const AppBuilder = () => {
             }
         } catch (error) {
             console.error('Error loading project tree:', error);
+        } finally {
+            setIsTreeLoading(false);
         }
     };
 
@@ -793,6 +835,7 @@ const AppBuilder = () => {
 
                     // Restore agents state
                     if (app.agents_state) {
+                        agentsAccumulatorRef.current = app.agents_state;
                         setAgents(app.agents_state);
                         parts.push('**Agent Logs** loaded.');
                     }
@@ -980,6 +1023,7 @@ const AppBuilder = () => {
 
     const executeCodegenWithWebSocket = async (requirement, plan, architecture, project_name, appendAi) => {
         return new Promise((resolve, reject) => {
+            agentsAccumulatorRef.current = {}; // reset for fresh run
             const sessionId = `session_${Date.now()}`;
             const wsUrl = apiBase.replace(/^http/, 'ws') + `/codegen/execute/${sessionId}`;
 
@@ -1011,19 +1055,22 @@ const AppBuilder = () => {
                     }
 
                     if (data.event === 'agent_start') {
-                        setAgents(prev => ({
-                            ...prev,
+                        const next = {
+                            ...agentsAccumulatorRef.current,
                             [data.agent]: {
                                 status: 'running',
                                 message: data.message,
                                 progress: [{ type: 'start', text: data.message, timestamp: Date.now() }],
                                 started_at: Date.now()
                             }
-                        }));
+                        };
+                        agentsAccumulatorRef.current = next;
+                        setAgents(next);
                     }
 
                     if (data.event === 'agent_progress') {
-                        setAgents(prev => ({
+                        const prev = agentsAccumulatorRef.current;
+                        const next = {
                             ...prev,
                             [data.agent]: {
                                 ...prev[data.agent],
@@ -1033,12 +1080,15 @@ const AppBuilder = () => {
                                     { type: 'progress', text: data.message, timestamp: Date.now() }
                                 ]
                             }
-                        }));
+                        };
+                        agentsAccumulatorRef.current = next;
+                        setAgents(next);
                         appendAi(`  ${data.message}\n`);
                     }
 
                     if (data.event === 'agent_complete') {
-                        setAgents(prev => ({
+                        const prev = agentsAccumulatorRef.current;
+                        const next = {
                             ...prev,
                             [data.agent]: {
                                 ...prev[data.agent],
@@ -1051,7 +1101,9 @@ const AppBuilder = () => {
                                 ],
                                 completed_at: Date.now()
                             }
-                        }));
+                        };
+                        agentsAccumulatorRef.current = next;
+                        setAgents(next);
                     }
 
                     if (data.event === 'codegen_complete') {
@@ -1072,11 +1124,9 @@ const AppBuilder = () => {
                         }
                         setCurrentPhase('code_generated');
                         ws.close();
-                        // Save agents state to DB
-                        setAgents(prev => {
-                            updateAppInDb({ agents_state: prev });
-                            return prev;
-                        });
+                        // Save agents state to DB (use ref to ensure we have latest)
+                        const agentsToSave = agentsAccumulatorRef.current;
+                        updateAppInDb({ agents_state: agentsToSave });
                         resolve();
                     }
 
@@ -1205,6 +1255,7 @@ const AppBuilder = () => {
                     messages={messages}
                     isLoading={isLoading}
                     isUpdateMode={!!(projectName && (currentPhase === 'code_generated' || currentPhase === 'agents_complete' || Object.keys(files).length > 0 || fileTree !== null))}
+                    isUpdateCodeInProgress={isUpdateCodeInProgress}
                 />
                 <TabPanel
                     plan={plan}
@@ -1218,6 +1269,7 @@ const AppBuilder = () => {
                     agents={agents}
                     logs={logs}
                     runState={runState}
+                    appRefreshKey={appRefreshKey}
                     onLoadFile={loadFile}
                     onSaveFile={saveFile}
                     currentPhase={currentPhase}
@@ -1244,6 +1296,7 @@ const AppBuilder = () => {
                     appId={appId}
                     userEmail={email}
                     apiBase={apiBase}
+                    isTreeLoading={isTreeLoading}
                 />
             </div>
         </div>

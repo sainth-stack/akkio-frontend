@@ -1,5 +1,4 @@
-import Logo from "../../assets/images/OtamatLogo.png";
-import loginbg from "../../assets/svg/bg.jpg";
+import Logo from "../../assets/images/OtamatLogo.svg";
 import eye from "../../assets/svg/eye-fill.svg";
 import eye2 from "../../assets/svg/eye-slash.svg";
 import { useState } from "react";
@@ -35,12 +34,7 @@ export const Login = () => {
         localStorage.setItem('email', response.data.email)
       }
       if (response.data) {
-        if (email === 'superadmin@gmail.com') {
-          navigate('/admin/organizations');
-          return;
-        } else {
-          navigate('/welcome');
-        }
+        navigate('/welcome');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -91,11 +85,7 @@ export const Login = () => {
         localStorage.setItem("email", data?.email);
         localStorage.setItem("_id", response?.data._id);
 
-        if (data?.email === 'superadmin@gmail.com') {
-          navigate('/admin/organizations');
-        } else {
-          navigate('/welcome');
-        }
+        navigate('/welcome');
       } else {
         message.error('Google login failed');
       }
@@ -219,16 +209,10 @@ export const Login = () => {
                 {loading ? "Logging in..." : 'Login'} {loading ? <LoadingIndicator size={"1"} /> : null}
               </button>
             </form>
-            <div className="account2 mt-2">{"Don't Have An Account?"}</div>
-            <Link to="/register" className="text-decoration-none register2">
-              <span>  {"Register"}</span>
-            </Link>
           </div>
         </div>
       </div>
-      <div className="col-md-6 p-0">
-        <img className="img-fluid" src={loginbg} alt="Logo" style={{ height: '100vh', width: '100%', overflow: 'auto' }} />
-      </div>
+      <div className="col-md-6 p-0 login-right-panel" aria-hidden />
     </div>
   )
 }

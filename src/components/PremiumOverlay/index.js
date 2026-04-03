@@ -17,7 +17,7 @@ const PremiumOverlay = ({ message = "You've run out of AI credits." }) => {
         <p className="sub-text">Upgrade your plan to continue using advanced AI features.</p>
         <button 
           className="upgrade-btn"
-          onClick={() => navigate('/settings?tab=plan')}
+          onClick={() => navigate('/welcome')}
         >
           View Plans & Upgrade
         </button>

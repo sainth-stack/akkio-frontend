@@ -1,45 +1,31 @@
 import React, { useEffect, useState } from "react";
-// import "./styles.scss";
-// import userprofile from '../../assets/images/userprofile.png'
 import { useNavigate } from "react-router-dom";
-import Logo from '../../assets/images/OtamatLogo.png'
+import Logo from '../../assets/images/OtamatLogo.svg'
 import { useLocation } from "react-router-dom";
-import { useDataAPI } from "../../pages/BusinessIntelligence/components/contexts/GetDataApi";
+
+const TITLE_BY_PATH = {
+  '/welcome': 'Home',
+  '/multi-agent': 'Multi Agent',
+  '/app-builder': 'App Builder',
+};
+
 function Navbar() {
   const navigate = useNavigate()
-  const [name, setName] = useState("Dashboard")
-  const { handleLogout2, displayContent } = useDataAPI()
+  const [name, setName] = useState("Home")
   const handleLogout = () => {
     localStorage.clear()
-    handleLogout2()
     navigate('/login')
   }
   let location = useLocation();
-  const formatname = (name) => {
-    const nameWithoutExtension = name.split('.')[0];  // Remove the extension
-    const words = nameWithoutExtension.split('_');  // Split by underscore
-    return words[0]?.charAt(0)?.toUpperCase() + words[0]?.slice(1) + ' '
-  };
   useEffect(() => {
-    if (location.pathname === '/productivity') {
-      setName("Productivity")
-    } else if (location.pathname === '/gen-ai2') {
-      setName("Generative AI")
-    } else if (location.pathname === '/reports' || location.pathname === '/review-report') {
-      setName("Reports")
+    if (location.pathname.startsWith('/app-builder')) {
+      setName('App Builder')
+      return
     }
-    else if (location.pathname === '/projects') {
-      setName("Workspace")
-    }
-    else if (location.pathname === '/process') {
-      setName("Business KPI")
-    }
-    else {
-      setName(displayContent?.filename ? formatname(displayContent?.filename || '') : '')
-    }
-  }, [location.pathname, displayContent?.filename])
+    setName(TITLE_BY_PATH[location.pathname] || 'Home')
+  }, [location.pathname])
 
-  const fileName = displayContent?.filename || localStorage.getItem("filename") || ""
+  const fileName = localStorage.getItem("filename") || ""
   return (
     <>
       <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top bg-white-fixed" style={{ zIndex: 10, marginLeft: '0px' }}>
@@ -50,17 +36,8 @@ function Navbar() {
             id="logo_RL"
             alt="Otamat"
           />
-          {/* {name == "KProcess" && <div style={{
-            marginLeft: '80px',
-            marginTop: '10px',
-            fontWeight: 700,
-            fontSize: '23px',
-            color:"#427ae3"
-          }}>
-            Dashboard
-          </div>} */}
           <div style={{
-            marginLeft: name === "KProcess" ? '30%' : '80px',
+            marginLeft: '80px',
             marginTop: '10px',
             fontWeight: 700,
             fontSize: '23px'
@@ -113,7 +90,7 @@ function Navbar() {
             style={{ textDecoration: 'none', color: 'black' }}
           >
             <span className="ml-2 fs14 text-dark" title={"Admin"}>
-              {JSON.parse(localStorage.getItem("user"))?.name || "admin"}
+              {JSON.parse(localStorage.getItem("user") || "{}")?.name || "admin"}
             </span>
             <i className="bi bi-caret-down-fill"></i>
           </a>
@@ -123,14 +100,8 @@ function Navbar() {
               borderBottom: "1px solid #eee"
             }}>
               <div style={{ fontWeight: "500" }}>
-                {JSON.parse(localStorage.getItem("user"))?.name || "Admin"}
+                {JSON.parse(localStorage.getItem("user") || "{}")?.name || "Admin"}
               </div>
-              {/* <div style={{ fontSize: "0.9em", color: "#666" }}>
-                {JSON.parse(localStorage.getItem("user"))?.email || "admin@example.com"}
-              </div>
-              <div style={{ fontSize: "0.9em", color: "#666" }}>
-                {JSON.parse(localStorage.getItem("user"))?.organization?.name || "Organization"}
-              </div> */}
             </div>
             <span className="dropdown-item" style={{ cursor: 'pointer' }} onClick={() => handleLogout()}>Logout</span>
           </div>

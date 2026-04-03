@@ -2,10 +2,9 @@ import React from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import './style.css'
-import { Outlet, Navigate, useNavigate } from "react-router-dom"
+import { Outlet, Navigate } from "react-router-dom"
 export function AdminLayout(props) {
   const isAuthenticated = () => {
-    const accessToken = localStorage.getItem("token")
     return true
   }
   return (

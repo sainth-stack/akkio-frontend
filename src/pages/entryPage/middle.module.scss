@@ -34,10 +34,10 @@
 
 .rightContent {
   height: 92vh;
+  min-height: 400px;
+  background-color: #c5d9d3;
   background-image: url("../../assets/svg/bg.jpg");
   background-size: cover;
-  /* Make the background image cover the entire element */
   background-repeat: no-repeat;
-  /* Prevent the background image from repeating */
   background-position: center;
 }

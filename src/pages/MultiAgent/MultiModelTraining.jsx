@@ -3,7 +3,7 @@ import { Input, Button, Upload, message, Progress, Alert, Space, Tag, Slider, To
 import { InboxOutlined, DeleteOutlined, FileTextOutlined, FilePdfOutlined, FileImageOutlined, FileExcelOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { FaMagic } from 'react-icons/fa';
 import axios from 'axios';
-import { akkiourl } from '../../../../../utils/const';
+import { akkiourl } from '../../utils/const';
 
 
 const { Dragger } = Upload;

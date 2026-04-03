@@ -3,7 +3,6 @@ import { akkiourl } from "../../utils/const";
 import "./akkioUsageCard.scss";
 import { FaChevronRight } from "react-icons/fa6";
 import { BsLightningChargeFill } from "react-icons/bs";
-import { MdOutlineAccessTime } from "react-icons/md";
 import { IoCubeOutline } from "react-icons/io5";
 
 function getUserEmailFromLocalStorage() {

@@ -38,6 +38,13 @@ const AppBuilder = () => {
     const [isTreeLoading, setIsTreeLoading] = useState(false);
     const [appId, setAppId] = useState(null); // DB app id after create
     const [loadingApp, setLoadingApp] = useState(!!editId);
+    const [useSandboxBuild, setUseSandboxBuild] = useState(() => {
+        try {
+            return localStorage.getItem('akkio_use_sandbox_build') === '1';
+        } catch (e) {
+            return false;
+        }
+    });
 
     const apiBase = akkiourl;
 
@@ -67,6 +74,12 @@ const AppBuilder = () => {
     const appIdRef = useRef(null); // current app id for section-wise save
     const agentsAccumulatorRef = useRef({}); // mirror of agents state for reliable save
     useEffect(() => { appIdRef.current = appId; }, [appId]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('akkio_use_sandbox_build', useSandboxBuild ? '1' : '0');
+        } catch (e) { /* ignore */ }
+    }, [useSandboxBuild]);
 
     // State for new planning steps
     const [generatedUIUX, setGeneratedUIUX] = useState('');
@@ -953,7 +966,10 @@ const AppBuilder = () => {
             const response = await fetch(`${apiBase}/app-builder/projects/${projectName}/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ install: true })
+                body: JSON.stringify({
+                    install: true,
+                    ...(useSandboxBuild ? { use_sandbox: true } : {})
+                })
             });
 
             if (!response.ok) {
@@ -1019,7 +1035,7 @@ const AppBuilder = () => {
             setLogs(prev => [...prev, `Error: ${error.message}`]);
             setIsRunLoading(false);
         }
-    }, [apiBase, projectName]);
+    }, [apiBase, projectName, useSandboxBuild]);
 
     const executeCodegenWithWebSocket = async (requirement, plan, architecture, project_name, appendAi) => {
         return new Promise((resolve, reject) => {
@@ -1265,6 +1281,8 @@ const AppBuilder = () => {
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
                     onRun={handleRun}
+                    useSandboxBuild={useSandboxBuild}
+                    onUseSandboxBuildChange={setUseSandboxBuild}
                     projectName={projectName}
                     agents={agents}
                     logs={logs}

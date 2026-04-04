@@ -16,6 +16,8 @@ const TabPanel = ({
     activeTab,
     onTabChange,
     onRun,
+    useSandboxBuild,
+    onUseSandboxBuildChange,
     projectName,
     agents,
     logs,
@@ -201,6 +203,26 @@ const TabPanel = ({
                     {/* Show Run button in Build tab */}
                     {activeTab === 'Build' && (
                         <>
+                            <label
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    fontSize: 12,
+                                    color: '#475569',
+                                    marginRight: 8,
+                                    cursor: 'pointer',
+                                    userSelect: 'none'
+                                }}
+                                title="Runs npm install and npm run build in an E2B cloud sandbox (set E2B_API_KEY on the API server)"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={!!useSandboxBuild}
+                                    onChange={(e) => onUseSandboxBuildChange && onUseSandboxBuildChange(e.target.checked)}
+                                />
+                                E2B sandbox
+                            </label>
                             <button
                                 className="download-button"
                                 onClick={onDownloadCode}

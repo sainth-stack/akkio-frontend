@@ -1,31 +1,65 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import './style.css'
-import { Outlet, Navigate } from "react-router-dom"
-export function AdminLayout(props) {
-  const isAuthenticated = () => {
-    return true
+import { Outlet, Navigate, useLocation } from "react-router-dom";
+import { isAuthenticated, hasAdminAccess, hasPermission } from "../utils/auth";
+import { refreshCurrentUser } from "../utils/api";
+
+export function AdminLayout() {
+  const location = useLocation();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!isAuthenticated()) {
+        setReady(true);
+        return;
+      }
+      try {
+        await refreshCurrentUser();
+      } catch (e) {
+        console.warn('Could not refresh user profile', e);
+      }
+      if (!cancelled) setReady(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!ready) {
+    return null;
   }
+
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (location.pathname.startsWith('/administration') && !hasAdminAccess()) {
+    return <Navigate to="/welcome" replace />;
+  }
+
+  if (location.pathname.startsWith('/multi-agent') && !hasPermission('reports')) {
+    return <Navigate to="/welcome" replace />;
+  }
+
+  if (location.pathname.startsWith('/app-builder') && !hasPermission('reports')) {
+    return <Navigate to="/welcome" replace />;
+  }
+
   return (
     <div className="row p-0 m-0">
-      <React.Fragment>
-        {isAuthenticated() ? <div className="col-lg-12 col-md-12 col-sm-12 col-xs-12 p-0 m-0 bg-light">
-          {/* Top Navbar */}
-          <Navbar />
-          {/* Main content */}
-          <div className="d-flex justify-content-between" >
-            <div className={""}>
-              <Sidebar />
-            </div>
-            <div className="p-0 w-100 main-content">
-              <Outlet />
-            </div>
+      <div className="col-lg-12 col-md-12 col-sm-12 col-xs-12 p-0 m-0 bg-light">
+        <Navbar />
+        <div className="d-flex justify-content-between">
+          <div>
+            <Sidebar />
           </div>
-        </div> : (
-          <Navigate to="/login" replace />
-        )}
-      </React.Fragment>
+          <div className="w-100 main-content">
+            <Outlet />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

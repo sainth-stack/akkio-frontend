@@ -2,8 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Input, Button, Upload, message, Progress, Alert, Space, Tag, Slider, Tooltip, Collapse } from 'antd';
 import { InboxOutlined, DeleteOutlined, FileTextOutlined, FilePdfOutlined, FileImageOutlined, FileExcelOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { FaMagic } from 'react-icons/fa';
-import axios from 'axios';
-import { akkiourl } from '../../utils/const';
+import api from '../../utils/api';
 
 
 const { Dragger } = Upload;
@@ -85,7 +84,7 @@ export const MultiModelTraining = ({ onTrainingComplete, initialData }) => {
     message.loading({ content: 'Generating background & output format...', key: 'generating' });
 
     try {
-      const response = await axios.post(`${akkiourl}/multi-model/generate_background`, {
+      const response = await api.post('/multi-model/generate_background', {
         model_name: modelName || "New Agent", // Fallback if empty, though backend might use it
         system_prompt: systemPrompt
       });
@@ -119,19 +118,14 @@ export const MultiModelTraining = ({ onTrainingComplete, initialData }) => {
     setIsTraining(true);
     message.loading({ content: initialData?.session_id ? 'Updating model...' : 'Creating model...', key: 'training' });
 
-    const userEmail = localStorage.getItem('user_email') ||
-      JSON.parse(localStorage.getItem('user'))?.email ||
-      'admin@gmail.com';
-
     try {
       const isEdit = Boolean(initialData?.session_id);
       const hasFiles = fileList.length > 0;
 
       // EDIT path (no files): update config only
       if (isEdit && !hasFiles) {
-        const resp = await axios.post(`${akkiourl}/multi-model/update-config`, {
+        const resp = await api.post('/multi-model/update-config', {
           session_id: initialData.session_id,
-          user_email: userEmail,
           model_name: modelName.trim(),
           system_prompt: systemPrompt.trim(),
           temperature,
@@ -155,7 +149,6 @@ export const MultiModelTraining = ({ onTrainingComplete, initialData }) => {
       const formData = new FormData();
       formData.append('model_name', modelName.trim());
       formData.append('system_prompt', systemPrompt.trim());
-      formData.append('user_email', userEmail);
       formData.append('temperature', temperature);
       formData.append('workflow', workflow);
       formData.append('output_format', outputFormat);
@@ -167,11 +160,21 @@ export const MultiModelTraining = ({ onTrainingComplete, initialData }) => {
       });
       formData.append('file_types', JSON.stringify(fileTypes));
 
-      const response = await axios.post(`${akkiourl}/multi-model/create`, formData, {
+      const response = await api.post('/multi-model/create', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      message.success({ content: 'Model created successfully!', key: 'training' });
+      if (isEdit && initialData.session_id && initialData.session_id !== response.data?.session_id) {
+        try {
+          await api.delete('/multi-model/delete', {
+            params: { session_id: initialData.session_id }
+          });
+        } catch (deleteError) {
+          console.warn('Could not remove previous agent version:', deleteError);
+        }
+      }
+
+      message.success({ content: isEdit ? 'Model updated successfully!' : 'Model created successfully!', key: 'training' });
       handleReset();
 
       if (onTrainingComplete) {

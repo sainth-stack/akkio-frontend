@@ -4,7 +4,7 @@ import { Button, Input, message as antdMessage } from 'antd';
 import { FaPlus, FaPuzzlePiece, FaEdit, FaTrashAlt, FaSearch } from 'react-icons/fa';
 import Spinner from 'react-bootstrap/Spinner';
 
-import { akkiourl } from '../utils/const';
+import api from '../utils/api';
 import './AppBuilderList.css';
 
 const AppBuilderList = () => {
@@ -13,19 +13,12 @@ const AppBuilderList = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const apiBase = akkiourl;
-  const email = typeof window !== 'undefined' ? (JSON.parse(localStorage.getItem('user') || '{}')?.email || '') : '';
-
   useEffect(() => {
     const fetchApps = async () => {
-      if (!email) {
-        setLoading(false);
-        return;
-      }
       setLoading(true);
       try {
-        const res = await fetch(`${apiBase}/app-builder/apps?user_email=${encodeURIComponent(email)}`);
-        const data = await res.json();
+        const res = await api.get('/app-builder/apps');
+        const data = res.data;
         if (data.status === 'success' && Array.isArray(data.apps)) {
           setApps(data.apps);
         }
@@ -37,7 +30,7 @@ const AppBuilderList = () => {
       }
     };
     fetchApps();
-  }, [email, apiBase]);
+  }, []);
 
   const filteredApps = useMemo(() => {
     if (!searchQuery.trim()) return apps;
@@ -54,11 +47,8 @@ const AppBuilderList = () => {
     e.stopPropagation();
     if (!window.confirm(`Delete "${app.app_name}"? This cannot be undone.`)) return;
     try {
-      const res = await fetch(
-        `${apiBase}/app-builder/apps/${app.id}?user_email=${encodeURIComponent(email)}`,
-        { method: 'DELETE' }
-      );
-      const data = await res.json();
+      const res = await api.delete(`/app-builder/apps/${app.id}`);
+      const data = res.data;
       if (data.status === 'success') {
         antdMessage.success('App deleted');
         setApps((prev) => prev.filter((a) => a.id !== app.id));
@@ -102,7 +92,6 @@ const AppBuilderList = () => {
           </div>
         ) : (
           <div className="app-builder-list__grid">
-            {/* New App Card */}
             <div
               className="app-builder-list__new-card"
               onClick={() => navigate('/app-builder/new')}
@@ -113,7 +102,6 @@ const AppBuilderList = () => {
               <div className="app-builder-list__new-label">New app</div>
             </div>
 
-            {/* App cards */}
             {filteredApps.map((app) => (
               <div
                 key={app.id}

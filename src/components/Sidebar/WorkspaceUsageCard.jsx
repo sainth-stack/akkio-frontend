@@ -1,22 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { akkiourl } from "../../utils/const";
+import React, { useEffect, useState } from "react";
+import api from "../../utils/api";
 import "./akkioUsageCard.scss";
 import { FaChevronRight } from "react-icons/fa6";
 import { BsLightningChargeFill } from "react-icons/bs";
 import { IoCubeOutline } from "react-icons/io5";
 
-function getUserEmailFromLocalStorage() {
-  try {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    if (user?.email) return user.email;
-    return localStorage.getItem("email") || null;
-  } catch (e) {
-    return null;
-  }
-}
-
 export default function WorkspaceUsageCard() {
-  const email = useMemo(() => getUserEmailFromLocalStorage(), []);
   const [usage, setUsage] = useState({
     credits_remaining: 100,
     storage_remaining_mb: 50,
@@ -27,15 +16,8 @@ export default function WorkspaceUsageCard() {
 
     async function loadUsage() {
       try {
-        const queryParams = email ? `?user_email=${encodeURIComponent(email)}` : "";
-        const resp = await fetch(`${akkiourl}/usage${queryParams}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-
-        if (!resp.ok) throw new Error("Failed to fetch usage");
-
-        const data = await resp.json();
+        const resp = await api.get('/usage');
+        const data = resp.data;
         if (!cancelled && data) {
           setUsage({
             credits_remaining: typeof data.credits_remaining === "number" ? data.credits_remaining : 100,
@@ -49,18 +31,9 @@ export default function WorkspaceUsageCard() {
 
     loadUsage();
 
-    // Poll every 60 seconds instead of 15 to reduce load, unless critical real-time
-    loadUsage();
-
-    // Poll every 5 minutes (300000ms) as a backup sync
     const interval = setInterval(loadUsage, 300000);
     const onFocus = () => loadUsage();
-
-    // Listen for custom event 'usage_updated' to trigger immediate refresh
-    const onUsageUpdate = () => {
-      console.log("Usage update event received, refreshing credits...");
-      loadUsage();
-    };
+    const onUsageUpdate = () => loadUsage();
 
     window.addEventListener("focus", onFocus);
     window.addEventListener("usage_updated", onUsageUpdate);
@@ -71,7 +44,7 @@ export default function WorkspaceUsageCard() {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("usage_updated", onUsageUpdate);
     };
-  }, [email]);
+  }, []);
 
   return (
     <div className="akkioUsageCard">
@@ -108,5 +81,3 @@ export default function WorkspaceUsageCard() {
     </div>
   );
 }
-
-

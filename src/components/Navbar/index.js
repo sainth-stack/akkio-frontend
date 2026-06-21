@@ -2,18 +2,26 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Logo from '../../assets/images/OtamatLogo.svg'
 import { useLocation } from "react-router-dom";
+import api from '../../utils/api';
+import { clearAuthStorage, getStoredUser } from '../../utils/auth';
 
 const TITLE_BY_PATH = {
   '/welcome': 'Home',
   '/multi-agent': 'Multi Agent',
   '/app-builder': 'App Builder',
+  '/administration': 'Administration',
 };
 
 function Navbar() {
   const navigate = useNavigate()
   const [name, setName] = useState("Home")
-  const handleLogout = () => {
-    localStorage.clear()
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (e) {
+      // ignore — still clear local session
+    }
+    clearAuthStorage();
     navigate('/login')
   }
   let location = useLocation();
@@ -22,9 +30,20 @@ function Navbar() {
       setName('App Builder')
       return
     }
+    if (location.pathname.startsWith('/administration')) {
+      const sub = location.pathname.replace(/^\/administration\/?/, '');
+      const subTitles = {
+        users: 'Users',
+        organizations: 'Organizations',
+        roles: 'User Roles',
+      };
+      setName(sub && subTitles[sub] ? `Administration · ${subTitles[sub]}` : 'Administration');
+      return;
+    }
     setName(TITLE_BY_PATH[location.pathname] || 'Home')
   }, [location.pathname])
 
+  const user = getStoredUser();
   const fileName = localStorage.getItem("filename") || ""
   return (
     <>
@@ -90,7 +109,7 @@ function Navbar() {
             style={{ textDecoration: 'none', color: 'black' }}
           >
             <span className="ml-2 fs14 text-dark" title={"Admin"}>
-              {JSON.parse(localStorage.getItem("user") || "{}")?.name || "admin"}
+              {user?.name || user?.email || "User"}
             </span>
             <i className="bi bi-caret-down-fill"></i>
           </a>
@@ -100,7 +119,7 @@ function Navbar() {
               borderBottom: "1px solid #eee"
             }}>
               <div style={{ fontWeight: "500" }}>
-                {JSON.parse(localStorage.getItem("user") || "{}")?.name || "Admin"}
+                {user?.name || user?.email || "User"}
               </div>
             </div>
             <span className="dropdown-item" style={{ cursor: 'pointer' }} onClick={() => handleLogout()}>Logout</span>

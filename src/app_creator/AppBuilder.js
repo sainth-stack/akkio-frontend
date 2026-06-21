@@ -4,7 +4,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import ChatInterface from './ChatInterface';
 import TabPanel from './TabPanel';
 import './AppBuilder.css';
-import { akkiourl } from '../utils/const';
+import api, { apiFetch, wsUrl, wsAuthPayload } from '../utils/api';
 
 const AppBuilder = () => {
     const { id: editId } = useParams();
@@ -46,27 +46,17 @@ const AppBuilder = () => {
         }
     });
 
-    const apiBase = akkiourl;
-
-    // Save section content to DB when each section completes (for edit load)
     const updateAppInDb = useCallback(async (updates) => {
         const id = appIdRef.current;
-        if (!id || !email) return false;
+        if (!id) return false;
         try {
-            const res = await fetch(
-                `${apiBase}/app-builder/apps/${id}?user_email=${encodeURIComponent(email)}`,
-                { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates) }
-            );
-            if (!res.ok) {
-                console.error('Error updating app in DB:', res.status, await res.text());
-                return false;
-            }
+            await api.put(`/app-builder/apps/${id}`, updates);
             return true;
         } catch (e) {
             console.error('Error updating app in DB:', e);
             return false;
         }
-    }, [apiBase, email]);
+    }, []);
 
     const agentsWsRef = useRef(null); // WebSocket reference for agents
     const codegenWsRef = useRef(null); // WebSocket reference for code generation
@@ -126,34 +116,8 @@ const AppBuilder = () => {
         setCurrentRequirement(text);
         setClarifiedRequirement('');
 
-        const localProjectName = "generated_app_" + Date.now();
-        setProjectName(localProjectName);
-
-        // Create app record in DB (user_email from localStorage)
-        let createdAppId = null;
-        const userEmail = typeof window !== 'undefined' ? (JSON.parse(localStorage.getItem('user') || '{}')?.email || '') : '';
-        if (userEmail) {
-            try {
-                const appName = (text || '').slice(0, 100) || localProjectName;
-                const createRes = await fetch(`${apiBase}/app-builder/apps`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_email: userEmail,
-                        app_name: appName,
-                        prompt: text,
-                        project_name: localProjectName,
-                    }),
-                });
-                const createData = await createRes.json();
-                if (createData.status === 'success' && createData.app?.id) {
-                    createdAppId = createData.app.id;
-                    setAppId(createData.app.id);
-                }
-            } catch (e) {
-                console.error('Error creating app record:', e);
-            }
-        }
+        const localProjectName = projectName || ("generated_app_" + Date.now());
+        if (!projectName) setProjectName(localProjectName);
 
         const append = (delta) => {
             setMessages(prev => {
@@ -165,6 +129,36 @@ const AppBuilder = () => {
                 return next;
             });
         };
+
+        const existingId = appId || editId;
+        let createdAppId = existingId || null;
+
+        try {
+            const appName = (text || '').slice(0, 100) || localProjectName;
+            if (existingId) {
+                await api.put(`/app-builder/apps/${existingId}`, {
+                    app_name: appName,
+                    prompt: text,
+                    project_name: localProjectName,
+                });
+                setAppId(existingId);
+            } else {
+                const createRes = await api.post('/app-builder/apps', {
+                    app_name: appName,
+                    prompt: text,
+                    project_name: localProjectName,
+                });
+                const createData = createRes.data;
+                if (createData.status === 'success' && createData.app?.id) {
+                    createdAppId = createData.app.id;
+                    setAppId(createData.app.id);
+                    navigate(`/app-builder/edit/${createdAppId}`, { replace: true });
+                }
+            }
+        } catch (e) {
+            console.error('Error saving app record:', e);
+            append("Could not save app record. Planning will continue, but progress may not persist.\n");
+        }
 
         let lastPrd = '';
         try {
@@ -182,16 +176,9 @@ const AppBuilder = () => {
             append("PRD complete. Please review and proceed to UI/UX Design.\n");
 
             // Update app in DB with PRD
-            if (createdAppId && userEmail && lastPrd) {
+            if (createdAppId && lastPrd) {
                 try {
-                    await fetch(
-                        `${apiBase}/app-builder/apps/${createdAppId}?user_email=${encodeURIComponent(userEmail)}`,
-                        {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ prd: lastPrd }),
-                        }
-                    );
+                    await api.put(`/app-builder/apps/${createdAppId}`, { prd: lastPrd });
                 } catch (e) {
                     console.error('Error updating app with PRD:', e);
                 }
@@ -221,16 +208,16 @@ const AppBuilder = () => {
         setActiveBuildTab('Multi Agents');
 
         const sessionId = `session_update_${Date.now()}`;
-        const wsUrl = apiBase.replace(/^http/, 'ws') + `/agents/update-code-ws/${sessionId}`;
+        const socketUrl = wsUrl(`/agents/update-code-ws/${sessionId}`);
 
-        const ws = new WebSocket(wsUrl);
+        const ws = new WebSocket(socketUrl);
 
         ws.onopen = () => {
-            ws.send(JSON.stringify({
+            ws.send(JSON.stringify(wsAuthPayload({
                 user_request: text,
                 project_name: projectName,
                 app_id: appId || null
-            }));
+            })));
         };
 
         ws.onmessage = (event) => {
@@ -424,7 +411,7 @@ const AppBuilder = () => {
 
     const streamPlanningStep = async (step, body, append, onData) => {
         try {
-            const response = await fetch(`${apiBase}/planning/${step}`, {
+            const response = await apiFetch(`/planning/${step}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
@@ -591,10 +578,24 @@ const AppBuilder = () => {
         };
 
         try {
-            appendAi("\n\nStarting agent execution...\n\n");
-            await executeAgentsWithWebSocket(currentRequirement, generatedPlan, projectName, prd, appendAi);
+            if (generatedArchitecture) {
+                appendAi("\n\nGenerating code from your PRD, UI/UX, and architecture...\n\n");
+                await executeCodegenWithWebSocket(
+                    clarifiedRequirement || currentRequirement,
+                    generatedPlan,
+                    generatedArchitecture,
+                    projectName,
+                    appendAi
+                );
+                appendAi("\nCode generation complete. Review files in the Code tab or click Run App.\n");
+                setCurrentPhase('code_generated');
+                setActiveBuildTab('Code');
+            } else {
+                appendAi("\n\nStarting agent execution...\n\n");
+                await executeAgentsWithWebSocket(currentRequirement, generatedPlan, projectName, prd, appendAi);
+            }
         } catch (error) {
-            console.error('Error in agent execution:', error);
+            console.error('Error in build pipeline:', error);
             appendAi(`\nError: ${error.message}\n`);
             setCurrentPhase('prd_complete');
         } finally {
@@ -607,26 +608,25 @@ const AppBuilder = () => {
             agentsAccumulatorRef.current = {}; // reset for fresh run
             let lastClarifiedRequirement = requirement;
             const sessionId = `session_${Date.now()}`;
-            const wsUrl = apiBase.replace(/^http/, 'ws') + `/agents/execute/${sessionId}`;
+            const socketUrl = wsUrl(`/agents/execute/${sessionId}`);
 
             appendAi(`Connecting to agent execution service...\n`);
 
-            const ws = new WebSocket(wsUrl);
+            const ws = new WebSocket(socketUrl);
             agentsWsRef.current = ws;
 
             ws.onopen = () => {
                 appendAi("Connected to agents.\n\n");
 
-                // Send initial request with PRD, UI/UX, and app_id for DB fallback when local empty
-                ws.send(JSON.stringify({
+                ws.send(JSON.stringify(wsAuthPayload({
                     requirement,
                     plan,
                     prd: prdText || "",
                     uiux: generatedUIUX || "",
+                    architecture: generatedArchitecture || {},
                     project_name: projectName,
                     app_id: appId || null,
-                    user_email: email || ''
-                }));
+                })));
             };
 
             ws.onmessage = (event) => {
@@ -753,9 +753,9 @@ const AppBuilder = () => {
                         // Load files/tree from DB so code displays immediately (avoids tree 404)
                         const projName = data.data?.project_name;
                         if (projName) loadProjectTree(projName);
-                        if (appId && email) {
-                            fetch(`${apiBase}/app-builder/apps/${appId}/code?user_email=${encodeURIComponent(email)}`)
-                                .then(res => res.ok ? res.json() : null)
+                        if (appId) {
+                            api.get(`/app-builder/apps/${appId}/code`)
+                                .then(res => res.data)
                                 .then(codeData => {
                                     if (codeData?.status === 'success' && codeData.files) {
                                         setFiles(codeData.files);
@@ -800,7 +800,7 @@ const AppBuilder = () => {
         if (!projName) return;
         setIsTreeLoading(true);
         try {
-            const res = await fetch(`${apiBase}/app-builder/projects/${projName}/tree`);
+            const res = await apiFetch(`/app-builder/projects/${projName}/tree`);
             if (res.ok) {
                 const data = await res.json();
                 setFileTree(data.tree);
@@ -814,17 +814,15 @@ const AppBuilder = () => {
 
     // Load app when editing (editId from route) – restore all section content
     useEffect(() => {
-        if (!editId || !email) {
+        if (!editId) {
             setLoadingApp(false);
             return;
         }
         const loadApp = async () => {
             setLoadingApp(true);
             try {
-                const res = await fetch(
-                    `${apiBase}/app-builder/apps/${editId}?user_email=${encodeURIComponent(email)}`
-                );
-                const data = await res.json();
+                const res = await api.get(`/app-builder/apps/${editId}`);
+                const data = res.data;
                 if (data.status === 'success' && data.app) {
                     const app = data.app;
                     // Restore all section content
@@ -856,10 +854,8 @@ const AppBuilder = () => {
                     // Restore generated code from DB
                     if (app.generated_code_json) {
                         try {
-                            const codeRes = await fetch(
-                                `${apiBase}/app-builder/apps/${editId}/code?user_email=${encodeURIComponent(email)}`
-                            );
-                            const codeData = await codeRes.json();
+                            const codeRes = await api.get(`/app-builder/apps/${editId}/code`);
+                            const codeData = codeRes.data;
                             if (codeData.status === 'success') {
                                 setFiles(codeData.files || {});
                                 setFileTree(codeData.tree || []);
@@ -891,12 +887,14 @@ const AppBuilder = () => {
                 }
             } catch (e) {
                 console.error('Error loading app:', e);
+                alert('Failed to load this app. It may have been deleted.');
+                navigate('/app-builder');
             } finally {
                 setLoadingApp(false);
             }
         };
         loadApp();
-    }, [editId, email, apiBase]);
+    }, [editId]);
 
     // Cleanup WebSocket on unmount
     useEffect(() => {
@@ -913,16 +911,16 @@ const AppBuilder = () => {
         const cached = filesRef.current?.[path];
         if (cached !== undefined) return cached;
         if (!projectName) return null;
-        const res = await fetch(`${apiBase}/app-builder/projects/${projectName}/file?path=${encodeURIComponent(path)}`);
+        const res = await apiFetch(`/app-builder/projects/${projectName}/file?path=${encodeURIComponent(path)}`);
         if (!res.ok) throw new Error(`Failed to load file: ${path}`);
         const data = await res.json();
         setFiles(prev => ({ ...prev, [path]: data.content }));
         return data.content;
-    }, [apiBase, projectName]);
+    }, [projectName]);
 
     const saveFile = useCallback(async (path, content) => {
         if (!projectName) throw new Error("No project yet");
-        const res = await fetch(`${apiBase}/app-builder/projects/${projectName}/file`, {
+        const res = await apiFetch(`/app-builder/projects/${projectName}/file`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path, content })
@@ -930,14 +928,14 @@ const AppBuilder = () => {
         if (!res.ok) throw new Error(`Failed to save file: ${path}`);
         setFiles(prev => ({ ...prev, [path]: content }));
         return true;
-    }, [apiBase, projectName]);
+    }, [projectName]);
 
     const [isRunLoading, setIsRunLoading] = useState(false);
 
     const handleDownloadCode = useCallback(async () => {
         if (!projectName) return;
         try {
-            const response = await fetch(`${apiBase}/app-builder/projects/${projectName}/download`);
+            const response = await apiFetch(`/app-builder/projects/${projectName}/download`);
             if (!response.ok) throw new Error('Failed to download project');
 
             const blob = await response.blob();
@@ -953,7 +951,7 @@ const AppBuilder = () => {
             console.error('Error downloading project:', error);
             setLogs(prev => [...prev, `Error downloading project: ${error.message}`]);
         }
-    }, [apiBase, projectName]);
+    }, [projectName]);
 
     const handleRun = useCallback(async () => {
         if (!projectName) return;
@@ -963,7 +961,7 @@ const AppBuilder = () => {
         setActiveBuildTab('Build'); // Show App View immediately
 
         try {
-            const response = await fetch(`${apiBase}/app-builder/projects/${projectName}/run`, {
+            const response = await apiFetch(`/app-builder/projects/${projectName}/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1035,22 +1033,22 @@ const AppBuilder = () => {
             setLogs(prev => [...prev, `Error: ${error.message}`]);
             setIsRunLoading(false);
         }
-    }, [apiBase, projectName, useSandboxBuild]);
+    }, [projectName, useSandboxBuild]);
 
     const executeCodegenWithWebSocket = async (requirement, plan, architecture, project_name, appendAi) => {
         return new Promise((resolve, reject) => {
             agentsAccumulatorRef.current = {}; // reset for fresh run
             const sessionId = `session_${Date.now()}`;
-            const wsUrl = apiBase.replace(/^http/, 'ws') + `/codegen/execute/${sessionId}`;
+            const socketUrl = wsUrl(`/codegen/execute/${sessionId}`);
 
             appendAi(`Connecting to code generation service...\n`);
 
-            const ws = new WebSocket(wsUrl);
+            const ws = new WebSocket(socketUrl);
             codegenWsRef.current = ws;
 
             ws.onopen = () => {
                 appendAi("Connected for code generation.\n\n");
-                ws.send(JSON.stringify({
+                ws.send(JSON.stringify(wsAuthPayload({
                     requirement,
                     plan,
                     prd,
@@ -1058,8 +1056,7 @@ const AppBuilder = () => {
                     uiux: generatedUIUX || "",
                     project_name,
                     app_id: appId || null,
-                    user_email: email || ''
-                }));
+                })));
             };
 
             ws.onmessage = (event) => {
@@ -1127,9 +1124,9 @@ const AppBuilder = () => {
                         appendAi(`Files generated: ${data.data.files_count}\n\n`);
                         if (project_name) loadProjectTree(project_name);
                         // Load files/tree from DB so code displays immediately
-                        if (appId && email) {
-                            fetch(`${apiBase}/app-builder/apps/${appId}/code?user_email=${encodeURIComponent(email)}`)
-                                .then(res => res.ok ? res.json() : null)
+                        if (appId) {
+                            api.get(`/app-builder/apps/${appId}/code`)
+                                .then(res => res.data)
                                 .then(codeData => {
                                     if (codeData?.status === 'success' && codeData.files) {
                                         setFiles(codeData.files);
@@ -1234,7 +1231,7 @@ const AppBuilder = () => {
 
     if (loadingApp) {
         return (
-            <div className="app-builder-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <div className="app-builder-container" style={{ display: 'flex', flexDirection: 'column' }}>
                 <header style={{ padding: '12px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 12, backgroundColor: '#fff' }}>
                     <button
                         type="button"
@@ -1255,7 +1252,7 @@ const AppBuilder = () => {
     }
 
     return (
-        <div className="app-builder-container" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <div className="app-builder-container" style={{ display: 'flex', flexDirection: 'column' }}>
             <header style={{ padding: '14px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 12, backgroundColor: '#fff', flexShrink: 0 }}>
                 <button
                     type="button"
@@ -1292,8 +1289,8 @@ const AppBuilder = () => {
                     onSaveFile={saveFile}
                     currentPhase={currentPhase}
                     onCreateAgents={handleCreateAgents}
-                    onStartCodegen={null}
-                    onRestartCodegen={null}
+                    onStartCodegen={handleStartCodegen}
+                    onRestartCodegen={handleRestartCodegen}
                     onRegeneratePrd={() => handleStartPlanning(currentRequirement)}
                     onRegeneratePlan={handleGeneratePlan}
                     onRegenerateAgents={handleCreateAgents}
@@ -1312,8 +1309,6 @@ const AppBuilder = () => {
                     onStopCodegen={handleStopCodegen}
                     onDownloadCode={handleDownloadCode}
                     appId={appId}
-                    userEmail={email}
-                    apiBase={apiBase}
                     isTreeLoading={isTreeLoading}
                 />
             </div>

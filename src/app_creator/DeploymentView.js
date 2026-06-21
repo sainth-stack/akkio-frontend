@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { akkiourl } from '../utils/const';
+import api from '../utils/api';
 import Spinner from 'react-bootstrap/Spinner';
 import './DeploymentView.css';
 
-const DeploymentView = ({ projectName, appId, userEmail }) => {
+const DeploymentView = ({ projectName, appId }) => {
     const [isDeploying, setIsDeploying] = useState(false);
     const [deployment, setDeployment] = useState(null);
     const [error, setError] = useState(null);
     const [pollInterval, setPollInterval] = useState(null);
     
-    // GitHub state
     const [isPushingToGithub, setIsPushingToGithub] = useState(false);
     const [githubError, setGithubError] = useState(null);
     const [githubSuccess, setGithubSuccess] = useState(null);
@@ -18,52 +17,31 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
     const [createNewRepo, setCreateNewRepo] = useState(false);
     const [newRepoName, setNewRepoName] = useState('');
 
-    const apiBase = akkiourl;
-
-    // Debug: Log props to console
     useEffect(() => {
-        console.log('DeploymentView Props:', { projectName, appId, userEmail });
-    }, [projectName, appId, userEmail]);
-
-    useEffect(() => {
-        // Load existing deployment status if we have project name and user email
-        if ((appId || projectName) && userEmail) {
+        if (appId || projectName) {
             loadDeploymentStatus();
         }
         
-        // Cleanup polling on unmount
         return () => {
             if (pollInterval) {
                 clearInterval(pollInterval);
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [appId, projectName, userEmail]);
+    }, [appId, projectName]);
 
     const loadDeploymentStatus = async () => {
         try {
-            // Build query parameters
-            const params = new URLSearchParams({
-                user_email: userEmail
-            });
-            
-            if (appId) {
-                params.append('app_id', appId);
-            } else if (projectName) {
-                params.append('project_name', projectName);
-            }
-            
-            const response = await fetch(`${apiBase}/deployment/status?${params.toString()}`);
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.deployment_status !== 'not_deployed') {
-                    setDeployment(data);
-                    
-                    // If deployment is in progress, start polling
-                    if (data.deployment_status === 'deploying') {
-                        startPolling();
-                    }
+            const params = {};
+            if (appId) params.app_id = appId;
+            else if (projectName) params.project_name = projectName;
+
+            const response = await api.get('/deployment/status', { params });
+            const data = response.data;
+            if (data.deployment_status !== 'not_deployed') {
+                setDeployment(data);
+                if (data.deployment_status === 'deploying') {
+                    startPolling();
                 }
             }
         } catch (err) {
@@ -72,12 +50,10 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
     };
 
     const startPolling = () => {
-        // Clear any existing interval
         if (pollInterval) {
             clearInterval(pollInterval);
         }
 
-        // Poll every 3 seconds
         const interval = setInterval(async () => {
             await loadDeploymentStatus();
         }, 3000);
@@ -93,7 +69,7 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
     };
 
     const handleDeploy = async () => {
-        if (!projectName || !userEmail) {
+        if (!projectName) {
             setError('Missing required information for deployment');
             return;
         }
@@ -102,33 +78,25 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
         setError(null);
 
         try {
-            const response = await fetch(`${apiBase}/deployment/deploy`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    app_id: appId || null,
-                    project_name: projectName,
-                    user_email: userEmail
-                })
+            const response = await api.post('/deployment/deploy', {
+                app_id: appId || null,
+                project_name: projectName,
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
-                // Start polling for status updates
+            if (response.status === 200) {
                 startPolling();
             } else {
-                setError(data.detail || 'Deployment failed');
+                setError(response.data?.detail || 'Deployment failed');
                 setIsDeploying(false);
             }
         } catch (err) {
-            setError(`Deployment error: ${err.message}`);
+            setError(err.response?.data?.detail || `Deployment error: ${err.message}`);
             setIsDeploying(false);
         }
     };
 
     const handleRedeploy = async () => {
-        if (!projectName || !userEmail) {
+        if (!projectName) {
             setError('Missing required information for redeployment');
             return;
         }
@@ -137,30 +105,19 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
         setError(null);
 
         try {
-            const response = await fetch(
-                `${apiBase}/deployment/redeploy`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        app_id: appId || null,
-                        project_name: projectName,
-                        user_email: userEmail
-                    })
-                }
-            );
+            const response = await api.post('/deployment/redeploy', {
+                app_id: appId || null,
+                project_name: projectName,
+            });
 
-            const data = await response.json();
-
-            if (response.ok) {
-                // Start polling for status updates
+            if (response.status === 200) {
                 startPolling();
             } else {
-                setError(data.detail || 'Redeployment failed');
+                setError(response.data?.detail || 'Redeployment failed');
                 setIsDeploying(false);
             }
         } catch (err) {
-            setError(`Redeployment error: ${err.message}`);
+            setError(err.response?.data?.detail || `Redeployment error: ${err.message}`);
             setIsDeploying(false);
         }
     };
@@ -171,7 +128,6 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
             return;
         }
 
-        // Validate inputs
         if (createNewRepo) {
             if (!newRepoName) {
                 setGithubError('Please enter a repository name');
@@ -189,38 +145,27 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
         setGithubSuccess(null);
 
         try {
-            const response = await fetch(`${apiBase}/github/push`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    project_name: projectName,
-                    repo_url: createNewRepo ? null : githubRepoUrl,
-                    create_repo: createNewRepo,
-                    repo_name: createNewRepo ? newRepoName : null,
-                    branch: 'main',
-                    commit_message: 'Deploy from Akkio App Builder'
-                })
+            const response = await api.post('/github/push', {
+                project_name: projectName,
+                repo_url: createNewRepo ? null : githubRepoUrl,
+                create_repo: createNewRepo,
+                repo_name: createNewRepo ? newRepoName : null,
+                branch: 'main',
+                commit_message: 'Deploy from Akkio App Builder'
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
-                setGithubSuccess(`Successfully pushed to GitHub: ${data.repo_url}`);
-                setShowGithubForm(false);
-                // Reset form
-                setGithubRepoUrl('');
-                setNewRepoName('');
-            } else {
-                setGithubError(data.detail || 'Failed to push to GitHub');
-            }
+            const data = response.data;
+            setGithubSuccess(`Successfully pushed to GitHub: ${data.repo_url}`);
+            setShowGithubForm(false);
+            setGithubRepoUrl('');
+            setNewRepoName('');
         } catch (err) {
-            setGithubError(`GitHub push error: ${err.message}`);
+            setGithubError(err.response?.data?.detail || `GitHub push error: ${err.message}`);
         } finally {
             setIsPushingToGithub(false);
         }
     };
 
-    // Stop polling when deployment completes or fails
     useEffect(() => {
         if (deployment) {
             if (deployment.deployment_status === 'deployed' || deployment.deployment_status === 'failed') {
@@ -264,8 +209,7 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
                 <p>Deploy your generated app to EC2 and push to GitHub</p>
             </div>
 
-            {/* Debug Info - only show if actually missing critical info */}
-            {(!projectName || !userEmail) && (
+            {!projectName && (
                 <div className="deployment-debug" style={{ 
                     padding: '12px', 
                     background: '#fff3cd', 
@@ -277,7 +221,6 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
                     <strong>Debug Info:</strong>
                     <div>Project Name: {projectName || 'Missing'}</div>
                     <div>App ID: {appId || 'Not saved (optional)'}</div>
-                    <div>User Email: {userEmail || 'Missing'}</div>
                 </div>
             )}
 
@@ -287,7 +230,6 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
                 </div>
             )}
 
-            {/* GitHub Section */}
             <div className="github-section" style={{ 
                 marginTop: '24px', 
                 padding: '20px', 
@@ -346,9 +288,6 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
                             gap: '8px'
                         }}
                     >
-                        <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-                        </svg>
                         Push to GitHub
                     </button>
                 ) : (
@@ -382,9 +321,6 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
                                         fontSize: '14px'
                                     }}
                                 />
-                                <small style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: '#6c757d' }}>
-                                    Format: username/repo-name or org-name/repo-name
-                                </small>
                             </div>
                         ) : (
                             <div style={{ marginBottom: '12px' }}>
@@ -464,7 +400,7 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
                     <button
                         className="btn-deploy"
                         onClick={handleDeploy}
-                        disabled={isDeploying || !projectName || !userEmail}
+                        disabled={isDeploying || !projectName}
                     >
                         {isDeploying ? (
                             <>
@@ -475,7 +411,7 @@ const DeploymentView = ({ projectName, appId, userEmail }) => {
                             'Deploy to EC2'
                         )}
                     </button>
-                    {(!projectName || !userEmail) && (
+                    {!projectName && (
                         <p style={{ marginTop: '12px', fontSize: '13px', color: '#dc3545' }}>
                             Please generate code first before deploying
                         </p>

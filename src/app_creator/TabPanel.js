@@ -49,8 +49,6 @@ const TabPanel = ({
     onDownloadCode,
     // Deployment Props
     appId,
-    userEmail,
-    apiBase, // Needed for TestView
     isTreeLoading
 }) => {
     const tabs = ['Plan', 'Build', 'Deploy'];
@@ -95,7 +93,6 @@ const TabPanel = ({
                     return (
                         <TestView
                             projectName={projectName}
-                            apiBase={apiBase || (window.location.protocol + '//' + window.location.hostname + ':5001/api')}
                         />
                     );
                 default:
@@ -160,7 +157,6 @@ const TabPanel = ({
                     <DeploymentView
                         projectName={projectName}
                         appId={appId}
-                        userEmail={userEmail}
                     />
                 );
             default:
@@ -196,7 +192,11 @@ const TabPanel = ({
                                 fontWeight: '600'
                             }}
                         >
-                            {isLoading ? 'Creating...' : 'Create Agents'}
+                            {isLoading
+                                ? 'Building...'
+                                : generatedArchitecture
+                                    ? 'Generate Code'
+                                    : 'Create Agents'}
                         </button>
                     )}
 

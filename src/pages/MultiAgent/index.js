@@ -3,13 +3,12 @@ import './index.css';
 import Spinner from 'react-bootstrap/Spinner';
 import { Collapse, Tag, Progress, Button, message as antdMessage, Tooltip as AntdTooltip, Modal, Dropdown, Menu, Tabs, Input, Empty, Switch } from 'antd';
 import { FaCheckCircle, FaBrain, FaDownload, FaTrashAlt, FaInfoCircle, FaThermometerHalf, FaPlus, FaEllipsisV, FaFolderPlus, FaSearch, FaMicrophone } from 'react-icons/fa';
-import { akkiourl } from '../../utils/const';
-import axios from 'axios';
+import api, { wsUrl, wsAuthPayload } from '../../utils/api';
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import Plot from 'react-plotly.js';
-import EmptyState from '../../components/EmptyState';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
@@ -40,6 +39,163 @@ const cleanHtmlContent = (html) => {
   cleaned = cleaned.trim();
 
   return cleaned;
+};
+
+const formatFieldLabel = (key) => {
+  return String(key)
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const tryParseJsonAnswer = (text) => {
+  if (!text || typeof text !== 'string') return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const attempts = [
+    trimmed,
+    trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim(),
+    trimmed.match(/\{[\s\S]*\}/)?.[0],
+    trimmed.match(/\[[\s\S]*\]/)?.[0],
+  ].filter(Boolean);
+
+  for (const candidate of attempts) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // continue
+    }
+  }
+  return null;
+};
+
+const PLATFORM_STYLES = {
+  instagram: { bg: 'linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)', label: 'Instagram' },
+  linkedin: { bg: '#0a66c2', label: 'LinkedIn' },
+  twitter: { bg: '#0f1419', label: 'Twitter / X' },
+  x: { bg: '#0f1419', label: 'X' },
+  facebook: { bg: '#1877f2', label: 'Facebook' },
+  tiktok: { bg: '#010101', label: 'TikTok' },
+  youtube: { bg: '#ff0000', label: 'YouTube' },
+};
+
+const isSocialPostData = (obj) => {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+  const text = obj.content || obj.post || obj.caption || obj.text || obj.body;
+  return Boolean(text) && Boolean(obj.platform || obj.hashtags || obj.suggested_image_prompt || obj.image_prompt);
+};
+
+const SocialPostCard = ({ data }) => {
+  const platformKey = String(data.platform || '').toLowerCase();
+  const platformStyle = PLATFORM_STYLES[platformKey] || { bg: '#6366f1', label: data.platform || 'Social Post' };
+  const postText = data.content || data.post || data.caption || data.text || data.body || '';
+  const hashtags = data.hashtags || data.tags || '';
+  const imagePrompt = data.suggested_image_prompt || data.image_prompt || data.visual_prompt || '';
+
+  const hashtagList = typeof hashtags === 'string'
+    ? hashtags.split(/\s+/).filter((t) => t.startsWith('#'))
+    : Array.isArray(hashtags) ? hashtags : [];
+
+  return (
+    <div className="social-post-card">
+      <div className="social-post-card__header">
+        <span className="social-post-card__platform" style={{ background: platformStyle.bg }}>
+          {platformStyle.label}
+        </span>
+        <span className="social-post-card__type">Generated post</span>
+      </div>
+      <div className="social-post-card__body">
+        <p className="social-post-card__content">{postText}</p>
+        {hashtagList.length > 0 && (
+          <div className="social-post-card__tags">
+            {hashtagList.map((tag, i) => (
+              <span key={i} className="social-post-card__tag">{tag}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      {imagePrompt && (
+        <div className="social-post-card__prompt">
+          <div className="social-post-card__prompt-label">Suggested image prompt</div>
+          <p>{imagePrompt}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const StructuredDataCard = ({ data }) => {
+  if (Array.isArray(data)) {
+    if (data.every((item) => typeof item === 'string')) {
+      return (
+        <ul className="structured-data-list">
+          {data.map((item, i) => <li key={i}>{item}</li>)}
+        </ul>
+      );
+    }
+    return (
+      <div className="structured-data-stack">
+        {data.map((item, i) => (
+          <div key={i} className="structured-data-card structured-data-card--nested">
+            <StructuredDataCard data={item} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (typeof data !== 'object' || data === null) {
+    return <p className="structured-data-text">{String(data)}</p>;
+  }
+
+  const entries = Object.entries(data).filter(([, v]) => v !== null && v !== undefined && v !== '');
+
+  return (
+    <div className="structured-data-card">
+      {entries.map(([key, value]) => (
+        <div key={key} className="structured-data-row">
+          <div className="structured-data-row__label">{formatFieldLabel(key)}</div>
+          <div className="structured-data-row__value">
+            {typeof value === 'object' ? (
+              <StructuredDataCard data={value} />
+            ) : (
+              <span>{String(value)}</span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const AnswerBody = ({ answer, isError = false, isStreaming = false }) => {
+  if (!answer) return null;
+
+  const parsed = tryParseJsonAnswer(answer);
+
+  if (parsed !== null) {
+    if (isSocialPostData(parsed)) {
+      return <SocialPostCard data={parsed} />;
+    }
+    return <StructuredDataCard data={parsed} />;
+  }
+
+  const looksLikeHtml = typeof answer === 'string' && /<[a-z][\s\S]*>/i.test(answer);
+
+  if (isStreaming && answer.trim().startsWith('{') && !looksLikeHtml) {
+    return <div className="thinking-indicator">Composing response...</div>;
+  }
+
+  return (
+    <div className={`answer-body${isError ? ' answer-body--error' : ''}`}>
+      {looksLikeHtml ? (
+        <div className="answer-body__html" dangerouslySetInnerHTML={{ __html: cleanHtmlContent(answer) }} />
+      ) : (
+        <p className="answer-body__text">{answer}</p>
+      )}
+    </div>
+  );
 };
 
 // Component to render plan text with clickable links
@@ -1082,27 +1238,9 @@ const ReportContent = ({ data, generationFormat }) => {
   );
 };
 
-const GeneralAnswer = ({ data }) => {
+const GeneralAnswer = ({ data, isError = false }) => {
   if (!data?.answer) return null;
-
-  return (
-    <div className="general-answer" style={{
-      // backgroundColor: '#ffffff',
-      // padding: '1.5rem',
-      // borderRadius: '8px',
-      // boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      // border: '1px solid #e5e7eb'
-    }}>
-      <p className="desc-ben" style={{
-        margin: 0,
-        fontSize: '1rem',
-        lineHeight: '1.6',
-        color: '#374151'
-      }}>
-        {data.answer}
-      </p>
-    </div>
-  );
+  return <AnswerBody answer={data.answer} isError={isError} />;
 };
 
 // Component to render simple text/explanation answers
@@ -1448,27 +1586,8 @@ const MultiModelAnswer = ({ data }) => {
   const { Panel } = Collapse;
 
   return (
-    <div style={{
-      background: '#f9fafb',
-      borderRadius: 12,
-      padding: 20,
-      border: '1px solid #e5e7eb'
-    }}>
-      {/* Answer */}
-      <div style={{ marginBottom: 20 }}>
-
-        {<div
-          style={{
-            background: 'white',
-            padding: 16,
-            borderRadius: 8,
-            fontSize: 14,
-            lineHeight: 1.6,
-            color: '#374151'
-          }}
-          dangerouslySetInnerHTML={{ __html: cleanHtmlContent(answer) }}
-        />}
-      </div>
+    <div className="multi-model-answer">
+      <AnswerBody answer={answer} />
 
       {/* {report && (
         <div style={{ marginBottom: 20, borderTop: '1px solid #e5e7eb', paddingTop: 20 }}>
@@ -1898,11 +2017,11 @@ const MultiModelFilesList = ({ files, sessionId, userEmail, generatedDocuments =
       }
 
       // Fetch file data for uploaded files
-      const response = await axios.get(`${akkiourl}/multi-model/file-preview`, {
+      const response = await api.get(`/multi-model/file-preview`, {
         params: {
           session_id: sessionId,
           file_name: fileName,
-          user_email: userEmail
+          
         }
       });
 
@@ -2014,11 +2133,11 @@ const MultiModelFilesList = ({ files, sessionId, userEmail, generatedDocuments =
       setLoadingFiles(prev => ({ ...prev, [file.file_name]: true }));
 
       try {
-        const response = await axios.get(`${akkiourl}/multi-model/file-preview`, {
+        const response = await api.get(`/multi-model/file-preview`, {
           params: {
             session_id: sessionId,
             file_name: file.file_name,
-            user_email: userEmail
+            
           }
         });
 
@@ -2041,9 +2160,6 @@ const MultiModelFilesList = ({ files, sessionId, userEmail, generatedDocuments =
     ...(files || []).map(f => ({ ...f, is_generated: false })),
     ...(generatedDocuments || []).map(f => ({ ...f, is_generated: true }))
   ];
-
-  console.log('MultiModelFilesList - allFiles:', allFiles);
-  console.log('MultiModelFilesList - generatedDocuments:', generatedDocuments);
 
   if (allFiles.length === 0 && projectFiles.length === 0) {
     return (
@@ -2258,9 +2374,28 @@ const MultiModelFilesList = ({ files, sessionId, userEmail, generatedDocuments =
 };
 
 // Component to render message content
+const formatAgentErrorMessage = (raw) => {
+  if (!raw) return 'An error occurred. Please try again.';
+  if (/api_key|OPENAI_API_KEY/i.test(raw)) {
+    return 'AI service is not configured. Set OPENAI_API_KEY in akkio-fastapi/.env and restart the backend server.';
+  }
+  return raw;
+};
+
+const isErrorAnswerContent = (content) => {
+  try {
+    const parsed = JSON.parse(content);
+    const answer = parsed?.answer || '';
+    return /api_key|OPENAI_API_KEY|not configured|Connection error/i.test(answer);
+  } catch {
+    return false;
+  }
+};
+
 const MessageContent = ({ content }) => {
   try {
     const parsedContent = JSON.parse(content);
+    const isError = isErrorAnswerContent(content);
 
     // Check if it's a multi-model answer (new format with metadata separated)
     if (parsedContent.multi_model_metadata) {
@@ -2284,7 +2419,10 @@ const MessageContent = ({ content }) => {
 
     // General older format answer
     if (parsedContent.answer) {
-      return <GeneralAnswer data={parsedContent} />;
+      const answerData = isError
+        ? { answer: formatAgentErrorMessage(parsedContent.answer) }
+        : parsedContent;
+      return <GeneralAnswer data={answerData} isError={isError} />;
     }
 
     // New agent formats: {type, payload, explanation ? }
@@ -2318,14 +2456,13 @@ const MessageContent = ({ content }) => {
 };
 
 const MultiAgent = ({ initialSessionId }) => {
-  const filename = typeof window !== 'undefined' ? (localStorage.getItem('filename') || '') : '';
-  const fileType = typeof window !== 'undefined' ? (localStorage.getItem('file_type') || '') : '';
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([
     { type: 'bot', content: '{"answer": "Hello! How can I assist you today?"}' }
   ]);
-  const [sessionId, setSessionId] = useState(initialSessionId || '');
+  const [sessionId, setSessionId] = useState(() => initialSessionId || localStorage.getItem('multiModelSessionId') || '');
+  const [activeModelName, setActiveModelName] = useState(() => localStorage.getItem('multiModelName') || '');
   const email = JSON.parse(localStorage.getItem('user'))?.email;
   const [showFilePreview, setShowFilePreview] = useState(true);
   const [multiModelFiles, setMultiModelFiles] = useState([]);
@@ -2444,7 +2581,7 @@ const MultiAgent = ({ initialSessionId }) => {
   const refreshModels = async () => {
     if (!email) return;
     try {
-      const response = await axios.get(`${akkiourl}/multi-model/list`, { params: { user_email: email } });
+      const response = await api.get(`/multi-model/list`);
       if (response.data?.status === 'success') {
         setMultiModels(response.data.models || []);
       }
@@ -2460,8 +2597,8 @@ const MultiAgent = ({ initialSessionId }) => {
     setShareLoading(true);
     setShareInfo(null);
     try {
-      const res = await axios.get(`${akkiourl}/multi-model/share-info`, {
-        params: { session_id: model.session_id, user_email: email }
+      const res = await api.get(`/multi-model/share-info`, {
+        params: { session_id: model.session_id }
       });
       setShareInfo(res.data);
     } catch (e) {
@@ -2489,9 +2626,8 @@ const MultiAgent = ({ initialSessionId }) => {
 
     setPublishLoading(true);
     try {
-      const res = await axios.post(`${akkiourl}/multi-model/publish`, {
+      const res = await api.post(`/multi-model/publish`, {
         session_id: model.session_id,
-        user_email: email,
         published: true
       });
       const updatedSession = res.data?.session;
@@ -2512,9 +2648,8 @@ const MultiAgent = ({ initialSessionId }) => {
     if (!shareModel) return;
     setPublishLoading(true);
     try {
-      const res = await axios.post(`${akkiourl}/multi-model/publish`, {
+      const res = await api.post(`/multi-model/publish`, {
         session_id: shareModel.session_id,
-        user_email: email,
         published: nextPublished
       });
       const updatedSession = res.data?.session;
@@ -2589,22 +2724,22 @@ const MultiAgent = ({ initialSessionId }) => {
     setIsLoading(true);
 
     try {
-      const modelName = localStorage.getItem('multiModelName') || localStorage.getItem('model_name');
+      const modelName = activeModelName || localStorage.getItem('multiModelName') || localStorage.getItem('model_name');
       const userEmail = email;
 
       if (!modelName) {
-        // Fallback or error if no model selected, though ideally we should be here only if context is valid
-        console.warn('Multi-model name not found in localStorage. Using default or prompting user.');
-        // For now, proceed. The backend might complain if fields are missing.
+        antdMessage.error('Agent context not found. Please go back and select an agent.');
+        setIsLoading(false);
+        submissionLock.current = false;
+        setMessages(prev => prev.slice(0, -2));
+        return;
       }
 
       // Use WebSocket for multi-model query
-      const wsUrl = akkiourl.replace('http://', 'ws://').replace('https://', 'wss://') + '/multi-model/query/ws';
-      const ws = new WebSocket(wsUrl);
+      const socketUrl = wsUrl('/multi-model/query/ws');
+      const ws = new WebSocket(socketUrl);
 
       ws.onopen = () => {
-        // Send query with messages
-        // Include the new user message in the messages array for context
         const messagesToSend = [
           ...messages,
           {
@@ -2613,12 +2748,11 @@ const MultiAgent = ({ initialSessionId }) => {
           }
         ];
 
-        ws.send(JSON.stringify({
+        ws.send(JSON.stringify(wsAuthPayload({
           model_name: modelName || '',
-          user_email: userEmail || '',
           query: userMessage,
           messages: messagesToSend
-        }));
+        })));
       };
 
       let accumulatedAnswer = '';
@@ -2766,11 +2900,16 @@ const MultiAgent = ({ initialSessionId }) => {
                 return msg;
               });
             } else if (messageType === 'error') {
+              setIsLoading(false);
+              submissionLock.current = false;
+              const friendly = formatAgentErrorMessage(data.message || 'An error occurred');
               return prev.map((msg, idx) =>
                 idx === botIdx ? {
                   type: 'bot',
-                  content: JSON.stringify({ answer: data.message || 'An error occurred' }),
-                  streaming: false
+                  content: JSON.stringify({ answer: friendly }),
+                  streaming: false,
+                  isPlanStreaming: false,
+                  plan: msg.plan || '',
                 } : msg
               );
             }
@@ -2798,17 +2937,11 @@ const MultiAgent = ({ initialSessionId }) => {
 
       ws.onclose = () => {
         setIsLoading(false);
-        submissionLock.current = false; // UNLOCK
-        window.dispatchEvent(new Event('usage_updated')); // Dispatch usage update event
+        submissionLock.current = false;
+        window.dispatchEvent(new Event('usage_updated'));
       };
 
-      ws.onerror = (error) => {
-        // ... existing error handler ...
-        setIsLoading(false);
-        submissionLock.current = false; // UNLOCK
-      };
-
-      return; // Exit early since WebSocket handles the response
+      return;
     } catch (error) {
       console.error('Error:', error);
       setMessages(prev => {
@@ -3184,10 +3317,9 @@ const MultiAgent = ({ initialSessionId }) => {
       if (mSessionId) {
         setLoadingMultiFiles(true);
         try {
-          const response = await axios.get(`${akkiourl}/multi-model/files`, {
+          const response = await api.get(`/multi-model/files`, {
             params: {
               session_id: mSessionId,
-              user_email: email
             }
           });
           if (response.data.status === 'success') {
@@ -3215,13 +3347,14 @@ const MultiAgent = ({ initialSessionId }) => {
 
       try {
         // Use progress endpoint to get model name
-        const response = await axios.get(`${akkiourl}/multi-model/progress`, {
-          params: { session_id: sessionId, user_email: email }
+        const response = await api.get(`/multi-model/progress`, {
+          params: { session_id: sessionId }
         });
 
         if (response.data && response.data.model_name) {
           const mName = response.data.model_name;
-          localStorage.setItem('multiModelName', mName); // Ensure local storage is synced
+          localStorage.setItem('multiModelName', mName);
+          setActiveModelName(mName);
 
           // Update the welcome message if it's the only message and is generic
           setMessages(prev => {
@@ -3238,7 +3371,15 @@ const MultiAgent = ({ initialSessionId }) => {
           });
         }
       } catch (e) {
-        console.error("Failed to fetch session details:", e);
+        if (e.response?.status === 404) {
+          setSessionId('');
+          setActiveModelName('');
+          localStorage.removeItem('multiModelSessionId');
+          localStorage.removeItem('multiModelName');
+          antdMessage.warning('Session expired or was deleted.');
+        } else {
+          console.error("Failed to fetch session details:", e);
+        }
       }
     };
 
@@ -3252,11 +3393,7 @@ const MultiAgent = ({ initialSessionId }) => {
 
       setLoadingModels(true);
       try {
-        const response = await axios.get(`${akkiourl}/multi-model/list`, {
-          params: {
-            user_email: email
-          }
-        });
+        const response = await api.get(`/multi-model/list`);
         if (response.data.status === 'success') {
           setMultiModels(response.data.models || []);
         }
@@ -3276,13 +3413,31 @@ const MultiAgent = ({ initialSessionId }) => {
 
   const handleModelSelect = (model) => {
     setSessionId(model.session_id);
+    setActiveModelName(model.model_name);
     localStorage.setItem('multiModelSessionId', model.session_id);
     localStorage.setItem('multiModelName', model.model_name);
     localStorage.setItem('selectedFileType', 'multi-model');
-    // Reset messages for new session
+    setGeneratedDocuments([]);
+    setProjectStructure(null);
+    setViewingProjectFile(null);
     setMessages([
       { type: 'bot', content: JSON.stringify({ answer: `Hi! I'm ${model.model_name}. How can I help you today?` }) }
     ]);
+  };
+
+  const handleBackToList = () => {
+    setSessionId('');
+    setActiveModelName('');
+    localStorage.removeItem('multiModelSessionId');
+    localStorage.removeItem('multiModelName');
+    setGeneratedDocuments([]);
+    setProjectStructure(null);
+    setViewingProjectFile(null);
+    setMultiModelFiles([]);
+    setMessages([
+      { type: 'bot', content: '{"answer": "Hello! How can I assist you today?"}' }
+    ]);
+    refreshModels();
   };
 
   const handleDeleteModel = async (model, e) => {
@@ -3291,10 +3446,9 @@ const MultiAgent = ({ initialSessionId }) => {
     // Show confirmation dialog
     if (window.confirm(`Are you sure you want to delete "${model.model_name}"? This action cannot be undone.`)) {
       try {
-        const response = await axios.delete(`${akkiourl}/multi-model/delete`, {
+        const response = await api.delete(`/multi-model/delete`, {
           params: {
             session_id: model.session_id,
-            user_email: email
           }
         });
 
@@ -3303,8 +3457,8 @@ const MultiAgent = ({ initialSessionId }) => {
 
           // Refresh the models list
           if (email) {
-            const listResponse = await axios.get(`${akkiourl}/multi-model/list`, {
-              params: { user_email: email }
+            const listResponse = await api.get(`/multi-model/list`, {
+              params: {}
             });
             if (listResponse.data.status === 'success') {
               setMultiModels(listResponse.data.models || []);
@@ -3314,6 +3468,7 @@ const MultiAgent = ({ initialSessionId }) => {
           // If the deleted model was the current session, reset
           if (sessionId === model.session_id) {
             setSessionId('');
+            setActiveModelName('');
             localStorage.removeItem('multiModelSessionId');
             localStorage.removeItem('multiModelName');
             setMessages([
@@ -3330,27 +3485,30 @@ const MultiAgent = ({ initialSessionId }) => {
   };
 
   const handleTrainingComplete = (result) => {
-    // With /multi-model/create this is synchronous, so we're already done here.
-    antdMessage.success('Model saved successfully!');
-
-    // Refresh the models list
-    if (email) {
-      axios.get(`${akkiourl}/multi-model/list`, {
-        params: { user_email: email }
-      }).then(response => {
-        if (response.data.status === 'success') {
-          setMultiModels(response.data.models || []);
-        }
-      }).catch(error => {
-        console.error('Error refreshing models:', error);
-      });
+    if (result?.session_id) {
+      const name = result.model_name || result.session?.model_name || 'Agent';
+      setSessionId(result.session_id);
+      setActiveModelName(name);
+      localStorage.setItem('multiModelSessionId', result.session_id);
+      localStorage.setItem('multiModelName', name);
+      localStorage.setItem('selectedFileType', 'multi-model');
+      setGeneratedDocuments([]);
+      setProjectStructure(null);
+      setMessages([
+        { type: 'bot', content: JSON.stringify({ answer: `Hi! I'm ${name}. How can I help you today?` }) }
+      ]);
+      antdMessage.success('Agent created! You can start chatting now.');
+    } else {
+      antdMessage.success('Model saved successfully!');
     }
+
+    refreshModels();
   };
 
   // Show list view if no sessionId is selected
   if (!sessionId && !initialSessionId) {
     return (
-      <div style={{ padding: '24px 40px', minHeight: '100vh', backgroundColor: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+      <div style={{ minHeight: 'calc(100vh - 120px)', backgroundColor: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
 
         {/* Header Tabs */}
         <div style={{ marginBottom: '24px' }}>
@@ -3365,7 +3523,9 @@ const MultiAgent = ({ initialSessionId }) => {
           />
         </div>
 
-        <div style={{ marginBottom: '8px', fontWeight: '500', color: '#111827' }}>All</div>
+        {activeTab === 'all' && (
+          <div style={{ marginBottom: '8px', fontWeight: '500', color: '#111827' }}>All</div>
+        )}
 
         {/* Search Bar */}
         <div style={{ marginBottom: '24px' }}>
@@ -3742,7 +3902,15 @@ const MultiAgent = ({ initialSessionId }) => {
   }
 
   return (
-    !filename ? <EmptyState /> : <div style={{ display: 'flex', height: '100vh', gap: '1rem' }}>
+    <div className="multi-agent-chat">
+      <div className="multi-agent-chat__header">
+        <Button type="text" onClick={handleBackToList} style={{ padding: '4px 8px', fontWeight: 500 }}>
+          ← Back to agents
+        </Button>
+        <span className="multi-agent-chat__title">{activeModelName || 'Agent'}</span>
+      </div>
+
+      <div className="multi-agent-chat__body">
       {/* Main Chat Container - conditionally render chat or code viewer */}
       <div className="chat-container" style={{ flex: 1, minWidth: 0 }}>
         {viewingProjectFile ? (
@@ -3779,136 +3947,79 @@ const MultiAgent = ({ initialSessionId }) => {
           <div className="chat-window">
             <div className="chat-messages">
               {messages.map((msg, index) => {
-                console.log(msg, 'sdfd')
+                const isUser = msg.type === 'user';
+                const isBot = msg.type === 'bot';
+                const isErrorBubble = isBot && !msg.streaming && isErrorAnswerContent(msg.content || '');
+
                 return (
-                  (
+                  <div
+                    key={index}
+                    className={`chat-message-row ${isUser ? 'chat-message-row--user' : 'chat-message-row--bot'}`}
+                  >
                     <div
-                      key={index}
-                      style={{
-                        display: "flex",
-                        maxWidth: "100%",
-                        flexDirection: "column",
-                        gap: "10px",
-                        alignItems: msg.question ? "flex-start" : "flex-end",
-                      }}
+                      className={`chat-message-bubble ${
+                        isUser
+                          ? 'chat-message-bubble--user'
+                          : isErrorBubble
+                            ? 'chat-message-bubble--error'
+                            : 'chat-message-bubble--bot'
+                      }`}
                     >
-                      <div
-                        className={`${msg.type}-message`}
-                        style={{
-                          display: "flex",
-                          width: "100%",
-                          flexDirection: "column",
-                          gap: "10px",
-                          maxWidth: "100%",
-                          alignSelf: msg.question ? "flex-end" : "flex-start",
-                          alignItems: msg.question ? "flex-end" : "flex-start",
-                        }}
-                      >
-                        {(msg?.content || msg?.streaming) && (
-                          <div style={{ width: '100%', overflow: 'auto' }}>
-                            {msg.type === 'bot' ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-                                {/* Plan Accordion */}
-                                {(msg.plan || msg.isPlanStreaming) && (
-                                  <details
-                                    open={msg.isPlanOpen}
-                                    style={{
-                                      border: '1px solid #e5e7eb',
-                                      borderRadius: '8px',
-                                      backgroundColor: '#f9fafb',
-                                      overflow: 'hidden'
+                      {(msg?.content || msg?.streaming || msg?.plan || msg?.isPlanStreaming) && (
+                        <>
+                          {isBot ? (
+                            <div className="bot-message-content">
+                              {(msg.plan || msg.isPlanStreaming) && (
+                                <details
+                                  open={msg.isPlanOpen}
+                                  className="plan-details"
+                                >
+                                  <summary
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setMessages(current => current.map((m, i) =>
+                                        i === index ? { ...m, isPlanOpen: !m.isPlanOpen } : m
+                                      ));
                                     }}
                                   >
-                                    <summary
-                                      onClick={(e) => {
-                                        e.preventDefault(); // Prevent default toggle
-                                        // We need to update state to toggle.
-                                        // Since we can't easily setMessages from here without a handler,
-                                        // we'll rely on the parent updating or just let it be uncontrolled?
-                                        // "By default open... after close". User didn't say strict lock.
-                                        // BUT using `open={msg.isPlanOpen}` makes it controlled.
-                                        // If I don't provide an onChange/onClick that updates state, it might be stuck.
-                                        // Let's implement a local toggle if possible, OR better: use `defaultOpen`?
-                                        // No, `defaultOpen` only works on mount. We need dynamic updates.
-                                        // So we really should update state.
-                                        // For now, I will REMOVE `open` prop and use a key to force re-render? No.
-                                        // Best approach for "Auto open then close":
-                                        // Just use the `open` prop. If user clicks, it won't toggle if I don't update state.
-                                        // Let's look for a `togglePlan` function or similar... there isn't one.
-                                        // I will assume for this "Prod" request, the auto behavior is paramount.
-                                        // I'll add a simplified onClick handler logic if I can find `setMessages`.
-                                        // `setMessages` is available in scope!
-                                        setMessages(current => current.map((m, i) =>
-                                          i === index ? { ...m, isPlanOpen: !m.isPlanOpen } : m
-                                        ));
-                                      }}
-                                      style={{
-                                        padding: '0.75rem',
-                                        cursor: 'pointer',
-                                        fontWeight: '600',
-                                        color: '#374151',
-                                        fontSize: '0.9rem',
-                                        userSelect: 'none',
-                                        outline: 'none'
-                                      }}>
-                                      <span>Planning Step</span>
-                                      {msg.isPlanStreaming && <span style={{ marginLeft: '8px', fontWeight: 'normal', color: '#6b7280' }}>(Thinking...)</span>}
-                                    </summary>
-                                    <div style={{
-                                      padding: '0 0.75rem 0.75rem 0.75rem',
-                                      fontSize: '0.9rem',
-                                      color: '#4b5563',
-                                      lineHeight: '1.6',
-                                      maxHeight: '300px',
-                                      overflowY: 'auto',
-                                      borderTop: '1px solid #f3f4f6'
-                                    }}>
-                                      <PlanContent planText={msg.plan} />
-                                    </div>
-                                  </details>
-                                )}
+                                    <span>Planning Step</span>
+                                    {msg.isPlanStreaming && (
+                                      <span className="plan-details__status">(Thinking...)</span>
+                                    )}
+                                  </summary>
+                                  <div className="plan-details__body">
+                                    <PlanContent planText={msg.plan} />
+                                  </div>
+                                </details>
+                              )}
 
-                                {/* Answer Content */}
-                                {msg.streaming ? (
-                                  // Handle streaming messages
-                                  (() => {
-                                    if (msg.accumulatedAnswer) {
-                                      // Streaming text - display as HTML
-                                      return <div dangerouslySetInnerHTML={{ __html: msg.accumulatedAnswer }} />;
-                                    } else {
-                                      // If plan works, we don't show "Thinking..." unless plan is also empty which shouldn't happen if plan started
-                                      if (!msg.isPlanStreaming && !msg.plan) return <div>Thinking...</div>;
-                                      return null;
-                                    }
-                                  })()
+                              {msg.streaming ? (
+                                msg.accumulatedAnswer ? (
+                                  <AnswerBody answer={msg.accumulatedAnswer} isStreaming />
                                 ) : (
-                                  <MessageContent content={msg.content || '{"answer": ""}'} />
-                                )}
-                              </div>
-                            ) : (
-                              <div style={{
-                                whiteWhiteSpace: 'pre-wrap',
-                                wordWrap: 'break-word',
-                                lineHeight: '1.6',
-                                fontSize: '15px',
-                                color: 'white'
-                              }}>
-                                {msg.content}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      {msg.isLoading && (
-                        <div className="spinner-container">
-                          <Spinner animation="border" role="status">
-                            <span className="visually-hidden">Loading...</span>
-                          </Spinner>
-                        </div>
+                                  !msg.isPlanStreaming && !msg.plan ? (
+                                    <div className="thinking-indicator">Thinking...</div>
+                                  ) : null
+                                )
+                              ) : (
+                                <MessageContent content={msg.content || '{"answer": ""}'} />
+                              )}
+                            </div>
+                          ) : (
+                            <div className="user-message-text">{msg.content}</div>
+                          )}
+                        </>
                       )}
                     </div>
-                  )
-                )
+                    {msg.isLoading && (
+                      <div className="spinner-container">
+                        <Spinner animation="border" role="status" size="sm">
+                          <span className="visually-hidden">Loading...</span>
+                        </Spinner>
+                      </div>
+                    )}
+                  </div>
+                );
               })}
               <div ref={messagesEndRef} />
             </div>
@@ -4078,7 +4189,7 @@ const MultiAgent = ({ initialSessionId }) => {
             ) : (
               <MultiModelFilesList
                 files={multiModelFiles}
-                sessionId={localStorage.getItem('multiModelSessionId')}
+                sessionId={sessionId}
                 userEmail={email}
                 generatedDocuments={generatedDocuments}
                 projectFiles={projectStructure?.files || []}
@@ -4117,6 +4228,7 @@ const MultiAgent = ({ initialSessionId }) => {
       )}
 
       {showPremiumOverlay && <PremiumOverlay />}
+      </div>
     </div>
   );
 };

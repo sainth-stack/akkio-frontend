@@ -9,6 +9,7 @@ import AppBuilder from './app_creator/AppBuilder';
 import AppBuilderList from './app_creator/AppBuilderList';
 import MiddleContent from './pages/entryPage';
 import MultiAgent from './pages/MultiAgent';
+import Administration from './pages/Administration';
 
 function App() {
   const clientId = '573823221354-d175srri1ta9un581atkp7b9qenst32u.apps.googleusercontent.com';
@@ -20,12 +21,13 @@ function App() {
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/app-builder/new" element={<AppBuilder />} />
-            <Route path="/app-builder/edit/:id" element={<AppBuilder />} />
             <Route element={<AdminLayout />}>
               <Route path="welcome" element={<MiddleContent />} />
               <Route path="multi-agent" element={<MultiAgent />} />
               <Route path="app-builder" element={<AppBuilderList />} />
+              <Route path="app-builder/new" element={<AppBuilder />} />
+              <Route path="app-builder/edit/:id" element={<AppBuilder />} />
+              <Route path="administration/*" element={<Administration />} />
             </Route>
             <Route path="*" element={<Navigate to="/welcome" replace />} />
           </Routes>

@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import Spinner from 'react-bootstrap/Spinner';
 import { FaPlay, FaCheckCircle, FaExclamationCircle, FaTerminal, FaList } from 'react-icons/fa';
+import api from '../utils/api';
 
-const TestView = ({ projectName, apiBase }) => {
+const TestView = ({ projectName }) => {
     const [tests, setTests] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
     const [output, setOutput] = useState('');
-    const [lastRunStatus, setLastRunStatus] = useState(null); // 'success' | 'fail'
+    const [lastRunStatus, setLastRunStatus] = useState(null);
 
-    // Fetch list of tests on mount
     useEffect(() => {
         fetchTests();
     }, [projectName]);
@@ -17,9 +17,8 @@ const TestView = ({ projectName, apiBase }) => {
     const fetchTests = async () => {
         if (!projectName) return;
         try {
-            const res = await fetch(`${apiBase}/test-suite/list/${projectName}`);
-            const data = await res.json();
-            setTests(data.tests || []);
+            const res = await api.get(`/test-suite/list/${projectName}`);
+            setTests(res.data.tests || []);
         } catch (err) {
             console.error("Failed to fetch tests", err);
         }
@@ -28,19 +27,14 @@ const TestView = ({ projectName, apiBase }) => {
     const handleGenerateTests = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${apiBase}/test-suite/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ project_name: projectName })
-            });
-            if (res.ok) {
+            const res = await api.post('/test-suite/generate', { project_name: projectName });
+            if (res.status === 200) {
                 await fetchTests();
             } else {
-                const err = await res.json();
-                alert(`Error: ${err.detail}`);
+                alert(`Error: ${res.data?.detail}`);
             }
         } catch (err) {
-            alert("Failed to generate tests");
+            alert(err.response?.data?.detail || "Failed to generate tests");
         } finally {
             setIsLoading(false);
         }
@@ -56,12 +50,8 @@ const TestView = ({ projectName, apiBase }) => {
                 body.test_files = [testFile];
             }
 
-            const res = await fetch(`${apiBase}/test-suite/run`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            const data = await res.json();
+            const res = await api.post('/test-suite/run', body);
+            const data = res.data;
             setOutput(data.output);
             setLastRunStatus(data.success ? 'success' : 'fail');
         } catch (err) {
@@ -79,7 +69,6 @@ const TestView = ({ projectName, apiBase }) => {
     return (
         <div className="test-view" style={{ padding: '20px', height: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-            {/* Header / Actions */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -125,7 +114,6 @@ const TestView = ({ projectName, apiBase }) => {
             </div>
 
             <div style={{ display: 'flex', gap: '20px', flex: 1, minHeight: 0 }}>
-                {/* Left: Test List */}
                 <div style={{ flex: '0 0 300px', borderRight: '1px solid #eee', overflowY: 'auto' }}>
                     {tests.length > 0 ? (
                         <div className="list-group">
@@ -150,7 +138,6 @@ const TestView = ({ projectName, apiBase }) => {
                     )}
                 </div>
 
-                {/* Right: Output Console */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#1e1e1e', borderRadius: '8px', overflow: 'hidden' }}>
                     <div style={{
                         padding: '10px 15px',

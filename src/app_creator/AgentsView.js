@@ -11,7 +11,7 @@ const AgentsView = ({
         return (
             <div style={{ padding: 40, color: '#666', textAlign: 'center' }}>
                 <h3>Agent Execution</h3>
-                <p>No agent activity yet. Click "Create Agents" to start the execution pipeline.</p>
+                <p>No agent activity yet. Click &quot;Generate Code&quot; to start code generation.</p>
             </div>
         );
     }

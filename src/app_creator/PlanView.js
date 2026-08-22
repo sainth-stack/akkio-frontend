@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const PlanView = ({
     plan,
@@ -12,7 +12,10 @@ const PlanView = ({
     onRegeneratePlan,
     isLoading,
     streamingArchitectureText, // New prop
-    onStop // New prop
+    onStop, // New prop
+    pipelineStatus,
+    pipelineError,
+    onRetryPipeline,
 }) => {
     const [activeSection, setActiveSection] = useState('prd');
 
@@ -257,6 +260,43 @@ const PlanView = ({
         </button>
     );
 
+    const FailureBanner = ({ label, onRetry }) => (
+        <div style={{
+            marginBottom: 16,
+            padding: '12px 16px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+        }}>
+            <div style={{ fontSize: 13, color: '#991b1b' }}>
+                <strong>{label}</strong>
+                {pipelineError && <span style={{ marginLeft: 8 }}>{pipelineError.slice(0, 180)}</span>}
+            </div>
+            {onRetry && (
+                <button
+                    type="button"
+                    onClick={onRetry}
+                    style={{
+                        padding: '6px 12px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        backgroundColor: '#dc3545',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                    }}
+                >
+                    Retry
+                </button>
+            )}
+        </div>
+    );
+
     const NextStepButton = ({ onClick, label }) => (
         <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', paddingTop: '24px' }}>
             <button
@@ -268,17 +308,23 @@ const PlanView = ({
         </div>
     );
 
-    const renderPRD = () => (
+    const renderPRD = () => {
+        const prdLoading = isLoading || pipelineStatus === 'PRD_RUNNING';
+
+        return (
         <div style={styles.card}>
+            {pipelineStatus === 'PRD_FAILED' && (
+                <FailureBanner label="PRD generation failed" onRetry={onRetryPipeline} />
+            )}
             <div style={styles.sectionTitle}>
                 <span>Product Requirements Document</span>
-                {prd && !isLoading && <RegenerateButton onClick={onRegeneratePrd} label="Regenerate PRD" />}
+                {prd && !prdLoading && <RegenerateButton onClick={onRegeneratePrd} label="Regenerate PRD" />}
             </div>
 
             {prd ? (
                 <>
                     {renderMarkdown(prd)}
-                    {!isLoading && !generatedUIUX && (
+                    {!prdLoading && !generatedUIUX && (
                         <NextStepButton
                             onClick={() => { setActiveSection('uiux'); onGenerateUIUX(); }}
                             label="Next: Generate UI/UX Design"
@@ -286,17 +332,21 @@ const PlanView = ({
                     )}
                 </>
             ) : (
-                isLoading ?
+                prdLoading ?
                     <LoadingState text="Generating comprehensive requirements..." /> :
                     <EmptyState
                         message="Please enter your app requirements in the chat to start."
                     />
             )}
         </div>
-    );
+        );
+    };
 
     const renderUIUX = () => (
         <div style={styles.card}>
+            {pipelineStatus === 'UIUX_FAILED' && (
+                <FailureBanner label="UI/UX generation failed" onRetry={onGenerateUIUX} />
+            )}
             <div style={styles.sectionTitle}>
                 <span>UI/UX Design</span>
                 {generatedUIUX && !isLoading && <RegenerateButton onClick={onGenerateUIUX} />}
@@ -390,6 +440,9 @@ const PlanView = ({
 
     const renderArchitecture = () => (
         <div style={styles.card}>
+            {pipelineStatus === 'ARCHITECTURE_FAILED' && (
+                <FailureBanner label="Architecture generation failed" onRetry={onGenerateArch} />
+            )}
             <div style={styles.sectionTitle}>
                 <span>System Architecture</span>
                 {generatedArchitecture && !isLoading && <RegenerateButton onClick={onGenerateArch} />}
@@ -419,7 +472,7 @@ const PlanView = ({
                     {!isLoading && (
                         <div style={{ marginTop: '28px', padding: '20px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', textAlign: 'center' }}>
                             <h3 style={{ margin: '0 0 8px 0', color: '#15803d', fontSize: '18px' }}>Ready to Build</h3>
-                            <p style={{ margin: '0', color: '#166534', fontSize: '14px' }}>Architecture is set. Click <strong>Create Agents</strong> in the header above to start the execution pipeline.</p>
+                            <p style={{ margin: '0', color: '#166534', fontSize: '14px' }}>Architecture is set. Click <strong>Generate Code</strong> in the header above.</p>
                         </div>
                     )}
                 </div>
@@ -433,77 +486,6 @@ const PlanView = ({
                             actionText="Generate Architecture"
                         />
                 )
-            )}
-        </div>
-    );
-
-    const renderPlanSteps = () => (
-        <div style={styles.card}>
-            <div style={styles.sectionTitle}>
-                <span>Implementation Roadmap</span>
-                {plan && plan.length > 0 && !isLoading && <RegenerateButton onClick={onRegeneratePlan} label="Regenerate Plan" />}
-            </div>
-
-            {plan && (plan || []).length > 0 ? (
-                <div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {(plan || []).map((step, index) => (
-                            <div key={index} style={{
-                                display: 'flex',
-                                backgroundColor: '#fff',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '8px',
-                                overflow: 'hidden',
-                            }}>
-                                <div style={{
-                                    width: '40px',
-                                    backgroundColor: step.status === 'completed' ? '#dcfce7' : '#f1f5f9',
-                                    color: step.status === 'completed' ? '#166534' : '#64748b',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontWeight: 'bold',
-                                    fontSize: '14px',
-                                    borderRight: '1px solid #e2e8f0'
-                                }}>
-                                    {step.id}
-                                </div>
-                                <div style={{ padding: '16px', flex: 1 }}>
-                                    <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#1e293b' }}>{step.title}</h4>
-                                    <p style={{ margin: 0, fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>{step.description}</p>
-                                </div>
-                                <div style={{ padding: '16px', display: 'flex', alignItems: 'center' }}>
-                                    <span style={{
-                                        padding: '4px 8px',
-                                        borderRadius: '99px',
-                                        fontSize: '11px',
-                                        fontWeight: 600,
-                                        backgroundColor: step.status === 'completed' ? '#dcfce7' : '#fef3c7',
-                                        color: step.status === 'completed' ? '#166534' : '#92400e',
-                                        textTransform: 'uppercase'
-                                    }}>
-                                        {step.status}
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {!isLoading && (
-                        <div style={{ marginTop: '32px', padding: '20px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', textAlign: 'center' }}>
-                            <h3 style={{ margin: '0 0 8px 0', color: '#15803d', fontSize: '18px' }}>Ready to Build</h3>
-                            <p style={{ margin: '0', color: '#166534', fontSize: '14px' }}>The plan is set. Go to the <strong>Build</strong> tab to start the Multi-Agent coding process.</p>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                isLoading && activeSection === 'plan' ?
-                    <LoadingState text="Drafting detailed implementation plan..." /> :
-                    <EmptyState
-                        message="Architecture defined. Ready to plan implementation steps."
-                        action={() => onGeneratePlan()}
-                        actionText="Generate Master Plan"
-                    />
             )}
         </div>
     );

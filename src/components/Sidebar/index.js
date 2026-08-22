@@ -4,13 +4,13 @@ import "./akkioSidebar.scss";
 import "./akkioSidebarLayout.scss";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { IoHome, IoChevronForward } from "react-icons/io5";
-import { FaBrain, FaPuzzlePiece, FaUserGear } from "react-icons/fa6";
+import { FaPuzzlePiece, FaUserGear } from "react-icons/fa6";
 import WorkspaceUsageCard from "./WorkspaceUsageCard";
 import { hasPermission } from "../../utils/auth";
 
 const MENU_ITEMS = [
   { name: 'Home', icon: IoHome, path: '/welcome', id: 1, permission: 'home' },
-  { name: 'Multi Agent', icon: FaBrain, path: '/multi-agent', permission: 'reports' },
+  // { name: 'Multi Agent', icon: FaBrain, path: '/multi-agent', permission: 'reports' },
   { name: 'App Builder', icon: FaPuzzlePiece, path: '/app-builder', permission: 'reports' },
 ];
 

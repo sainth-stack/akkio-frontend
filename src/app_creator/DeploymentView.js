@@ -1,36 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../utils/api';
 import Spinner from 'react-bootstrap/Spinner';
 import './DeploymentView.css';
+
+const IN_PROGRESS = new Set(['QUEUED', 'BUILDING', 'TESTING', 'DEPLOYING', 'deploying']);
+const TERMINAL = new Set(['RUNNING', 'FAILED', 'deployed', 'failed']);
 
 const DeploymentView = ({ projectName, appId }) => {
     const [isDeploying, setIsDeploying] = useState(false);
     const [deployment, setDeployment] = useState(null);
     const [error, setError] = useState(null);
-    const [pollInterval, setPollInterval] = useState(null);
-    
+    const pollRef = useRef(null);
+
     const [isPushingToGithub, setIsPushingToGithub] = useState(false);
     const [githubError, setGithubError] = useState(null);
     const [githubSuccess, setGithubSuccess] = useState(null);
     const [showGithubForm, setShowGithubForm] = useState(false);
     const [githubRepoUrl, setGithubRepoUrl] = useState('');
-    const [createNewRepo, setCreateNewRepo] = useState(false);
     const [newRepoName, setNewRepoName] = useState('');
+    const [createNewRepo, setCreateNewRepo] = useState(false);
+    const [toast, setToast] = useState(null);
 
-    useEffect(() => {
-        if (appId || projectName) {
-            loadDeploymentStatus();
+    const showToast = (message, type = 'error') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 6000);
+    };
+
+    const stopPolling = useCallback(() => {
+        if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
         }
-        
-        return () => {
-            if (pollInterval) {
-                clearInterval(pollInterval);
-            }
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [appId, projectName]);
+    }, []);
 
-    const loadDeploymentStatus = async () => {
+    const loadDeploymentStatus = useCallback(async () => {
         try {
             const params = {};
             if (appId) params.app_id = appId;
@@ -38,37 +41,51 @@ const DeploymentView = ({ projectName, appId }) => {
 
             const response = await api.get('/deployment/status', { params });
             const data = response.data;
-            if (data.deployment_status !== 'not_deployed') {
-                setDeployment(data);
-                if (data.deployment_status === 'deploying') {
-                    startPolling();
-                }
+
+            if (data.deployment_status === 'not_deployed') {
+                setDeployment(null);
+                return null;
             }
+
+            setDeployment(data);
+
+            const status = data.deployment_status;
+            if (TERMINAL.has(status)) {
+                stopPolling();
+                setIsDeploying(false);
+            } else if (IN_PROGRESS.has(status)) {
+                setIsDeploying(true);
+            }
+
+            return data;
         } catch (err) {
             console.error('Error loading deployment status:', err);
+            const msg = err.response?.data?.detail || err.message || 'Failed to load deployment status';
+            setError(msg);
+            showToast(msg, 'error');
+            return null;
         }
-    };
+    }, [appId, projectName, stopPolling]);
 
-    const startPolling = () => {
-        if (pollInterval) {
-            clearInterval(pollInterval);
-        }
-
-        const interval = setInterval(async () => {
-            await loadDeploymentStatus();
+    const startPolling = useCallback(() => {
+        stopPolling();
+        pollRef.current = setInterval(() => {
+            loadDeploymentStatus();
         }, 3000);
+    }, [loadDeploymentStatus, stopPolling]);
 
-        setPollInterval(interval);
-    };
-
-    const stopPolling = () => {
-        if (pollInterval) {
-            clearInterval(pollInterval);
-            setPollInterval(null);
+    useEffect(() => {
+        if (appId || projectName) {
+            loadDeploymentStatus().then((data) => {
+                if (data && IN_PROGRESS.has(data.deployment_status)) {
+                    startPolling();
+                }
+            });
         }
-    };
+        return () => stopPolling();
+    }, [appId, projectName, loadDeploymentStatus, startPolling, stopPolling]);
 
-    const handleDeploy = async () => {
+    const handleDeploy = async (rebuild = false) => {
         if (!projectName) {
             setError('Missing required information for deployment');
             return;
@@ -78,17 +95,14 @@ const DeploymentView = ({ projectName, appId }) => {
         setError(null);
 
         try {
-            const response = await api.post('/deployment/deploy', {
+            await api.post('/deployment/deploy', {
                 app_id: appId || null,
                 project_name: projectName,
+                rebuild,
             });
 
-            if (response.status === 200) {
-                startPolling();
-            } else {
-                setError(response.data?.detail || 'Deployment failed');
-                setIsDeploying(false);
-            }
+            await loadDeploymentStatus();
+            startPolling();
         } catch (err) {
             setError(err.response?.data?.detail || `Deployment error: ${err.message}`);
             setIsDeploying(false);
@@ -105,17 +119,13 @@ const DeploymentView = ({ projectName, appId }) => {
         setError(null);
 
         try {
-            const response = await api.post('/deployment/redeploy', {
+            await api.post('/deployment/redeploy', {
                 app_id: appId || null,
                 project_name: projectName,
             });
 
-            if (response.status === 200) {
-                startPolling();
-            } else {
-                setError(response.data?.detail || 'Redeployment failed');
-                setIsDeploying(false);
-            }
+            await loadDeploymentStatus();
+            startPolling();
         } catch (err) {
             setError(err.response?.data?.detail || `Redeployment error: ${err.message}`);
             setIsDeploying(false);
@@ -166,26 +176,27 @@ const DeploymentView = ({ projectName, appId }) => {
         }
     };
 
-    useEffect(() => {
-        if (deployment) {
-            if (deployment.deployment_status === 'deployed' || deployment.deployment_status === 'failed') {
-                stopPolling();
-                setIsDeploying(false);
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [deployment]);
+    const normalizeStatus = (status) => {
+        if (status === 'deployed') return 'RUNNING';
+        if (status === 'failed') return 'FAILED';
+        if (status === 'deploying') return 'DEPLOYING';
+        return status;
+    };
 
     const getStatusBadge = (status) => {
+        const normalized = normalizeStatus(status);
         const badges = {
-            'deploying': { color: '#ffc107', text: 'Deploying' },
-            'deployed': { color: '#28a745', text: 'Live' },
-            'failed': { color: '#dc3545', text: 'Failed' },
-            'pending': { color: '#6c757d', text: 'Pending' }
+            QUEUED: { color: '#6c757d', text: 'Queued' },
+            BUILDING: { color: '#fd7e14', text: 'Building' },
+            TESTING: { color: '#17a2b8', text: 'Testing' },
+            DEPLOYING: { color: '#ffc107', text: 'Deploying' },
+            RUNNING: { color: '#28a745', text: 'Live' },
+            FAILED: { color: '#dc3545', text: 'Failed' },
+            pending: { color: '#6c757d', text: 'Pending' },
         };
-        
-        const badge = badges[status] || badges['pending'];
-        
+
+        const badge = badges[normalized] || badges.pending;
+
         return (
             <span style={{
                 display: 'inline-flex',
@@ -202,17 +213,47 @@ const DeploymentView = ({ projectName, appId }) => {
         );
     };
 
+    const liveUrl = deployment?.live_url || deployment?.frontend_url;
+    const displayStatus = deployment ? normalizeStatus(deployment.deployment_status) : null;
+    const showProgress = displayStatus && IN_PROGRESS.has(displayStatus);
+    const isLive = displayStatus === 'RUNNING';
+    const isFailed = displayStatus === 'FAILED';
+
     return (
         <div className="deployment-view">
             <div className="deployment-header">
                 <h3>Deployment</h3>
-                <p>Deploy your generated app to EC2 and push to GitHub</p>
+                <p>Deploy your generated app on this Hostinger VPS and get a live URL</p>
             </div>
 
+            {toast && (
+                <div style={{
+                    marginBottom: 16,
+                    padding: '12px 16px',
+                    borderRadius: 6,
+                    fontSize: 13,
+                    backgroundColor: toast.type === 'error' ? '#fef2f2' : '#ecfdf5',
+                    border: `1px solid ${toast.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
+                    color: toast.type === 'error' ? '#991b1b' : '#166534',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                }}>
+                    <span>{toast.message}</span>
+                    <button
+                        type="button"
+                        onClick={() => setToast(null)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }}
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
             {!projectName && (
-                <div className="deployment-debug" style={{ 
-                    padding: '12px', 
-                    background: '#fff3cd', 
+                <div className="deployment-debug" style={{
+                    padding: '12px',
+                    background: '#fff3cd',
                     border: '1px solid #ffc107',
                     borderRadius: '4px',
                     marginBottom: '16px',
@@ -224,23 +265,37 @@ const DeploymentView = ({ projectName, appId }) => {
                 </div>
             )}
 
+            {deployment?.build_status && deployment.build_status !== 'BUILD_SUCCESS' && !isLive && (
+                <div style={{
+                    padding: '12px',
+                    background: '#fff7ed',
+                    border: '1px solid #fdba74',
+                    borderRadius: '4px',
+                    marginBottom: '16px',
+                    fontSize: '13px',
+                    color: '#9a3412',
+                }}>
+                    Run the app in the <strong>Build</strong> tab first (build must succeed), or redeploy with rebuild.
+                </div>
+            )}
+
             {error && (
                 <div className="deployment-error">
                     <strong>Error:</strong> {error}
                 </div>
             )}
 
-            <div className="github-section" style={{ 
-                marginTop: '24px', 
-                padding: '20px', 
-                background: '#f8f9fa', 
+            <div className="github-section" style={{
+                marginTop: '24px',
+                padding: '20px',
+                background: '#f8f9fa',
                 borderRadius: '8px',
                 border: '1px solid #dee2e6'
             }}>
                 <h4 style={{ marginBottom: '12px', fontSize: '16px', fontWeight: '600' }}>
                     Push to GitHub
                 </h4>
-                
+
                 {githubSuccess && (
                     <div style={{
                         padding: '12px',
@@ -393,13 +448,13 @@ const DeploymentView = ({ projectName, appId }) => {
                 )}
             </div>
 
-            {!deployment || deployment.deployment_status === 'not_deployed' ? (
+            {!deployment ? (
                 <div className="deployment-empty">
                     <h4>Ready to Deploy</h4>
-                    <p>Deploy your app to EC2 and get live URLs</p>
+                    <p>Deploy on this server at <code>http://YOUR_IP:8000/app/{projectName || 'project'}</code></p>
                     <button
                         className="btn-deploy"
-                        onClick={handleDeploy}
+                        onClick={() => handleDeploy(false)}
                         disabled={isDeploying || !projectName}
                     >
                         {isDeploying ? (
@@ -408,7 +463,7 @@ const DeploymentView = ({ projectName, appId }) => {
                                 Deploying...
                             </>
                         ) : (
-                            'Deploy to EC2'
+                            'Deploy to Hostinger'
                         )}
                     </button>
                     {!projectName && (
@@ -424,47 +479,69 @@ const DeploymentView = ({ projectName, appId }) => {
                         {getStatusBadge(deployment.deployment_status)}
                     </div>
 
-                    {deployment.deployment_status === 'deploying' && (
+                    {showProgress && (
                         <div className="deployment-progress">
                             <Spinner animation="border" size="sm" />
-                            <span>Deploying your app to EC2... This may take a few minutes.</span>
+                            <span>
+                                {displayStatus === 'QUEUED' && 'Waiting to start...'}
+                                {displayStatus === 'BUILDING' && 'Building frontend (npm)...'}
+                                {displayStatus === 'TESTING' && 'Running tests...'}
+                                {displayStatus === 'DEPLOYING' && 'Verifying health check...'}
+                            </span>
                         </div>
                     )}
 
-                    {deployment.deployment_status === 'deployed' && (
+                    {deployment.deploy_log && (
+                        <div style={{ marginTop: 16 }}>
+                            <strong style={{ fontSize: 13 }}>Deploy log</strong>
+                            <pre style={{
+                                marginTop: 8,
+                                background: '#1e1e1e',
+                                color: '#d4d4d4',
+                                padding: 12,
+                                borderRadius: 6,
+                                fontSize: 12,
+                                maxHeight: 240,
+                                overflow: 'auto',
+                                whiteSpace: 'pre-wrap',
+                            }}>
+                                {deployment.deploy_log}
+                            </pre>
+                        </div>
+                    )}
+
+                    {isLive && liveUrl && (
                         <>
                             <div className="deployment-urls">
-                                {deployment.frontend_url && (
-                                    <div className="url-card">
-                                        <div className="url-label">
-                                            <strong>Frontend URL</strong>
-                                        </div>
-                                        <div className="url-content">
-                                            <a
-                                                href={deployment.frontend_url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="url-link"
-                                            >
-                                                {deployment.frontend_url}
-                                            </a>
-                                            <button
-                                                className="btn-copy"
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(deployment.frontend_url);
-                                                    alert('Copied to clipboard');
-                                                }}
-                                            >
-                                                Copy
-                                            </button>
-                                        </div>
+                                <div className="url-card">
+                                    <div className="url-label">
+                                        <strong>Live URL</strong>
                                     </div>
-                                )}
+                                    <div className="url-content">
+                                        <a
+                                            href={liveUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="url-link"
+                                        >
+                                            {liveUrl}
+                                        </a>
+                                        <button
+                                            className="btn-copy"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(liveUrl);
+                                                alert('Copied to clipboard');
+                                            }}
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
 
                                 {deployment.backend_url && (
                                     <div className="url-card">
                                         <div className="url-label">
-                                            <strong>Backend URL</strong>
+                                            <strong>Backend API</strong>
                                         </div>
                                         <div className="url-content">
                                             <a
@@ -475,15 +552,6 @@ const DeploymentView = ({ projectName, appId }) => {
                                             >
                                                 {deployment.backend_url}
                                             </a>
-                                            <button
-                                                className="btn-copy"
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(deployment.backend_url);
-                                                    alert('Copied to clipboard');
-                                                }}
-                                            >
-                                                Copy
-                                            </button>
                                         </div>
                                     </div>
                                 )}
@@ -495,13 +563,13 @@ const DeploymentView = ({ projectName, appId }) => {
                                     onClick={handleRedeploy}
                                     disabled={isDeploying}
                                 >
-                                    Redeploy
+                                    Redeploy (rebuild)
                                 </button>
                             </div>
                         </>
                     )}
 
-                    {deployment.deployment_status === 'failed' && (
+                    {isFailed && (
                         <>
                             {deployment.error_message && (
                                 <div className="deployment-error">
@@ -512,7 +580,7 @@ const DeploymentView = ({ projectName, appId }) => {
                             <div className="deployment-actions">
                                 <button
                                     className="btn-retry"
-                                    onClick={handleDeploy}
+                                    onClick={() => handleDeploy(true)}
                                     disabled={isDeploying}
                                 >
                                     Retry Deployment

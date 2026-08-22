@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 
 const FileTreeItem = ({ item, onSelect, selectedPath }) => {
     const [isOpen, setIsOpen] = useState(true);

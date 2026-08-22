@@ -2,11 +2,83 @@ import React from 'react';
 
 import Spinner from 'react-bootstrap/Spinner';
 
-const AppView = ({ projectName, runState, isRunLoading, logs, appRefreshKey = 0 }) => {
+const AppView = ({
+    projectName,
+    runState,
+    isRunLoading,
+    logs,
+    appRefreshKey = 0,
+    buildStatus,
+    buildError,
+    buildLog,
+    onRetryRun,
+}) => {
+    const previewUrlWithAuth = () => {
+        const base = runState?.frontend_url;
+        if (!base) return null;
+        try {
+            const token = localStorage.getItem('token') || '';
+            if (!token) return base;
+            const sep = base.includes('?') ? '&' : '?';
+            return `${base}${sep}access_token=${encodeURIComponent(token)}`;
+        } catch {
+            return base;
+        }
+    };
+
+    const iframeSrc = previewUrlWithAuth();
     if (!projectName) {
         return (
             <div style={{ padding: 20, color: '#666' }}>
                 Generate an app first.
+            </div>
+        );
+    }
+
+    if (buildStatus === 'BUILD_FAILED') {
+        const failureLog = buildLog || (logs && logs.length ? logs.join('\n') : '');
+        return (
+            <div style={{ padding: 20, color: '#334155' }}>
+                <h5 style={{ color: '#b91c1c', marginBottom: 12 }}>Build failed</h5>
+                {buildError && (
+                    <p style={{ marginBottom: 12, fontSize: 14 }}>{buildError}</p>
+                )}
+                {failureLog && (
+                    <pre style={{
+                        backgroundColor: '#1e1e1e',
+                        color: '#d4d4d4',
+                        padding: 16,
+                        borderRadius: 8,
+                        fontSize: 12,
+                        maxHeight: 320,
+                        overflow: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                    }}>
+                        {failureLog}
+                    </pre>
+                )}
+                <p style={{ marginTop: 16, fontSize: 13, color: '#64748b' }}>
+                    Fix the issue above, then click <strong>Run App</strong> in the Build tab header to try again.
+                </p>
+                {onRetryRun && (
+                    <button
+                        type="button"
+                        onClick={onRetryRun}
+                        style={{
+                            marginTop: 12,
+                            padding: '8px 16px',
+                            backgroundColor: '#007bff',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                        }}
+                    >
+                        Retry Run
+                    </button>
+                )}
             </div>
         );
     }
@@ -84,10 +156,10 @@ const AppView = ({ projectName, runState, isRunLoading, logs, appRefreshKey = 0 
         );
     }
 
-    if (!runState?.frontend_url) {
+    if (!iframeSrc) {
         return (
             <div style={{ padding: 20, color: '#666' }}>
-                Click <strong>Run</strong> in the Code tab to start the generated app.
+                Click <strong>Run App</strong> in the Build tab header to build and preview your generated app.
             </div>
         );
     }
@@ -99,7 +171,7 @@ const AppView = ({ projectName, runState, isRunLoading, logs, appRefreshKey = 0 
                     Running: <span style={{ fontFamily: 'monospace' }}>{runState.frontend_url}</span>
                 </div>
                 <div className="app-view-actions">
-                    <a href={runState.frontend_url} target="_blank" rel="noreferrer">
+                    <a href={iframeSrc} target="_blank" rel="noreferrer">
                         Open in new tab
                     </a>
                 </div>
@@ -107,7 +179,7 @@ const AppView = ({ projectName, runState, isRunLoading, logs, appRefreshKey = 0 
             <iframe
                 key={appRefreshKey}
                 title="Generated App"
-                src={runState.frontend_url}
+                src={iframeSrc}
                 className="app-iframe"
             />
         </div>
@@ -115,4 +187,3 @@ const AppView = ({ projectName, runState, isRunLoading, logs, appRefreshKey = 0 
 };
 
 export default AppView;
-

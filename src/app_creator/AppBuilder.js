@@ -6,6 +6,38 @@ import TabPanel from './TabPanel';
 import './AppBuilder.css';
 import api, { apiFetch, wsUrl, wsAuthPayload } from '../utils/api';
 
+const PIPELINE_RUNNING = [
+    'PRD_RUNNING', 'UIUX_RUNNING', 'ARCHITECTURE_RUNNING', 'PLAN_RUNNING', 'CODEGEN_RUNNING',
+];
+const PIPELINE_FAILED = [
+    'PRD_FAILED', 'UIUX_FAILED', 'ARCHITECTURE_FAILED', 'PLAN_FAILED', 'CODEGEN_FAILED',
+];
+
+const normalizeAgentsState = (agents) => {
+    if (!agents || typeof agents !== 'object') return agents;
+    const out = {};
+    for (const [key, val] of Object.entries(agents)) {
+        out[key] = val?.status === 'running'
+            ? { ...val, status: 'interrupted', message: val.message || 'Interrupted (page reload)' }
+            : val;
+    }
+    return out;
+};
+
+const deriveCurrentPhase = (app) => {
+    const code = app.generated_code_json;
+    const hasCode = code && typeof code === 'object' && Object.keys(code).length > 0;
+    if (hasCode || app.pipeline_status === 'CODEGEN_COMPLETE') return 'code_generated';
+    if (app.agents_state && Object.keys(app.agents_state).length > 0) {
+        const values = Object.values(app.agents_state);
+        if (values.every(a => a?.status === 'complete')) return 'agents_complete';
+        if (values.some(a => a?.status === 'running' || a?.status === 'interrupted')) return 'agents';
+    }
+    if (app.pipeline_status === 'CODEGEN_RUNNING') return 'agents';
+    if (app.plan?.length || app.architecture || app.generated_uiux || app.prd) return 'prd_complete';
+    return 'idle';
+};
+
 const AppBuilder = () => {
     const { id: editId } = useParams();
     const navigate = useNavigate();
@@ -45,6 +77,11 @@ const AppBuilder = () => {
             return false;
         }
     });
+    const [pipelineStatus, setPipelineStatus] = useState(null);
+    const [pipelineError, setPipelineError] = useState(null);
+    const [buildStatus, setBuildStatus] = useState(null);
+    const [buildError, setBuildError] = useState(null);
+    const [buildLog, setBuildLog] = useState('');
 
     const updateAppInDb = useCallback(async (updates) => {
         const id = appIdRef.current;
@@ -58,9 +95,10 @@ const AppBuilder = () => {
         }
     }, []);
 
-    const agentsWsRef = useRef(null); // WebSocket reference for agents
     const codegenWsRef = useRef(null); // WebSocket reference for code generation
+    const updateCodeWsRef = useRef(null);
     const abortControllerRef = useRef(null);
+    const planningSessionRef = useRef(false);
     const appIdRef = useRef(null); // current app id for section-wise save
     const agentsAccumulatorRef = useRef({}); // mirror of agents state for reliable save
     useEffect(() => { appIdRef.current = appId; }, [appId]);
@@ -75,21 +113,6 @@ const AppBuilder = () => {
     const [generatedUIUX, setGeneratedUIUX] = useState('');
     const [clarifiedRequirement, setClarifiedRequirement] = useState('');
 
-    // Generic function to append to AI message
-    const appendAi = useRef((delta) => {
-        setMessages(prev => {
-            if (prev.length === 0) return prev;
-            const next = [...prev];
-            const lastIdx = next.map(m => m.role).lastIndexOf('ai');
-            if (lastIdx === -1) return prev;
-            next[lastIdx] = { ...next[lastIdx], content: (next[lastIdx].content || "") + delta };
-            return next;
-        });
-    }).current;
-
-    // We can't use useRef for state updater inside async usually if state changes. 
-    // Let's use a useCallback that gets fresh state or just use the setMessages functional update as before.
-
     // Renamed to be specific to PRD start
     const handleStartPlanning = async (text) => {
         // Cancel previous if any
@@ -97,11 +120,14 @@ const AppBuilder = () => {
             abortControllerRef.current.abort();
         }
         abortControllerRef.current = new AbortController();
+        planningSessionRef.current = true;
 
         const newMessage = { role: 'user', content: text };
         setMessages(prev => [...prev, newMessage, { role: 'ai', content: "" }]);
         setIsLoading(true);
         setActiveTab('Plan');
+        setPipelineStatus('PRD_RUNNING');
+        setPipelineError(null);
         // Reset all plan states
         setPlan([]);
         setPrd('');
@@ -152,7 +178,6 @@ const AppBuilder = () => {
                 if (createData.status === 'success' && createData.app?.id) {
                     createdAppId = createData.app.id;
                     setAppId(createData.app.id);
-                    navigate(`/app-builder/edit/${createdAppId}`, { replace: true });
                 }
             }
         } catch (e) {
@@ -165,15 +190,21 @@ const AppBuilder = () => {
             append("Starting PRD generation...\n\n");
 
             // Call new planning API for PRD
-            await streamPlanningStep('prd', { requirement: text }, append, (data) => {
-                if (data.event === 'prd_chunk') setPrd(prev => prev + data.data);
+            await streamPlanningStep('prd', { requirement: text, app_id: createdAppId || appId }, append, (data) => {
+                if (data.event === 'prd_chunk') setPrd(prev => prev + (data.data || ''));
                 if (data.event === 'prd_complete') {
                     lastPrd = data.data || '';
                     setPrd(lastPrd);
                 }
             });
 
+            if (!lastPrd.trim()) {
+                throw new Error('PRD generation returned empty content. Check your OpenAI API key in Settings or akkio-fastapi/.env.');
+            }
+
             append("PRD complete. Please review and proceed to UI/UX Design.\n");
+            setPipelineStatus('PRD_COMPLETE');
+            setPipelineError(null);
 
             // Update app in DB with PRD
             if (createdAppId && lastPrd) {
@@ -184,16 +215,23 @@ const AppBuilder = () => {
                 }
             }
 
+            if (createdAppId && !editId) {
+                navigate(`/app-builder/edit/${createdAppId}`, { replace: true });
+            }
+
         } catch (error) {
             if (error.name === 'AbortError') {
                 append("\n🛑 Process stopped by user.\n");
             } else {
                 console.error('Error in PRD generation:', error);
                 append(`\nError: ${error.message}\n`);
+                setPipelineStatus('PRD_FAILED');
+                setPipelineError(error.message);
             }
         } finally {
             setIsLoading(false);
             abortControllerRef.current = null;
+            planningSessionRef.current = false;
         }
     };
 
@@ -211,6 +249,7 @@ const AppBuilder = () => {
         const socketUrl = wsUrl(`/agents/update-code-ws/${sessionId}`);
 
         const ws = new WebSocket(socketUrl);
+        updateCodeWsRef.current = ws;
 
         ws.onopen = () => {
             ws.send(JSON.stringify(wsAuthPayload({
@@ -319,6 +358,7 @@ const AppBuilder = () => {
 
                     setIsLoading(false);
                     setIsUpdateCodeInProgress(false);
+                    updateCodeWsRef.current = null;
                     ws.close();
                 }
 
@@ -333,6 +373,7 @@ const AppBuilder = () => {
                         return next;
                     });
                     setIsLoading(false);
+                    updateCodeWsRef.current = null;
                     ws.close();
                 }
 
@@ -353,13 +394,14 @@ const AppBuilder = () => {
             });
             setIsLoading(false);
             setIsUpdateCodeInProgress(false);
+            updateCodeWsRef.current = null;
         };
 
         ws.onclose = () => {
-            // Just in case it closed unexpectedly
+            updateCodeWsRef.current = null;
             setIsLoading(false);
             setIsUpdateCodeInProgress(false);
-        }
+        };
     };
 
     const handleChatMessage = (text) => {
@@ -434,16 +476,16 @@ const AppBuilder = () => {
 
                 for (const line of lines) {
                     if (!line.trim()) continue;
+                    let data;
                     try {
-                        const data = JSON.parse(line);
-                        if (data.event === 'start') append(`${data.message}\n`);
-                        if (data.event === 'error') throw new Error(data.message);
-
-                        onData(data); // Callback for specific data handling
-
-                    } catch (e) {
-                        console.error("JSON parse error", e);
+                        data = JSON.parse(line);
+                    } catch (parseErr) {
+                        console.error('Planning stream JSON parse error', parseErr, line.slice(0, 120));
+                        continue;
                     }
+                    if (data.event === 'start') append(`${data.message}\n`);
+                    if (data.event === 'error') throw new Error(data.message || `Failed to generate ${step}`);
+                    onData(data);
                 }
             }
         } catch (e) {
@@ -467,7 +509,7 @@ const AppBuilder = () => {
         let lastUIUX = '';
         try {
             append("\nStarting UI/UX Design...\n");
-            await streamPlanningStep('uiux', { requirement: currentRequirement, prd }, append, (data) => {
+            await streamPlanningStep('uiux', { requirement: currentRequirement, prd, app_id: appId }, append, (data) => {
                 if (data.event === 'uiux_chunk') setGeneratedUIUX(prev => prev + data.data);
                 if (data.event === 'uiux_complete') {
                     lastUIUX = data.data || '';
@@ -475,10 +517,16 @@ const AppBuilder = () => {
                 }
             });
             append("UI/UX Design complete.\n");
+            setPipelineStatus('UIUX_COMPLETE');
+            setPipelineError(null);
             if (lastUIUX) updateAppInDb({ generated_uiux: lastUIUX });
         } catch (e) {
             if (e.name === 'AbortError') append("\n🛑 Stopped by user.\n");
-            else append(`Error: ${e.message}\n`);
+            else {
+                append(`Error: ${e.message}\n`);
+                setPipelineStatus('UIUX_FAILED');
+                setPipelineError(e.message);
+            }
         } finally {
             setIsLoading(false);
             abortControllerRef.current = null;
@@ -506,7 +554,7 @@ const AppBuilder = () => {
         let lastArch = null;
         try {
             append("\nStarting Architectural Design...\n");
-            await streamPlanningStep('architecture', { requirement: currentRequirement, prd, uiux: generatedUIUX }, append, (data) => {
+            await streamPlanningStep('architecture', { requirement: currentRequirement, prd, uiux: generatedUIUX, app_id: appId }, append, (data) => {
                 if (data.event === 'architecture_chunk') setStreamingArchitectureText(prev => prev + data.data);
                 if (data.event === 'architecture_complete') {
                     lastArch = data.data || null;
@@ -515,10 +563,16 @@ const AppBuilder = () => {
                 }
             });
             append("Architecture complete.\n");
+            setPipelineStatus('ARCHITECTURE_COMPLETE');
+            setPipelineError(null);
             if (lastArch != null) updateAppInDb({ architecture: lastArch });
         } catch (e) {
             if (e.name === 'AbortError') append("\n🛑 Stopped by user.\n");
-            else append(`Error: ${e.message}\n`);
+            else {
+                append(`Error: ${e.message}\n`);
+                setPipelineStatus('ARCHITECTURE_FAILED');
+                setPipelineError(e.message);
+            }
         } finally {
             setIsLoading(false);
             abortControllerRef.current = null;
@@ -541,7 +595,7 @@ const AppBuilder = () => {
         let lastPlan = null;
         try {
             append("\nStarting Implementation Plan...\n");
-            await streamPlanningStep('plan', { requirement: currentRequirement, prd, architecture: generatedArchitecture }, append, (data) => {
+            await streamPlanningStep('plan', { requirement: currentRequirement, prd, architecture: generatedArchitecture, app_id: appId }, append, (data) => {
                 if (data.event === 'plan_step') setPlan(prev => [...prev, data.data]);
                 if (data.event === 'plan_complete') {
                     lastPlan = data.data || null;
@@ -550,10 +604,16 @@ const AppBuilder = () => {
                 }
             });
             append("Plan complete. Ready to build.\n");
+            setPipelineStatus('PLAN_COMPLETE');
+            setPipelineError(null);
             if (lastPlan != null) updateAppInDb({ plan: lastPlan });
         } catch (e) {
             if (e.name === 'AbortError') append("\n🛑 Stopped by user.\n");
-            else append(`Error: ${e.message}\n`);
+            else {
+                append(`Error: ${e.message}\n`);
+                setPipelineStatus('PLAN_FAILED');
+                setPipelineError(e.message);
+            }
         } finally {
             setIsLoading(false);
             abortControllerRef.current = null;
@@ -561,8 +621,21 @@ const AppBuilder = () => {
     };
 
     const handleCreateAgents = async () => {
+        if (!generatedArchitecture) {
+            alert('Complete Architecture in the Plan tab before generating code.');
+            setActiveTab('Plan');
+            return;
+        }
+        if (!projectName) {
+            alert('Missing project name.');
+            return;
+        }
+
         setIsLoading(true);
+        setIsCodegenLoading(true);
         setCurrentPhase('agents');
+        setPipelineStatus('CODEGEN_RUNNING');
+        setPipelineError(null);
         setActiveTab('Build');
         setActiveBuildTab('Multi Agents');
 
@@ -578,222 +651,29 @@ const AppBuilder = () => {
         };
 
         try {
-            if (generatedArchitecture) {
-                appendAi("\n\nGenerating code from your PRD, UI/UX, and architecture...\n\n");
-                await executeCodegenWithWebSocket(
-                    clarifiedRequirement || currentRequirement,
-                    generatedPlan,
-                    generatedArchitecture,
-                    projectName,
-                    appendAi
-                );
-                appendAi("\nCode generation complete. Review files in the Code tab or click Run App.\n");
-                setCurrentPhase('code_generated');
-                setActiveBuildTab('Code');
-            } else {
-                appendAi("\n\nStarting agent execution...\n\n");
-                await executeAgentsWithWebSocket(currentRequirement, generatedPlan, projectName, prd, appendAi);
-            }
+            appendAi("\n\nGenerating code from your PRD, UI/UX, and architecture...\n\n");
+            await executeCodegenWithWebSocket(
+                clarifiedRequirement || currentRequirement,
+                generatedPlan,
+                generatedArchitecture,
+                projectName,
+                prd,
+                generatedUIUX || "",
+                appendAi
+            );
+            appendAi("\nCode generation complete. Review files in the Code tab or click Run App.\n");
+            setCurrentPhase('code_generated');
+            setActiveBuildTab('Code');
         } catch (error) {
-            console.error('Error in build pipeline:', error);
+            console.error('Error in code generation:', error);
             appendAi(`\nError: ${error.message}\n`);
+            setPipelineStatus('CODEGEN_FAILED');
+            setPipelineError(error.message);
             setCurrentPhase('prd_complete');
         } finally {
             setIsLoading(false);
+            setIsCodegenLoading(false);
         }
-    };
-
-    const executeAgentsWithWebSocket = async (requirement, plan, projectName, prdText, appendAi) => {
-        return new Promise((resolve, reject) => {
-            agentsAccumulatorRef.current = {}; // reset for fresh run
-            let lastClarifiedRequirement = requirement;
-            const sessionId = `session_${Date.now()}`;
-            const socketUrl = wsUrl(`/agents/execute/${sessionId}`);
-
-            appendAi(`Connecting to agent execution service...\n`);
-
-            const ws = new WebSocket(socketUrl);
-            agentsWsRef.current = ws;
-
-            ws.onopen = () => {
-                appendAi("Connected to agents.\n\n");
-
-                ws.send(JSON.stringify(wsAuthPayload({
-                    requirement,
-                    plan,
-                    prd: prdText || "",
-                    uiux: generatedUIUX || "",
-                    architecture: generatedArchitecture || {},
-                    project_name: projectName,
-                    app_id: appId || null,
-                })));
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-
-                    if (data.project_name && data.project_name !== projectName) {
-                        setProjectName(data.project_name);
-                    }
-
-                    if (data.event === 'execution_start') {
-                        appendAi(`${data.message}\n\n`);
-                    }
-
-                    if (data.event === 'agent_start') {
-                        const next = {
-                            ...agentsAccumulatorRef.current,
-                            [data.agent]: {
-                                status: 'running',
-                                message: data.message,
-                                progress: [{ type: 'start', text: data.message, timestamp: Date.now() }],
-                                started_at: Date.now()
-                            }
-                        };
-                        agentsAccumulatorRef.current = next;
-                        setAgents(next);
-                        appendAi(`${data.agent}: ${data.message}\n`);
-                    }
-
-                    if (data.event === 'agent_progress') {
-                        const prev = agentsAccumulatorRef.current;
-                        const next = {
-                            ...prev,
-                            [data.agent]: {
-                                ...prev[data.agent],
-                                message: data.message,
-                                progress: [
-                                    ...(prev[data.agent]?.progress || []),
-                                    { type: 'progress', text: data.message, timestamp: Date.now() }
-                                ]
-                            }
-                        };
-                        agentsAccumulatorRef.current = next;
-                        setAgents(next);
-                        appendAi(`  ${data.message}\n`);
-                    }
-
-                    if (data.event === 'agent_complete') {
-                        const prev = agentsAccumulatorRef.current;
-                        const next = {
-                            ...prev,
-                            [data.agent]: {
-                                ...prev[data.agent],
-                                status: 'complete',
-                                message: data.message,
-                                data: data.data,
-                                progress: [
-                                    ...(prev[data.agent]?.progress || []),
-                                    { type: 'complete', text: data.message, timestamp: Date.now() }
-                                ],
-                                completed_at: Date.now()
-                            }
-                        };
-                        agentsAccumulatorRef.current = next;
-                        setAgents(next);
-                        appendAi(`${data.agent}: ${data.message}\n\n`);
-
-                        if (data.agent === 'requirement_agent' && data.data) {
-                            lastClarifiedRequirement = data.data;
-                            setClarifiedRequirement(data.data);
-                        }
-
-                        // Save architecture
-                        if ((data.agent === 'planning_agent_step3_arch' || data.agent === 'architecture_agent') && data.data) {
-                            setGeneratedArchitecture(data.data);
-                        }
-
-                        // Coding agent complete: sync files and switch tab
-                        if (data.agent === 'coding_agent' && data.data) {
-                            const responseData = data.data;
-                            if (responseData.updated_files && responseData.updated_files.length > 0) {
-                                setFiles(prev => {
-                                    const next = { ...prev };
-                                    responseData.updated_files.forEach(f => {
-                                        delete next[f];
-                                    });
-                                    return next;
-                                });
-                            }
-                            // Proactively reload tree for a responsive feel
-                            if (data.project_name) loadProjectTree(data.project_name);
-
-                            // Switch to Code tab
-                            setActiveTab('Build');
-                            setActiveBuildTab('Code');
-                        }
-                    }
-
-                    if (data.event === 'agent_error') {
-                        const prev = agentsAccumulatorRef.current;
-                        const next = {
-                            ...prev,
-                            [data.agent]: {
-                                ...prev[data.agent],
-                                status: 'error',
-                                error: data.error
-                            }
-                        };
-                        agentsAccumulatorRef.current = next;
-                        setAgents(next);
-                        appendAi(`${data.agent} error: ${data.error}\n\n`);
-                    }
-
-                    if (data.event === 'all_complete') {
-                        appendAi(`\n${data.message}\n`);
-                        appendAi(`Project: ${data.data.project_name}\n`);
-                        if (data.data?.files_count) {
-                            appendAi(`Files generated: ${data.data.files_count}\n`);
-                        }
-                        appendAi("\n");
-                        appendAi("All agents complete. You can now test or run the application.\n");
-                        setCurrentPhase('agents_complete');
-
-                        // Load files/tree from DB so code displays immediately (avoids tree 404)
-                        const projName = data.data?.project_name;
-                        if (projName) loadProjectTree(projName);
-                        if (appId) {
-                            api.get(`/app-builder/apps/${appId}/code`)
-                                .then(res => res.data)
-                                .then(codeData => {
-                                    if (codeData?.status === 'success' && codeData.files) {
-                                        setFiles(codeData.files);
-                                        if (codeData.tree?.length) setFileTree(codeData.tree);
-                                    }
-                                })
-                                .catch(() => {});
-                        }
-
-                        ws.close();
-                        // Save agents state to DB (use ref to ensure we have latest)
-                        const agentsToSave = agentsAccumulatorRef.current;
-                        updateAppInDb({ agents_state: agentsToSave });
-                        resolve();
-                    }
-
-                    if (data.event === 'error') {
-                        appendAi(`\nError: ${data.message}\n`);
-                        ws.close();
-                        reject(new Error(data.message));
-                    }
-
-                } catch (e) {
-                    console.error('Error parsing WebSocket message:', e);
-                }
-            };
-
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                appendAi(`\nWebSocket connection error\n`);
-                reject(error);
-            };
-
-            ws.onclose = () => {
-                appendAi("Disconnected from agents\n");
-                agentsWsRef.current = null;
-            };
-        });
     };
 
     const loadProjectTree = async (projName) => {
@@ -825,6 +705,14 @@ const AppBuilder = () => {
                 const data = res.data;
                 if (data.status === 'success' && data.app) {
                     const app = data.app;
+
+                    // Don't overwrite in-flight planning (PRD stream / chat)
+                    if (planningSessionRef.current) {
+                        setAppId(app.id);
+                        if (app.project_name) setProjectName(app.project_name);
+                        return;
+                    }
+
                     // Restore all section content
                     setCurrentRequirement(app.prompt || '');
                     setProjectName(app.project_name || null);
@@ -835,6 +723,23 @@ const AppBuilder = () => {
                     setGeneratedPlan(planArr.length ? planArr : []);
                     setGeneratedArchitecture(app.architecture || null);
                     setAppId(app.id);
+                    setPipelineStatus(app.pipeline_status || null);
+                    setPipelineError(app.pipeline_error || null);
+                    setBuildStatus(app.build_status || null);
+                    setBuildError(app.build_error || null);
+                    setBuildLog(app.build_log || '');
+
+                    if (app.preview_url) {
+                        setRunState({
+                            frontend_url: app.preview_url,
+                            project_name: app.project_name,
+                            backend_url: app.live_url || null,
+                        });
+                    }
+                    if (app.build_log) {
+                        const logLines = app.build_log.split('\n').filter(Boolean);
+                        if (logLines.length) setLogs(logLines);
+                    }
 
                     // Build initial messages summarizing loaded sections
                     const parts = [];
@@ -846,8 +751,9 @@ const AppBuilder = () => {
 
                     // Restore agents state
                     if (app.agents_state) {
-                        agentsAccumulatorRef.current = app.agents_state;
-                        setAgents(app.agents_state);
+                        const normalized = normalizeAgentsState(app.agents_state);
+                        agentsAccumulatorRef.current = normalized;
+                        setAgents(normalized);
                         parts.push('**Agent Logs** loaded.');
                     }
 
@@ -882,8 +788,7 @@ const AppBuilder = () => {
                         { role: 'ai', content: summary }
                     ]);
 
-                    // Set phase so Create Agents is available (after architecture; Master Plan removed)
-                    if (planArr.length || app.architecture || app.prd) setCurrentPhase('prd_complete');
+                    setCurrentPhase(deriveCurrentPhase(app));
                 }
             } catch (e) {
                 console.error('Error loading app:', e);
@@ -894,13 +799,49 @@ const AppBuilder = () => {
             }
         };
         loadApp();
-    }, [editId]);
+    }, [editId, navigate]);
+
+    // Poll pipeline job status when a step is in progress (survives refresh)
+    useEffect(() => {
+        if (!appId || loadingApp) return;
+        if (!PIPELINE_RUNNING.includes(pipelineStatus)) return;
+
+        let cancelled = false;
+        const poll = async () => {
+            try {
+                const res = await api.get(`/app-builder/apps/${appId}/status`);
+                const data = res.data;
+                if (cancelled || data.status !== 'success') return;
+                if (data.pipeline_status) setPipelineStatus(data.pipeline_status);
+                if (data.pipeline_error !== undefined) setPipelineError(data.pipeline_error);
+                if (data.build_status) setBuildStatus(data.build_status);
+                if (data.build_error !== undefined) setBuildError(data.build_error);
+                if (data.build_log) setBuildLog(data.build_log);
+                if (data.preview_url) {
+                    setRunState(prev => ({
+                        ...(prev || {}),
+                        frontend_url: data.preview_url,
+                        project_name: projectName,
+                    }));
+                }
+            } catch (e) {
+                console.error('Error polling app status:', e);
+            }
+        };
+
+        poll();
+        const interval = setInterval(poll, 4000);
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
+    }, [appId, loadingApp, pipelineStatus, projectName]);
 
     // Cleanup WebSocket on unmount
     useEffect(() => {
         return () => {
-            if (agentsWsRef.current) agentsWsRef.current.close();
             if (codegenWsRef.current) codegenWsRef.current.close();
+            if (updateCodeWsRef.current) updateCodeWsRef.current.close();
         };
     }, []);
 
@@ -957,10 +898,13 @@ const AppBuilder = () => {
         if (!projectName) return;
         setLogs(prev => [...prev, `Starting project ${projectName}...`]);
         setIsRunLoading(true);
+        setBuildStatus('BUILDING');
+        setBuildError(null);
         setActiveTab('Build');
         setActiveBuildTab('Build'); // Show App View immediately
 
         try {
+            let gotReady = false;
             const response = await apiFetch(`/app-builder/projects/${projectName}/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -999,7 +943,8 @@ const AppBuilder = () => {
 
                         if (data.event === 'error') {
                             setLogs(prev => [...prev, `[Error] ${data.message}`]);
-                            setIsRunLoading(false); // Stop loading on error
+                            setBuildStatus('BUILD_FAILED');
+                            setBuildError(data.message);
                         }
 
                         if (data.event === 'warning') {
@@ -1011,15 +956,16 @@ const AppBuilder = () => {
                             setActiveTab('Build');
                             setActiveBuildTab('Build');
                             setLogs(prev => [...prev, `[System] ${data.message || 'Open app: ' + data.frontend_url}`]);
-                            setIsRunLoading(false);
                         }
 
                         if (data.event === 'ready') {
+                            gotReady = true;
                             setRunState(data.data);
+                            setBuildStatus('BUILD_SUCCESS');
+                            setBuildError(null);
                             setActiveTab('Build');
                             setActiveBuildTab('Build'); // App View sub-tab
                             setLogs(prev => [...prev, `[System] ${data.message}`]);
-                            setIsRunLoading(false); // Stop loading
                         }
 
                     } catch (e) {
@@ -1028,16 +974,79 @@ const AppBuilder = () => {
                 }
             }
 
+            if (!gotReady) {
+                setLogs(prev => [...prev, '[System] Build stream ended without ready event.']);
+            }
+
         } catch (error) {
             console.error('Error starting project:', error);
-            setLogs(prev => [...prev, `Error: ${error.message}`]);
+            const msg = error.message === 'Failed to fetch'
+                ? 'Connection lost during build (server may still be building). Wait and click Retry Run, or check the API server logs.'
+                : error.message;
+            setLogs(prev => [...prev, `Error: ${msg}`]);
+            setBuildStatus('BUILD_FAILED');
+            setBuildError(msg);
+        } finally {
             setIsRunLoading(false);
         }
     }, [projectName, useSandboxBuild]);
 
-    const executeCodegenWithWebSocket = async (requirement, plan, architecture, project_name, appendAi) => {
+    const collectFilePathsFromTree = (nodes, acc = []) => {
+        for (const node of nodes || []) {
+            if (node.type === 'file' && node.path) acc.push(node.path);
+            if (node.children?.length) collectFilePathsFromTree(node.children, acc);
+        }
+        return acc;
+    };
+
+    const loadGeneratedCodeIntoEditor = async (projName) => {
+        if (!projName) return;
+        if (appId) {
+            try {
+                const res = await api.get(`/app-builder/apps/${appId}/code`);
+                const codeData = res.data;
+                if (codeData?.status === 'success' && codeData.files) {
+                    setFiles(codeData.files);
+                    if (codeData.tree?.length) setFileTree(codeData.tree);
+                    return;
+                }
+            } catch (e) {
+                console.error('Error loading code from DB:', e);
+            }
+        }
+        try {
+            const treeRes = await apiFetch(`/app-builder/projects/${projName}/tree`);
+            if (!treeRes.ok) return;
+            const treeData = await treeRes.json();
+            const tree = treeData.tree || [];
+            setFileTree(tree);
+            const paths = collectFilePathsFromTree(tree);
+            const loaded = {};
+            await Promise.all(
+                paths.slice(0, 80).map(async (path) => {
+                    try {
+                        const fileRes = await apiFetch(
+                            `/app-builder/projects/${projName}/file?path=${encodeURIComponent(path)}`
+                        );
+                        if (fileRes.ok) {
+                            const fileData = await fileRes.json();
+                            loaded[path] = fileData.content;
+                        }
+                    } catch {
+                        /* skip unreadable files */
+                    }
+                })
+            );
+            if (Object.keys(loaded).length) setFiles(prev => ({ ...prev, ...loaded }));
+        } catch (e) {
+            console.error('Error loading code from disk:', e);
+        }
+    };
+
+    const executeCodegenWithWebSocket = async (requirement, plan, architecture, project_name, prdText, uiuxText, appendAi) => {
         return new Promise((resolve, reject) => {
-            agentsAccumulatorRef.current = {}; // reset for fresh run
+            agentsAccumulatorRef.current = {};
+            let settled = false;
             const sessionId = `session_${Date.now()}`;
             const socketUrl = wsUrl(`/codegen/execute/${sessionId}`);
 
@@ -1046,14 +1055,20 @@ const AppBuilder = () => {
             const ws = new WebSocket(socketUrl);
             codegenWsRef.current = ws;
 
+            const finish = (fn, arg) => {
+                if (settled) return;
+                settled = true;
+                fn(arg);
+            };
+
             ws.onopen = () => {
                 appendAi("Connected for code generation.\n\n");
                 ws.send(JSON.stringify(wsAuthPayload({
                     requirement,
                     plan,
-                    prd,
+                    prd: prdText || "",
                     architecture,
-                    uiux: generatedUIUX || "",
+                    uiux: uiuxText || "",
                     project_name,
                     app_id: appId || null,
                 })));
@@ -1117,36 +1132,54 @@ const AppBuilder = () => {
                         };
                         agentsAccumulatorRef.current = next;
                         setAgents(next);
+                        if (data.agent === 'build_verify_agent' || data.agent === 'validation_agent') {
+                            appendAi(`\n${data.message}\n`);
+                        }
+                    }
+
+                    if (data.event === 'build_start' || data.event === 'build_fix_attempt') {
+                        appendAi(`\n${data.message}\n`);
+                    }
+
+                    if (data.event === 'build_log') {
+                        appendAi(`  ${data.message}\n`);
+                    }
+
+                    if (data.event === 'build_failed') {
+                        appendAi(`\n⚠ ${data.message}\n`);
+                    }
+
+                    if (data.event === 'build_success') {
+                        appendAi(`\n✓ ${data.message}\n`);
                     }
 
                     if (data.event === 'codegen_complete') {
                         appendAi(`\n${data.message}\n`);
                         appendAi(`Files generated: ${data.data.files_count}\n\n`);
-                        if (project_name) loadProjectTree(project_name);
-                        // Load files/tree from DB so code displays immediately
-                        if (appId) {
-                            api.get(`/app-builder/apps/${appId}/code`)
-                                .then(res => res.data)
-                                .then(codeData => {
-                                    if (codeData?.status === 'success' && codeData.files) {
-                                        setFiles(codeData.files);
-                                        if (codeData.tree?.length) setFileTree(codeData.tree);
-                                    }
-                                })
-                                .catch(() => {});
-                        }
+                        loadProjectTree(project_name);
+                        loadGeneratedCodeIntoEditor(project_name);
                         setCurrentPhase('code_generated');
+                        setPipelineStatus('CODEGEN_COMPLETE');
+                        setPipelineError(null);
+                        settled = true;
                         ws.close();
-                        // Save agents state to DB (use ref to ensure we have latest)
                         const agentsToSave = agentsAccumulatorRef.current;
                         updateAppInDb({ agents_state: agentsToSave });
-                        resolve();
+                        finish(resolve);
+                    }
+
+                    if (data.event === 'agent_error') {
+                        appendAi(`\nError: ${data.error || data.message}\n`);
+                        settled = true;
+                        ws.close();
+                        finish(reject, new Error(data.error || data.message || 'Code generation failed'));
                     }
 
                     if (data.event === 'error') {
                         appendAi(`\nError: ${data.message}\n`);
+                        settled = true;
                         ws.close();
-                        reject(new Error(data.message));
+                        finish(reject, new Error(data.message));
                     }
 
                 } catch (e) {
@@ -1157,72 +1190,49 @@ const AppBuilder = () => {
             ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
                 appendAi(`\nWebSocket connection error\n`);
-                reject(error);
+                finish(reject, error);
             };
 
             ws.onclose = () => {
-                appendAi("Disconnected from code generation\n");
                 codegenWsRef.current = null;
+                if (!settled) {
+                    appendAi("\nCode generation connection closed unexpectedly.\n");
+                    finish(reject, new Error('Code generation connection closed'));
+                }
             };
         });
     };
 
-    const handleRegeneratePrd = () => {
-        if (!currentRequirement) {
-            alert("Missing requirement. Please enter your requirements again.");
-            return;
-        }
-        if (window.confirm("Regenerate the PRD? This will reset UI/UX, architecture, and plan.")) {
-            handleStartPlanning(currentRequirement);
-        }
-    };
-
-    const handleRegeneratePlan = () => {
-        if (window.confirm("Regenerate the plan based on the current PRD and architecture?")) {
-            handleGeneratePlan();
-        }
-    };
-
-    const handleRegenerateAgents = () => {
-        if (window.confirm("Restart the agent execution pipeline?")) {
-            handleCreateAgents();
-        }
-    };
-
     const handleStartCodegen = async () => {
         if (!projectName || !generatedArchitecture) {
-            alert("Cannot start code generation: Missing project name or architecture.");
+            alert('Cannot start code generation: missing project name or architecture.');
             return;
         }
-
-        setIsCodegenLoading(true);
-        setActiveTab('Build');
-        setActiveBuildTab('Multi Agents');
-
-        const appendAi = (delta) => {
-            setMessages(prev => {
-                const next = [...prev];
-                const lastIdx = next.map(m => m.role).lastIndexOf('ai');
-                if (lastIdx !== -1) {
-                    next[lastIdx] = { ...next[lastIdx], content: (next[lastIdx].content || "") + delta };
-                } else {
-                    return [...prev, { role: 'ai', content: delta }];
-                }
-                return next;
-            });
-        };
-
-        try {
-            appendAi("\n\nStarting code generation...\n\n");
-            await executeCodegenWithWebSocket(clarifiedRequirement || currentRequirement, generatedPlan, generatedArchitecture, projectName, appendAi);
-            appendAi("\nCode generation complete.\n");
-        } catch (error) {
-            console.error('Error in code generation:', error);
-            appendAi(`\nError: ${error.message}\n`);
-        } finally {
-            setIsCodegenLoading(false);
-        }
+        await handleCreateAgents();
     };
+
+    const handlePipelineRetry = useCallback(() => {
+        if (!pipelineStatus && buildStatus !== 'BUILD_FAILED') return;
+        if (pipelineStatus === 'PRD_FAILED') {
+            handleStartPlanning(currentRequirement);
+        } else if (pipelineStatus === 'UIUX_FAILED') {
+            handleGenerateUIUX();
+        } else if (pipelineStatus === 'ARCHITECTURE_FAILED') {
+            handleGenerateArch();
+        } else if (pipelineStatus === 'PLAN_FAILED') {
+            handleGeneratePlan();
+        } else if (pipelineStatus === 'CODEGEN_FAILED') {
+            handleCreateAgents();
+        } else if (buildStatus === 'BUILD_FAILED') {
+            handleRun();
+        }
+    }, [pipelineStatus, buildStatus, currentRequirement]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const showPipelineBanner = pipelineStatus && (
+        PIPELINE_RUNNING.includes(pipelineStatus)
+        || PIPELINE_FAILED.includes(pipelineStatus)
+        || buildStatus === 'BUILD_FAILED'
+    );
 
     const handleRestartCodegen = async () => {
         if (!window.confirm("Restart code generation based on current architecture?")) return;
@@ -1262,6 +1272,55 @@ const AppBuilder = () => {
                     ← Back to App Builder
                 </button>
             </header>
+            {showPipelineBanner && (
+                <div
+                    className="pipeline-status-banner"
+                    style={{
+                        padding: '10px 24px',
+                        backgroundColor: PIPELINE_FAILED.includes(pipelineStatus) || buildStatus === 'BUILD_FAILED' ? '#fef2f2' : '#eff6ff',
+                        borderBottom: '1px solid #e2e8f0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        flexShrink: 0,
+                    }}
+                >
+                    <div style={{ fontSize: 13, color: '#334155' }}>
+                        {PIPELINE_RUNNING.includes(pipelineStatus) && (
+                            <span>Pipeline in progress: <strong>{pipelineStatus.replace(/_/g, ' ')}</strong></span>
+                        )}
+                        {(PIPELINE_FAILED.includes(pipelineStatus) || buildStatus === 'BUILD_FAILED') && (
+                            <span>
+                                {buildStatus === 'BUILD_FAILED' ? 'Build failed' : (pipelineStatus || 'Pipeline failed').replace(/_/g, ' ')}
+                                {(pipelineError || buildError) && (
+                                    <span style={{ color: '#b91c1c', marginLeft: 8 }}>
+                                        — {(pipelineError || buildError).slice(0, 200)}
+                                    </span>
+                                )}
+                            </span>
+                        )}
+                    </div>
+                    {(PIPELINE_FAILED.includes(pipelineStatus) || buildStatus === 'BUILD_FAILED') && (
+                        <button
+                            type="button"
+                            onClick={handlePipelineRetry}
+                            style={{
+                                padding: '6px 14px',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                backgroundColor: '#007bff',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                            }}
+                        >
+                            Retry
+                        </button>
+                    )}
+                </div>
+            )}
             <div className="app-builder-main">
                 <ChatInterface
                     onSendMessage={handleChatMessage}
@@ -1297,6 +1356,9 @@ const AppBuilder = () => {
                     isLoading={isLoading}
                     isCodegenLoading={isCodegenLoading}
                     isRunLoading={isRunLoading}
+                    pipelineStatus={pipelineStatus}
+                    pipelineError={pipelineError}
+                    onRetryPipeline={handlePipelineRetry}
                     activeBuildTab={activeBuildTab}
                     onBuildTabChange={setActiveBuildTab}
                     generatedUIUX={generatedUIUX}
@@ -1310,6 +1372,9 @@ const AppBuilder = () => {
                     onDownloadCode={handleDownloadCode}
                     appId={appId}
                     isTreeLoading={isTreeLoading}
+                    buildStatus={buildStatus}
+                    buildError={buildError}
+                    buildLog={buildLog}
                 />
             </div>
         </div>

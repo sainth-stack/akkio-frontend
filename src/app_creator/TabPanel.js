@@ -2,7 +2,6 @@ import React from 'react';
 import PlanView from './PlanView';
 import FileExplorer from './FileExplorer';
 import AgentsView from './AgentsView';
-import LogsView from './LogsView';
 import AppView from './AppView';
 import DeploymentView from './DeploymentView';
 import TestView from './TestView';
@@ -49,7 +48,13 @@ const TabPanel = ({
     onDownloadCode,
     // Deployment Props
     appId,
-    isTreeLoading
+    isTreeLoading,
+    buildStatus,
+    buildError,
+    buildLog,
+    pipelineStatus,
+    pipelineError,
+    onRetryPipeline,
 }) => {
     const tabs = ['Plan', 'Build', 'Deploy'];
     const resolvedBuildTab = activeBuildTab || 'Multi Agents';
@@ -87,6 +92,10 @@ const TabPanel = ({
                             isRunLoading={isRunLoading}
                             logs={logs}
                             appRefreshKey={appRefreshKey}
+                            buildStatus={buildStatus}
+                            buildError={buildError}
+                            buildLog={buildLog}
+                            onRetryRun={onRun}
                         />
                     );
                 case 'Test':
@@ -149,6 +158,9 @@ const TabPanel = ({
                     isLoading={isLoading}
                     streamingArchitectureText={streamingArchitectureText}
                     onStop={onStopPlanning}
+                    pipelineStatus={pipelineStatus}
+                    pipelineError={pipelineError}
+                    onRetryPipeline={onRetryPipeline}
                 />;
             case 'Build':
                 return renderBuildContent();
@@ -180,11 +192,11 @@ const TabPanel = ({
                 </div>
                 <div className="tabs-actions">
                     {/* Common actions can go here */}
-                    {currentPhase === 'prd_complete' && activeTab === 'Plan' && (
+                    {currentPhase === 'prd_complete' && activeTab === 'Plan' && generatedArchitecture && (
                         <button
                             className="run-button"
                             onClick={onCreateAgents}
-                            disabled={isLoading}
+                            disabled={isLoading || isCodegenLoading}
                             style={{
                                 backgroundColor: '#28a745',
                                 padding: '8px 20px',
@@ -192,11 +204,47 @@ const TabPanel = ({
                                 fontWeight: '600'
                             }}
                         >
-                            {isLoading
-                                ? 'Building...'
-                                : generatedArchitecture
-                                    ? 'Generate Code'
-                                    : 'Create Agents'}
+                            {(isLoading || isCodegenLoading) ? 'Generating...' : 'Generate Code'}
+                        </button>
+                    )}
+
+                    {activeTab === 'Plan' && isLoading && onStopPlanning && (
+                        <button
+                            type="button"
+                            onClick={onStopPlanning}
+                            style={{
+                                padding: '8px 16px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                backgroundColor: '#fff',
+                                color: '#dc3545',
+                                border: '1px solid #fecaca',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                marginLeft: 8,
+                            }}
+                        >
+                            Stop
+                        </button>
+                    )}
+
+                    {activeTab === 'Build' && isCodegenLoading && onStopCodegen && (
+                        <button
+                            type="button"
+                            onClick={onStopCodegen}
+                            style={{
+                                padding: '8px 16px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                backgroundColor: '#fff',
+                                color: '#dc3545',
+                                border: '1px solid #fecaca',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                marginRight: 8,
+                            }}
+                        >
+                            Stop Codegen
                         </button>
                     )}
 
@@ -260,6 +308,23 @@ const TabPanel = ({
                                 {isRunLoading && <Spinner animation="border" size="sm" />}
                                 {isRunLoading ? 'Starting...' : 'Run App'}
                             </button>
+                            {buildStatus === 'BUILD_FAILED' && onRun && (
+                                <button
+                                    type="button"
+                                    className="run-button"
+                                    onClick={onRun}
+                                    disabled={isRunLoading}
+                                    style={{
+                                        marginLeft: '10px',
+                                        backgroundColor: '#dc3545',
+                                        padding: '8px 16px',
+                                        fontSize: '13px',
+                                        fontWeight: '600',
+                                    }}
+                                >
+                                    Retry Run
+                                </button>
+                            )}
                         </>
                     )}
                 </div>

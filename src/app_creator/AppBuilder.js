@@ -801,10 +801,12 @@ const AppBuilder = () => {
         loadApp();
     }, [editId, navigate]);
 
-    // Poll pipeline job status when a step is in progress (survives refresh)
+    // Poll pipeline / build status when a step is in progress (survives refresh)
     useEffect(() => {
         if (!appId || loadingApp) return;
-        if (!PIPELINE_RUNNING.includes(pipelineStatus)) return;
+        const pipelineBusy = PIPELINE_RUNNING.includes(pipelineStatus);
+        const buildBusy = buildStatus === 'BUILDING';
+        if (!pipelineBusy && !buildBusy) return;
 
         let cancelled = false;
         const poll = async () => {
@@ -823,6 +825,9 @@ const AppBuilder = () => {
                         frontend_url: data.preview_url,
                         project_name: projectName,
                     }));
+                    if (data.build_status === 'BUILD_SUCCESS') {
+                        setIsRunLoading(false);
+                    }
                 }
             } catch (e) {
                 console.error('Error polling app status:', e);
@@ -835,7 +840,7 @@ const AppBuilder = () => {
             cancelled = true;
             clearInterval(interval);
         };
-    }, [appId, loadingApp, pipelineStatus, projectName]);
+    }, [appId, loadingApp, pipelineStatus, buildStatus, projectName]);
 
     // Cleanup WebSocket on unmount
     useEffect(() => {
@@ -963,6 +968,7 @@ const AppBuilder = () => {
                             setRunState(data.data);
                             setBuildStatus('BUILD_SUCCESS');
                             setBuildError(null);
+                            setIsRunLoading(false); // don't wait for stream close (reload can hang the connection)
                             setActiveTab('Build');
                             setActiveBuildTab('Build'); // App View sub-tab
                             setLogs(prev => [...prev, `[System] ${data.message}`]);

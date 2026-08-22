@@ -1,4 +1,4 @@
-export const akkiourl = `${(process.env.REACT_APP_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')}/api`;
+export const akkiourl = `${(import.meta.env.VITE_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')}/api`;
 export function getFinalData(uniqueArr, isDate, length) {
   // Add early return if input array is empty or undefined
   if (!uniqueArr || uniqueArr.length === 0) {

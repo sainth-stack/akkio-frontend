@@ -4,11 +4,12 @@ import Spinner from 'react-bootstrap/Spinner';
 import './DeploymentView.css';
 
 const IN_PROGRESS = new Set(['QUEUED', 'BUILDING', 'TESTING', 'DEPLOYING', 'deploying']);
-const TERMINAL = new Set(['RUNNING', 'FAILED', 'deployed', 'failed']);
+const TERMINAL = new Set(['RUNNING', 'FAILED', 'deployed', 'failed', 'LOCAL_PREVIEW']);
 
 const DeploymentView = ({ projectName, appId }) => {
     const [isDeploying, setIsDeploying] = useState(false);
     const [deployment, setDeployment] = useState(null);
+    const [buildStatus, setBuildStatus] = useState(null);
     const [error, setError] = useState(null);
     const pollRef = useRef(null);
 
@@ -42,9 +43,16 @@ const DeploymentView = ({ projectName, appId }) => {
             const response = await api.get('/deployment/status', { params });
             const data = response.data;
 
+            if (data.build_status) setBuildStatus(data.build_status);
+
             if (data.deployment_status === 'not_deployed') {
                 setDeployment(null);
-                return null;
+                return data;
+            }
+
+            if (data.deployment_status === 'LOCAL_PREVIEW') {
+                setDeployment(data);
+                return data;
             }
 
             setDeployment(data);
@@ -177,6 +185,7 @@ const DeploymentView = ({ projectName, appId }) => {
     };
 
     const normalizeStatus = (status) => {
+        if (status === 'LOCAL_PREVIEW') return 'RUNNING';
         if (status === 'deployed') return 'RUNNING';
         if (status === 'failed') return 'FAILED';
         if (status === 'deploying') return 'DEPLOYING';
@@ -213,8 +222,9 @@ const DeploymentView = ({ projectName, appId }) => {
         );
     };
 
-    const liveUrl = deployment?.live_url || deployment?.frontend_url;
+    const liveUrl = deployment?.live_url || deployment?.frontend_url || deployment?.preview_url;
     const displayStatus = deployment ? normalizeStatus(deployment.deployment_status) : null;
+    const isLocalPreview = deployment?.deployment_status === 'LOCAL_PREVIEW' || deployment?.mode === 'local';
     const showProgress = displayStatus && IN_PROGRESS.has(displayStatus);
     const isLive = displayStatus === 'RUNNING';
     const isFailed = displayStatus === 'FAILED';
@@ -223,7 +233,11 @@ const DeploymentView = ({ projectName, appId }) => {
         <div className="deployment-view">
             <div className="deployment-header">
                 <h3>Deployment</h3>
-                <p>Deploy your generated app on this Hostinger VPS and get a live URL</p>
+                <p>
+                    {isLocalPreview
+                        ? 'Your app is running locally on this machine'
+                        : 'Deploy your generated app and get a live URL'}
+                </p>
             </div>
 
             {toast && (
@@ -451,7 +465,11 @@ const DeploymentView = ({ projectName, appId }) => {
             {!deployment ? (
                 <div className="deployment-empty">
                     <h4>Ready to Deploy</h4>
-                    <p>Deploy on this server at <code>http://YOUR_IP:8000/app/{projectName || 'project'}</code></p>
+                    <p>
+                        {buildStatus === 'BUILD_SUCCESS'
+                            ? 'Build succeeded. Click Deploy to register your live URL.'
+                            : <>Run the app in the <strong>Build</strong> tab first, then deploy at <code>http://localhost:8000/app/{projectName || 'project'}</code></>}
+                    </p>
                     <button
                         className="btn-deploy"
                         onClick={() => handleDeploy(false)}
@@ -512,6 +530,19 @@ const DeploymentView = ({ projectName, appId }) => {
 
                     {isLive && liveUrl && (
                         <>
+                            {isLocalPreview && (
+                                <div style={{
+                                    marginBottom: 12,
+                                    padding: '10px 14px',
+                                    background: '#eff6ff',
+                                    border: '1px solid #bfdbfe',
+                                    borderRadius: 6,
+                                    fontSize: 13,
+                                    color: '#1e40af',
+                                }}>
+                                    Running locally — open the preview below. Click <strong>Deploy</strong> to run health checks and register as live.
+                                </div>
+                            )}
                             <div className="deployment-urls">
                                 <div className="url-card">
                                     <div className="url-label">

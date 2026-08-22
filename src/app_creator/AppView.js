@@ -17,7 +17,7 @@ const AppView = ({
         const base = runState?.frontend_url;
         if (!base) return null;
         try {
-            const token = localStorage.getItem('token') || '';
+            const token = localStorage.getItem('access_token') || '';
             if (!token) return base;
             const sep = base.includes('?') ? '&' : '?';
             return `${base}${sep}access_token=${encodeURIComponent(token)}`;
@@ -31,6 +31,30 @@ const AppView = ({
         return (
             <div style={{ padding: 20, color: '#666' }}>
                 Generate an app first.
+            </div>
+        );
+    }
+
+    // Prefer showing the live preview as soon as we have a URL (don't wait for stream to close)
+    if (iframeSrc && buildStatus !== 'BUILD_FAILED' && (buildStatus === 'BUILD_SUCCESS' || !isRunLoading)) {
+        return (
+            <div className="app-view">
+                <div className="app-view-header">
+                    <div className="app-view-title">
+                        Running: <span style={{ fontFamily: 'monospace' }}>{runState.frontend_url}</span>
+                    </div>
+                    <div className="app-view-actions">
+                        <a href={iframeSrc} target="_blank" rel="noreferrer">
+                            Open in new tab
+                        </a>
+                    </div>
+                </div>
+                <iframe
+                    key={appRefreshKey}
+                    title="Generated App"
+                    src={iframeSrc}
+                    className="app-iframe"
+                />
             </div>
         );
     }
@@ -156,32 +180,9 @@ const AppView = ({
         );
     }
 
-    if (!iframeSrc) {
-        return (
-            <div style={{ padding: 20, color: '#666' }}>
-                Click <strong>Run App</strong> in the Build tab header to build and preview your generated app.
-            </div>
-        );
-    }
-
     return (
-        <div className="app-view">
-            <div className="app-view-header">
-                <div className="app-view-title">
-                    Running: <span style={{ fontFamily: 'monospace' }}>{runState.frontend_url}</span>
-                </div>
-                <div className="app-view-actions">
-                    <a href={iframeSrc} target="_blank" rel="noreferrer">
-                        Open in new tab
-                    </a>
-                </div>
-            </div>
-            <iframe
-                key={appRefreshKey}
-                title="Generated App"
-                src={iframeSrc}
-                className="app-iframe"
-            />
+        <div style={{ padding: 20, color: '#666' }}>
+            Click <strong>Run App</strong> in the Build tab header to build and preview your generated app.
         </div>
     );
 };

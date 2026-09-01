@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, message as antdMessage } from 'antd';
-import { FaPlus, FaPuzzlePiece, FaEdit, FaTrashAlt, FaSearch } from 'react-icons/fa';
+import { FaEdit, FaTrashAlt, FaSearch } from 'react-icons/fa';
+import { FaPlus } from 'react-icons/fa6';
 import Spinner from 'react-bootstrap/Spinner';
 
 import api from '../utils/api';
+import { IconBadge, IoAppsOutline } from './AppBuilderIcons';
 import './AppBuilderList.css';
 
 const AppBuilderList = () => {
@@ -97,7 +99,7 @@ const AppBuilderList = () => {
               onClick={() => navigate('/app-builder/new')}
             >
               <div className="app-builder-list__new-icon">
-                <FaPlus />
+                <FaPlus size={22} />
               </div>
               <div className="app-builder-list__new-label">New app</div>
             </div>
@@ -110,7 +112,7 @@ const AppBuilderList = () => {
               >
                 <div className="app-builder-list__card-header">
                   <div className="app-builder-list__card-icon">
-                    <FaPuzzlePiece size={22} />
+                    <IconBadge icon={IoAppsOutline} variant="slate" size={20} className="app-builder-list__card-icon-badge" />
                   </div>
                   <div className="app-builder-list__card-actions">
                     <Button

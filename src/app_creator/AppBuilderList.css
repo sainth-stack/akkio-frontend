@@ -1,5 +1,32 @@
 /* AppBuilderList - Applications grid with proper spacing and alignment */
 
+/* Shared icon badges (App Builder) */
+.ab-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+}
+
+.ab-icon-badge--indigo {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #4f46e5;
+  border-color: #c7d2fe;
+}
+
+.ab-icon-badge--slate {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
 .app-builder-list {
   padding: 24px 40px 40px;
   min-height: 100vh;
@@ -60,9 +87,26 @@
 }
 
 .app-builder-list__new-icon {
-  font-size: 28px;
-  color: #3b82f6;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 12px;
+}
+
+.app-builder-list__card-icon {
+  flex-shrink: 0;
+}
+
+.app-builder-list__card-icon-badge {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 10px !important;
 }
 
 .app-builder-list__new-label {
@@ -96,17 +140,6 @@
   gap: 12px;
 }
 
-.app-builder-list__card-icon {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  background-color: #f1f5f9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #64748b;
-}
 
 .app-builder-list__card-actions {
   display: flex;

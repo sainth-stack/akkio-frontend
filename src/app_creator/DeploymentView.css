@@ -13,8 +13,14 @@
     margin-bottom: 24px;
 }
 
+.deployment-header-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
 .deployment-header h3 {
-    margin: 0 0 8px 0;
+    margin: 0 0 6px 0;
     font-size: 24px;
     color: #1a1a1a;
 }
@@ -23,6 +29,47 @@
     margin: 0;
     font-size: 14px;
     color: #666;
+}
+
+.github-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.deployment-empty-icon {
+  margin: 0 auto 16px;
+}
+
+/* Shared icon badges (App Builder) */
+.ab-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+}
+
+.ab-icon-badge--indigo {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #4f46e5;
+  border-color: #c7d2fe;
+}
+
+.ab-icon-badge--slate {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  color: #64748b;
+  border-color: #e2e8f0;
 }
 
 .deployment-error {

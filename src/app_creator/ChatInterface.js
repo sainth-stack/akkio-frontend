@@ -1,12 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ModelSelector from './ModelSelector';
-
-const SendIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="22" y1="2" x2="11" y2="13" />
-        <polygon points="22 2 15 22 11 13 2 9 22 2" />
-    </svg>
-);
+import { IconBadge, IoSend, IoSparkles, FaPenToSquare } from './AppBuilderIcons';
 
 const ChatInterface = ({
     onSendMessage,
@@ -57,7 +51,14 @@ const ChatInterface = ({
     return (
         <div className="chat-section">
             <div className="chat-header">
-                <h2>{isUpdateMode ? '✏️ Update App' : '🤖 App Builder'}</h2>
+                <div className="chat-header-title">
+                    <IconBadge
+                        icon={isUpdateMode ? FaPenToSquare : IoSparkles}
+                        variant={isUpdateMode ? 'amber' : 'indigo'}
+                        size={15}
+                    />
+                    <h2>{isUpdateMode ? 'Update App' : 'App Builder'}</h2>
+                </div>
             </div>
 
             <ModelSelector
@@ -114,7 +115,7 @@ const ChatInterface = ({
                         disabled={inputDisabled}
                     />
                     <button type="submit" className="send-button" disabled={inputDisabled || !input.trim()} title="Send (Enter)">
-                        <SendIcon />
+                        <IoSend size={16} />
                     </button>
                 </form>
                 {!isUpdateMode && (

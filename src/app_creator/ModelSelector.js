@@ -1,9 +1,41 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../utils/api';
+import {
+    IconBadge,
+    IoChevronDown,
+    IoCheckmark,
+    FaStar,
+    SiOpenai,
+    TIER_ICONS,
+} from './AppBuilderIcons';
+
+const TIER_STYLES = {
+    flagship: { bg: '#eef2ff', color: '#4338ca', border: '#c7d2fe' },
+    balanced: { bg: '#ecfdf5', color: '#047857', border: '#bbf7d0' },
+    fast: { bg: '#fff7ed', color: '#c2410c', border: '#fed7aa' },
+    reasoning: { bg: '#f5f3ff', color: '#6d28d9', border: '#ddd6fe' },
+    legacy: { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' },
+};
+
+const TierBadge = ({ tier, tiers }) => {
+    const style = TIER_STYLES[tier] || TIER_STYLES.balanced;
+    const label = tiers?.[tier] || tier;
+    return (
+        <span
+            className="model-tier-badge"
+            style={{ background: style.bg, color: style.color, borderColor: style.border }}
+        >
+            {label}
+        </span>
+    );
+};
 
 const ModelSelector = ({ value, onChange, disabled }) => {
     const [models, setModels] = useState([]);
+    const [tiers, setTiers] = useState({});
     const [loading, setLoading] = useState(true);
+    const [open, setOpen] = useState(false);
+    const rootRef = useRef(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -13,6 +45,7 @@ const ModelSelector = ({ value, onChange, disabled }) => {
                 const data = res.data;
                 if (!cancelled && data?.models) {
                     setModels(data.models);
+                    setTiers(data.tiers || {});
                     if (!value && data.default_model) {
                         onChange?.(data.default_model);
                     }
@@ -26,30 +59,123 @@ const ModelSelector = ({ value, onChange, disabled }) => {
         return () => { cancelled = true; };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    useEffect(() => {
+        const onDocClick = (e) => {
+            if (rootRef.current && !rootRef.current.contains(e.target)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', onDocClick);
+        return () => document.removeEventListener('mousedown', onDocClick);
+    }, []);
+
+    const selected = useMemo(
+        () => models.find((m) => m.id === value) || models.find((m) => m.recommended) || models[0],
+        [models, value]
+    );
+
+    const grouped = useMemo(() => {
+        const order = ['flagship', 'balanced', 'reasoning', 'fast', 'legacy'];
+        const map = {};
+        models.forEach((m) => {
+            const key = m.tier || 'balanced';
+            if (!map[key]) map[key] = [];
+            map[key].push(m);
+        });
+        return order.filter((k) => map[k]?.length).map((k) => ({ tier: k, items: map[k] }));
+    }, [models]);
+
+    const handleSelect = (id) => {
+        onChange?.(id);
+        setOpen(false);
+    };
+
     return (
-        <div className="model-selector" style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#475569', fontWeight: 500 }}>
-                <span>Model</span>
-                <select
-                    value={value || ''}
-                    onChange={(e) => onChange?.(e.target.value)}
-                    disabled={disabled || loading}
-                    style={{
-                        flex: 1,
-                        padding: '6px 8px',
-                        borderRadius: 6,
-                        border: '1px solid #cbd5e1',
-                        fontSize: 12,
-                        background: disabled ? '#f1f5f9' : '#fff',
-                    }}
-                >
-                    {loading && <option value="">Loading...</option>}
-                    {!loading && models.length === 0 && <option value="">Default</option>}
-                    {models.map((m) => (
-                        <option key={m.id} value={m.id}>{m.label}</option>
+        <div className="model-selector" ref={rootRef}>
+            <div className="model-selector-label-row">
+                <IconBadge icon={SiOpenai} variant="indigo" size={13} />
+                <span className="model-selector-title">AI Model</span>
+                {selected?.recommended && (
+                    <span className="model-recommended-pill">Recommended</span>
+                )}
+            </div>
+
+            <button
+                type="button"
+                className={`model-selector-trigger ${open ? 'open' : ''}`}
+                onClick={() => !disabled && !loading && setOpen((v) => !v)}
+                disabled={disabled || loading}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+            >
+                <div className="model-selector-trigger-main">
+                    {loading ? (
+                        <span className="model-selector-placeholder">Loading models…</span>
+                    ) : (
+                        <>
+                            <span className="model-selector-current-name">
+                                {selected?.label || 'Select model'}
+                            </span>
+                            {selected?.description && (
+                                <span className="model-selector-current-desc">
+                                    {selected.description}
+                                </span>
+                            )}
+                        </>
+                    )}
+                </div>
+                <div className="model-selector-trigger-meta">
+                    {selected?.tier && !loading && (
+                        <TierBadge tier={selected.tier} tiers={tiers} />
+                    )}
+                    <IoChevronDown className={`model-selector-chevron ${open ? 'up' : ''}`} size={16} aria-hidden />
+                </div>
+            </button>
+
+            {open && !loading && (
+                <div className="model-selector-menu" role="listbox">
+                    {grouped.map(({ tier, items }) => (
+                        <div key={tier} className="model-selector-group">
+                            <div className="model-selector-group-label">
+                                {tiers[tier] || tier}
+                            </div>
+                            {items.map((m) => {
+                                const active = m.id === (value || selected?.id);
+                                const TierIcon = TIER_ICONS[m.tier] || TIER_ICONS.balanced;
+                                return (
+                                    <button
+                                        key={m.id}
+                                        type="button"
+                                        role="option"
+                                        aria-selected={active}
+                                        className={`model-selector-option ${active ? 'active' : ''}`}
+                                        onClick={() => handleSelect(m.id)}
+                                    >
+                                        <span className="model-selector-option-icon" aria-hidden>
+                                            <TierIcon size={15} />
+                                        </span>
+                                        <div className="model-selector-option-text">
+                                            <span className="model-selector-option-name">
+                                                {m.label}
+                                                {m.recommended && (
+                                                    <FaStar className="model-option-star" size={11} aria-label="Recommended" />
+                                                )}
+                                            </span>
+                                            <span className="model-selector-option-desc">
+                                                {m.description}
+                                            </span>
+                                        </div>
+                                        <div className="model-selector-option-meta">
+                                            {active && <IoCheckmark className="model-selector-check" size={16} aria-hidden />}
+                                            <TierBadge tier={m.tier} tiers={tiers} />
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     ))}
-                </select>
-            </label>
+                </div>
+            )}
         </div>
     );
 };

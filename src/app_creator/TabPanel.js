@@ -6,6 +6,31 @@ import AppView from './AppView';
 import DeploymentView from './DeploymentView';
 import TestView from './TestView';
 import Spinner from 'react-bootstrap/Spinner';
+import {
+    IoDocumentTextOutline,
+    IoHammerOutline,
+    IoRocketOutline,
+    IoPeopleOutline,
+    IoCodeSlashOutline,
+    IoPhonePortraitOutline,
+    IoFlaskOutline,
+    IoStopCircleOutline,
+    IoDownloadOutline,
+    IoPlayOutline,
+} from './AppBuilderIcons';
+
+const MAIN_TABS = [
+    { id: 'Plan', icon: IoDocumentTextOutline },
+    { id: 'Build', icon: IoHammerOutline },
+    { id: 'Deploy', icon: IoRocketOutline },
+];
+
+const BUILD_TABS = [
+    { id: 'Multi Agents', icon: IoPeopleOutline },
+    { id: 'Code', icon: IoCodeSlashOutline },
+    { id: 'Build', icon: IoPhonePortraitOutline, label: 'App View' },
+    { id: 'Test', icon: IoFlaskOutline },
+];
 
 const TabPanel = ({
     plan,
@@ -59,13 +84,10 @@ const TabPanel = ({
     pipelineError,
     onRetryPipeline,
 }) => {
-    const tabs = ['Plan', 'Build', 'Deploy'];
     const resolvedBuildTab = activeBuildTab || 'Multi Agents';
     const setResolvedBuildTab = onBuildTabChange || (() => { });
 
     const renderBuildContent = () => {
-        const buildTabs = ['Multi Agents', 'Code', 'Build', 'Test'];
-
         const renderSubContent = () => {
             switch (resolvedBuildTab) {
                 case 'Multi Agents':
@@ -113,32 +135,20 @@ const TabPanel = ({
         };
 
         return (
-            <div className="build-container" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <div className="sub-tabs" style={{
-                    display: 'flex',
-                    borderBottom: '1px solid #eee',
-                    padding: '0 20px',
-                    backgroundColor: '#fff'
-                }}>
-                    {buildTabs.map(tab => (
+            <div className="build-container">
+                <div className="sub-tabs">
+                    {BUILD_TABS.map(({ id, icon: TabIcon, label }) => (
                         <div
-                            key={tab}
-                            onClick={() => setResolvedBuildTab(tab)}
-                            style={{
-                                padding: '12px 20px',
-                                cursor: 'pointer',
-                                fontSize: '14px',
-                                fontWeight: resolvedBuildTab === tab ? '600' : 'normal',
-                                color: resolvedBuildTab === tab ? '#007bff' : '#666',
-                                borderBottom: resolvedBuildTab === tab ? '2px solid #007bff' : '2px solid transparent',
-                                transition: 'all 0.2s'
-                            }}
+                            key={id}
+                            className={`sub-tab ${resolvedBuildTab === id ? 'active' : ''}`}
+                            onClick={() => setResolvedBuildTab(id)}
                         >
-                            {tab === 'Build' ? 'App View' : tab}
+                            <TabIcon size={15} className="sub-tab-icon" aria-hidden />
+                            {label || id}
                         </div>
                     ))}
                 </div>
-                <div className="sub-content" style={{ flex: 1, overflow: 'hidden' }}>
+                <div className="sub-content">
                     {renderSubContent()}
                 </div>
             </div>
@@ -186,13 +196,14 @@ const TabPanel = ({
         <div className="content-section">
             <div className="tabs-header">
                 <div className="tabs-left">
-                    {tabs.map(tab => (
+                    {MAIN_TABS.map(({ id, icon: TabIcon }) => (
                         <div
-                            key={tab}
-                            className={`tab ${activeTab === tab ? 'active' : ''}`}
-                            onClick={() => onTabChange(tab)}
+                            key={id}
+                            className={`tab ${activeTab === id ? 'active' : ''}`}
+                            onClick={() => onTabChange(id)}
                         >
-                            {tab}
+                            <TabIcon size={15} className="tab-icon" aria-hidden />
+                            {id}
                         </div>
                     ))}
                 </div>
@@ -217,19 +228,10 @@ const TabPanel = ({
                     {activeTab === 'Plan' && isLoading && onStopPlanning && (
                         <button
                             type="button"
+                            className="tab-action-btn tab-action-btn--danger"
                             onClick={onStopPlanning}
-                            style={{
-                                padding: '8px 16px',
-                                fontSize: '13px',
-                                fontWeight: '600',
-                                backgroundColor: '#fff',
-                                color: '#dc3545',
-                                border: '1px solid #fecaca',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                marginLeft: 8,
-                            }}
                         >
+                            <IoStopCircleOutline size={15} />
                             Stop
                         </button>
                     )}
@@ -237,19 +239,10 @@ const TabPanel = ({
                     {activeTab === 'Build' && isCodegenLoading && onStopCodegen && (
                         <button
                             type="button"
+                            className="tab-action-btn tab-action-btn--danger"
                             onClick={onStopCodegen}
-                            style={{
-                                padding: '8px 16px',
-                                fontSize: '13px',
-                                fontWeight: '600',
-                                backgroundColor: '#fff',
-                                color: '#dc3545',
-                                border: '1px solid #fecaca',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                marginRight: 8,
-                            }}
                         >
+                            <IoStopCircleOutline size={15} />
                             Stop Codegen
                         </button>
                     )}
@@ -278,40 +271,19 @@ const TabPanel = ({
                                 E2B sandbox
                             </label>
                             <button
-                                className="download-button"
+                                className="download-button tab-action-btn tab-action-btn--secondary"
                                 onClick={onDownloadCode}
                                 disabled={!projectName}
-                                style={{
-                                    padding: '8px 20px',
-                                    fontSize: '13px',
-                                    fontWeight: '600',
-                                    backgroundColor: '#17a2b8',
-                                    border: 'none',
-                                    color: 'white',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    opacity: !projectName ? 0.7 : 1
-                                }}
                             >
+                                <IoDownloadOutline size={15} />
                                 Download Code
                             </button>
                             <button
-                                className="run-button"
+                                className="run-button tab-action-btn tab-action-btn--primary"
                                 onClick={onRun}
                                 disabled={!projectName || isRunLoading}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '8px 20px',
-                                    fontSize: '13px',
-                                    fontWeight: '600',
-                                    opacity: isRunLoading ? 0.7 : 1,
-                                    backgroundColor: '#007bff',
-                                    marginLeft: '10px'
-                                }}
                             >
-                                {isRunLoading && <Spinner animation="border" size="sm" />}
+                                {isRunLoading ? <Spinner animation="border" size="sm" /> : <IoPlayOutline size={15} />}
                                 {isRunLoading ? 'Starting...' : 'Run App'}
                             </button>
                             {buildStatus === 'BUILD_FAILED' && onRun && (

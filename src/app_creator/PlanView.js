@@ -1,4 +1,12 @@
 import React, { useState } from 'react';
+import {
+    IconBadge,
+    IoDocumentTextOutline,
+    IoColorPaletteOutline,
+    IoBrushOutline,
+    IoLayersOutline,
+    IoStopCircleOutline,
+} from './AppBuilderIcons';
 
 const PlanView = ({
     plan,
@@ -152,10 +160,10 @@ const PlanView = ({
     };
 
     const sections = [
-        { id: 'prd', label: '1. Product Requirements' },
-        { id: 'uiux', label: '2. UI/UX Design' },
-        { id: 'style', label: '3. Design System' },
-        { id: 'arch', label: '4. Architecture' }
+        { id: 'prd', label: 'Product Requirements', icon: IoDocumentTextOutline, step: 1 },
+        { id: 'uiux', label: 'UI/UX Design', icon: IoColorPaletteOutline, step: 2 },
+        { id: 'style', label: 'Design System', icon: IoBrushOutline, step: 3 },
+        { id: 'arch', label: 'Architecture', icon: IoLayersOutline, step: 4 },
     ];
 
     const renderMarkdown = (text) => {
@@ -219,6 +227,7 @@ const PlanView = ({
                     onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; e.currentTarget.style.borderColor = '#fecaca'; }}
                     onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fff'; e.currentTarget.style.borderColor = '#fee2e2'; }}
                 >
+                    <IoStopCircleOutline size={15} />
                     Stop Generating
                 </button>
             )}
@@ -226,7 +235,7 @@ const PlanView = ({
         </div>
     );
 
-    const EmptyState = ({ message, action, actionText }) => (
+    const EmptyState = ({ message, action, actionText, icon: EmptyIcon = IoDocumentTextOutline }) => (
         <div style={{
             textAlign: 'center',
             padding: '60px 20px',
@@ -239,8 +248,8 @@ const PlanView = ({
             justifyContent: 'center',
             alignItems: 'center'
         }}>
-            <div style={{ fontSize: '36px', marginBottom: '16px', opacity: 0.5, fontWeight: 600 }}>Start</div>
-            <p style={{ fontSize: '16px', color: '#64748b', marginBottom: '24px' }}>{message}</p>
+            <IconBadge icon={EmptyIcon} variant="slate" size={22} className="plan-empty-icon" />
+            <p style={{ fontSize: '16px', color: '#64748b', marginBottom: '24px', marginTop: '16px' }}>{message}</p>
             {action && (
                 <button
                     onClick={action}
@@ -549,24 +558,19 @@ const PlanView = ({
         <div style={styles.container}>
             {/* Tab Header */}
             <div style={styles.tabHeader}>
-                {sections.map(s => {
+                {sections.map((s) => {
                     const isActive = activeSection === s.id;
+                    const SectionIcon = s.icon;
                     return (
                         <div
                             key={s.id}
                             onClick={() => setActiveSection(s.id)}
                             style={styles.tabItem(isActive)}
                         >
-                            <span style={{
-                                width: '20px', height: '20px', borderRadius: '50%',
-                                backgroundColor: isActive ? '#2563eb' : '#e2e8f0',
-                                color: isActive ? '#fff' : '#64748b',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '11px', fontWeight: 'bold'
-                            }}>
-                                {s.id === 'prd' ? '1' : s.id === 'uiux' ? '2' : s.id === 'style' ? '3' : '4'}
+                            <span className={`plan-step-badge ${isActive ? 'active' : ''}`}>
+                                <SectionIcon size={14} aria-hidden />
                             </span>
-                            {s.label.replace(/^\d+\.\s/, '')}
+                            <span>{s.step}. {s.label}</span>
                         </div>
                     );
                 })}

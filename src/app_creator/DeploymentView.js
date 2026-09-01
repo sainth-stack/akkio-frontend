@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../utils/api';
 import Spinner from 'react-bootstrap/Spinner';
+import {
+    IconBadge,
+    IoRocketOutline,
+    IoCloudUploadOutline,
+    IoGitBranchOutline,
+    IoGlobeOutline,
+} from './AppBuilderIcons';
 import './DeploymentView.css';
 
 const IN_PROGRESS = new Set(['QUEUED', 'BUILDING', 'TESTING', 'DEPLOYING', 'deploying']);
@@ -267,12 +274,17 @@ const DeploymentView = ({ projectName, appId }) => {
     return (
         <div className="deployment-view">
             <div className="deployment-header">
-                <h3>Deployment</h3>
-                <p>
-                    {isLocalPreview
-                        ? 'Your app is running locally on this machine'
-                        : 'Deploy your generated app and get a live URL'}
-                </p>
+                <div className="deployment-header-title">
+                    <IconBadge icon={IoRocketOutline} variant="indigo" size={18} />
+                    <div>
+                        <h3>Deployment</h3>
+                        <p>
+                            {isLocalPreview
+                                ? 'Your app is running locally on this machine'
+                                : 'Deploy your generated app and get a live URL'}
+                        </p>
+                    </div>
+                </div>
             </div>
 
             {toast && (
@@ -365,7 +377,8 @@ const DeploymentView = ({ projectName, appId }) => {
                 borderRadius: '8px',
                 border: '1px solid #dee2e6'
             }}>
-                <h4 style={{ marginBottom: '12px', fontSize: '16px', fontWeight: '600' }}>
+                <h4 className="github-section-title">
+                    <IoGitBranchOutline size={18} />
                     Push to GitHub
                 </h4>
 
@@ -416,6 +429,7 @@ const DeploymentView = ({ projectName, appId }) => {
                             gap: '8px'
                         }}
                     >
+                        <IoGitBranchOutline size={16} />
                         Push to GitHub
                     </button>
                 ) : (
@@ -523,6 +537,7 @@ const DeploymentView = ({ projectName, appId }) => {
 
             {!deployment ? (
                 <div className="deployment-empty">
+                    <IconBadge icon={IoCloudUploadOutline} variant="slate" size={24} className="deployment-empty-icon" />
                     <h4>Ready to Deploy</h4>
                     <p>
                         {buildStatus === 'BUILD_SUCCESS'
@@ -540,7 +555,10 @@ const DeploymentView = ({ projectName, appId }) => {
                                 Deploying...
                             </>
                         ) : (
-                            'Deploy to Hostinger'
+                            <>
+                                <IoCloudUploadOutline size={16} />
+                                Deploy to Hostinger
+                            </>
                         )}
                     </button>
                     {!projectName && (

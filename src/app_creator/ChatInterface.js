@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ModelSelector from './ModelSelector';
 
 const SendIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -7,30 +8,40 @@ const SendIcon = () => (
     </svg>
 );
 
-const ChatInterface = ({ onSendMessage, messages, isLoading, isUpdateMode, isUpdateCodeInProgress }) => {
+const ChatInterface = ({
+    onSendMessage,
+    messages,
+    chatState,
+    isInputDisabled,
+    isUpdateMode,
+    isUpdateCodeInProgress,
+    selectedModel,
+    onModelChange,
+}) => {
     const [input, setInput] = useState("");
     const textareaRef = useRef(null);
     const messagesEndRef = useRef(null);
 
-    // Auto-scroll to bottom when new messages arrive
+    const showThinking = chatState === 'waiting';
+    const isStreaming = chatState === 'streaming';
+    const inputDisabled = isInputDisabled || chatState === 'waiting' || chatState === 'streaming';
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isLoading]);
+    }, [messages, chatState]);
 
-    // Auto-resize textarea
     useEffect(() => {
         const ta = textareaRef.current;
         if (!ta) return;
         ta.style.height = 'auto';
         const newHeight = Math.min(ta.scrollHeight, 120);
         ta.style.height = newHeight + 'px';
-        // Only show scrollbar when content exceeds max height
         ta.style.overflowY = ta.scrollHeight > 120 ? 'auto' : 'hidden';
     }, [input]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!input.trim() || isLoading) return;
+        if (!input.trim() || inputDisabled) return;
         onSendMessage(input.trim());
         setInput("");
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
@@ -49,6 +60,12 @@ const ChatInterface = ({ onSendMessage, messages, isLoading, isUpdateMode, isUpd
                 <h2>{isUpdateMode ? '✏️ Update App' : '🤖 App Builder'}</h2>
             </div>
 
+            <ModelSelector
+                value={selectedModel}
+                onChange={onModelChange}
+                disabled={inputDisabled}
+            />
+
             <div className="chat-messages">
                 {messages.length === 0 && (
                     <div className="message ai">
@@ -61,9 +78,12 @@ const ChatInterface = ({ onSendMessage, messages, isLoading, isUpdateMode, isUpd
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`message ${msg.role}`}>
                         {msg.content}
+                        {isStreaming && msg.role === 'ai' && idx === messages.map(m => m.role).lastIndexOf('ai') && (
+                            <span style={{ display: 'inline-block', width: 6, height: 14, marginLeft: 2, background: '#3b82f6', animation: 'pulse 1s infinite' }} />
+                        )}
                     </div>
                 ))}
-                {isLoading && (
+                {showThinking && (
                     <div className="message ai" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{
                             display: 'inline-block',
@@ -91,9 +111,9 @@ const ChatInterface = ({ onSendMessage, messages, isLoading, isUpdateMode, isUpd
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         rows={1}
-                        disabled={isLoading}
+                        disabled={inputDisabled}
                     />
-                    <button type="submit" className="send-button" disabled={isLoading || !input.trim()} title="Send (Enter)">
+                    <button type="submit" className="send-button" disabled={inputDisabled || !input.trim()} title="Send (Enter)">
                         <SendIcon />
                     </button>
                 </form>

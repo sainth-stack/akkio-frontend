@@ -40,8 +40,11 @@ const TabPanel = ({
     generatedUIUX,
     generatedArchitecture,
     onGenerateUIUX,
+    onGenerateStyle,
     onGenerateArch,
     onGeneratePlan,
+    designTokens,
+    designSystemMd,
     streamingArchitectureText,
     onStopPlanning,
     onStopCodegen,
@@ -151,8 +154,11 @@ const TabPanel = ({
                     generatedUIUX={generatedUIUX}
                     generatedArchitecture={generatedArchitecture}
                     onGenerateUIUX={onGenerateUIUX}
+                    onGenerateStyle={onGenerateStyle}
                     onGenerateArch={onGenerateArch}
                     onGeneratePlan={onGeneratePlan}
+                    designTokens={designTokens}
+                    designSystemMd={designSystemMd}
                     onRegeneratePrd={onRegeneratePrd}
                     onRegeneratePlan={onRegeneratePlan}
                     isLoading={isLoading}

@@ -6,13 +6,16 @@ const PlanView = ({
     generatedUIUX,
     generatedArchitecture,
     onGenerateUIUX,
+    onGenerateStyle,
     onGenerateArch,
     onGeneratePlan,
+    designTokens,
+    designSystemMd,
     onRegeneratePrd,
     onRegeneratePlan,
     isLoading,
-    streamingArchitectureText, // New prop
-    onStop, // New prop
+    streamingArchitectureText,
+    onStop,
     pipelineStatus,
     pipelineError,
     onRetryPipeline,
@@ -151,7 +154,8 @@ const PlanView = ({
     const sections = [
         { id: 'prd', label: '1. Product Requirements' },
         { id: 'uiux', label: '2. UI/UX Design' },
-        { id: 'arch', label: '3. Architecture' }
+        { id: 'style', label: '3. Design System' },
+        { id: 'arch', label: '4. Architecture' }
     ];
 
     const renderMarkdown = (text) => {
@@ -355,7 +359,13 @@ const PlanView = ({
             {generatedUIUX ? (
                 <>
                     {renderMarkdown(generatedUIUX)}
-                    {!isLoading && !generatedArchitecture && (
+                    {!isLoading && !designTokens && !designSystemMd && (
+                        <NextStepButton
+                            onClick={() => { setActiveSection('style'); onGenerateStyle?.(); }}
+                            label="Next: Generate Design System"
+                        />
+                    )}
+                    {!isLoading && (designTokens || designSystemMd) && !generatedArchitecture && (
                         <NextStepButton
                             onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
                             label="Next: Design Architecture"
@@ -438,6 +448,51 @@ const PlanView = ({
         </div>
     );
 
+    const renderDesignSystem = () => (
+        <div style={styles.card}>
+            {pipelineStatus === 'STYLE_FAILED' && (
+                <FailureBanner label="Design system generation failed" onRetry={onGenerateStyle} />
+            )}
+            <div style={styles.sectionTitle}>
+                <span>Design System</span>
+                {(designTokens || designSystemMd) && !isLoading && (
+                    <RegenerateButton onClick={onGenerateStyle} label="Regenerate" />
+                )}
+            </div>
+
+            {designSystemMd ? renderMarkdown(designSystemMd) : null}
+
+            {designTokens?.colors && (
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
+                    {Object.entries((designTokens.design_tokens || designTokens).colors || designTokens.colors).map(([name, hex]) => (
+                        <div key={name} style={{ textAlign: 'center' }}>
+                            <div style={{ width: 48, height: 48, borderRadius: 8, background: hex, border: '1px solid #e2e8f0' }} />
+                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{name}</div>
+                            <div style={{ fontSize: 10, color: '#94a3b8' }}>{hex}</div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {(designTokens || designSystemMd) ? (
+                !isLoading && !generatedArchitecture && (
+                    <NextStepButton
+                        onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
+                        label="Next: Design Architecture"
+                    />
+                )
+            ) : (
+                isLoading && activeSection === 'style' ?
+                    <LoadingState text="Building SaaS design tokens and CSS..." /> :
+                    <EmptyState
+                        message="UI/UX approved. Generate a production-ready design system."
+                        action={() => onGenerateStyle?.()}
+                        actionText="Generate Design System"
+                    />
+            )}
+        </div>
+    );
+
     const renderArchitecture = () => (
         <div style={styles.card}>
             {pipelineStatus === 'ARCHITECTURE_FAILED' && (
@@ -509,7 +564,7 @@ const PlanView = ({
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 fontSize: '11px', fontWeight: 'bold'
                             }}>
-                                {s.id === 'prd' ? '1' : s.id === 'uiux' ? '2' : '3'}
+                                {s.id === 'prd' ? '1' : s.id === 'uiux' ? '2' : s.id === 'style' ? '3' : '4'}
                             </span>
                             {s.label.replace(/^\d+\.\s/, '')}
                         </div>
@@ -521,6 +576,7 @@ const PlanView = ({
             <div style={styles.contentArea}>
                 {activeSection === 'prd' && renderPRD()}
                 {activeSection === 'uiux' && renderUIUX()}
+                {activeSection === 'style' && renderDesignSystem()}
                 {activeSection === 'arch' && renderArchitecture()}
             </div>
         </div>

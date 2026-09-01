@@ -7,11 +7,20 @@ import './AppBuilder.css';
 import api, { apiFetch, wsUrl, wsAuthPayload } from '../utils/api';
 
 const PIPELINE_RUNNING = [
-    'PRD_RUNNING', 'UIUX_RUNNING', 'ARCHITECTURE_RUNNING', 'PLAN_RUNNING', 'CODEGEN_RUNNING',
+    'PRD_RUNNING', 'UIUX_RUNNING', 'STYLE_RUNNING', 'ARCHITECTURE_RUNNING', 'PLAN_RUNNING', 'CODEGEN_RUNNING',
 ];
 const PIPELINE_FAILED = [
-    'PRD_FAILED', 'UIUX_FAILED', 'ARCHITECTURE_FAILED', 'PLAN_FAILED', 'CODEGEN_FAILED',
+    'PRD_FAILED', 'UIUX_FAILED', 'STYLE_FAILED', 'ARCHITECTURE_FAILED', 'PLAN_FAILED', 'CODEGEN_FAILED',
 ];
+
+const normalizeStalePipelineStatus = (status) => {
+    if (!status) return null;
+    if (PIPELINE_RUNNING.includes(status)) {
+        return status.replace('_RUNNING', '_FAILED');
+    }
+    if (status === 'BUILDING') return 'BUILD_FAILED';
+    return status;
+};
 
 const normalizeAgentsState = (agents) => {
     if (!agents || typeof agents !== 'object') return agents;
@@ -53,7 +62,11 @@ const AppBuilder = () => {
     const [prd, setPrd] = useState('');
     const [fileTree, setFileTree] = useState(null);
     const [files, setFiles] = useState({});
-    const [isLoading, setIsLoading] = useState(false);
+    const [isPipelineLoading, setIsPipelineLoading] = useState(false);
+    const [chatState, setChatState] = useState('idle');
+    const [selectedModel, setSelectedModel] = useState('');
+    const [designTokens, setDesignTokens] = useState(null);
+    const [designSystemMd, setDesignSystemMd] = useState('');
     const [activeTab, setActiveTab] = useState('Plan');
     const [projectName, setProjectName] = useState(null);
     const [agents, setAgents] = useState({});
@@ -124,7 +137,7 @@ const AppBuilder = () => {
 
         const newMessage = { role: 'user', content: text };
         setMessages(prev => [...prev, newMessage, { role: 'ai', content: "" }]);
-        setIsLoading(true);
+        setChatState('waiting');
         setActiveTab('Plan');
         setPipelineStatus('PRD_RUNNING');
         setPipelineError(null);
@@ -146,6 +159,7 @@ const AppBuilder = () => {
         if (!projectName) setProjectName(localProjectName);
 
         const append = (delta) => {
+            setChatState('streaming');
             setMessages(prev => {
                 if (prev.length === 0) return prev;
                 const next = [...prev];
@@ -190,7 +204,7 @@ const AppBuilder = () => {
             append("Starting PRD generation...\n\n");
 
             // Call new planning API for PRD
-            await streamPlanningStep('prd', { requirement: text, app_id: createdAppId || appId }, append, (data) => {
+            await streamPlanningStep('prd', { requirement: text, app_id: createdAppId || appId, model_name: selectedModel || undefined }, append, (data) => {
                 if (data.event === 'prd_chunk') setPrd(prev => prev + (data.data || ''));
                 if (data.event === 'prd_complete') {
                     lastPrd = data.data || '';
@@ -222,6 +236,8 @@ const AppBuilder = () => {
         } catch (error) {
             if (error.name === 'AbortError') {
                 append("\n🛑 Process stopped by user.\n");
+                setPipelineStatus('PRD_FAILED');
+                setPipelineError('Stopped by user');
             } else {
                 console.error('Error in PRD generation:', error);
                 append(`\nError: ${error.message}\n`);
@@ -229,7 +245,7 @@ const AppBuilder = () => {
                 setPipelineError(error.message);
             }
         } finally {
-            setIsLoading(false);
+            setChatState('idle');
             abortControllerRef.current = null;
             planningSessionRef.current = false;
         }
@@ -240,7 +256,7 @@ const AppBuilder = () => {
 
         const newMessage = { role: 'user', content: text };
         setMessages(prev => [...prev, newMessage, { role: 'ai', content: "Updating code based on your request...\n" }]);
-        setIsLoading(true);
+        setChatState('waiting');
         setIsUpdateCodeInProgress(true);
         setActiveTab('Build');
         setActiveBuildTab('Multi Agents');
@@ -264,6 +280,7 @@ const AppBuilder = () => {
                 const data = JSON.parse(event.data);
 
                 if (data.event === 'agent_start') {
+                    setChatState('streaming');
                     const next = {
                         ...agentsAccumulatorRef.current,
                         [data.agent]: {
@@ -278,6 +295,7 @@ const AppBuilder = () => {
                 }
 
                 if (data.event === 'agent_progress') {
+                    setChatState('streaming');
                     const prev = agentsAccumulatorRef.current;
                     const next = {
                         ...prev,
@@ -356,7 +374,7 @@ const AppBuilder = () => {
                     // Reload project tree to reflect new/changed files
                     if (projectName) loadProjectTree(projectName);
 
-                    setIsLoading(false);
+                    setChatState('idle');
                     setIsUpdateCodeInProgress(false);
                     updateCodeWsRef.current = null;
                     ws.close();
@@ -372,7 +390,7 @@ const AppBuilder = () => {
                         }
                         return next;
                     });
-                    setIsLoading(false);
+                    setChatState('idle');
                     updateCodeWsRef.current = null;
                     ws.close();
                 }
@@ -392,14 +410,14 @@ const AppBuilder = () => {
                 }
                 return next;
             });
-            setIsLoading(false);
+            setChatState('idle');
             setIsUpdateCodeInProgress(false);
             updateCodeWsRef.current = null;
         };
 
         ws.onclose = () => {
             updateCodeWsRef.current = null;
-            setIsLoading(false);
+            setChatState('idle');
             setIsUpdateCodeInProgress(false);
         };
     };
@@ -423,7 +441,14 @@ const AppBuilder = () => {
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
         }
-        setIsLoading(false);
+        setChatState('idle');
+        setIsPipelineLoading(false);
+        if (pipelineStatus && PIPELINE_RUNNING.includes(pipelineStatus)) {
+            const failed = pipelineStatus.replace('_RUNNING', '_FAILED');
+            setPipelineStatus(failed);
+            setPipelineError('Stopped by user');
+            updateAppInDb({ pipeline_status: failed, pipeline_error: 'Stopped by user' });
+        }
     };
 
 
@@ -433,6 +458,12 @@ const AppBuilder = () => {
             codegenWsRef.current = null;
         }
         setIsCodegenLoading(false);
+        setChatState('idle');
+        if (pipelineStatus === 'CODEGEN_RUNNING') {
+            setPipelineStatus('CODEGEN_FAILED');
+            setPipelineError('Stopped by user');
+            updateAppInDb({ pipeline_status: 'CODEGEN_FAILED', pipeline_error: 'Stopped by user' });
+        }
         setAgents(prev => {
             const current = prev?.code_generator_agent;
             if (!current) return prev;
@@ -496,7 +527,7 @@ const AppBuilder = () => {
     const handleGenerateUIUX = async () => {
         if (abortControllerRef.current) abortControllerRef.current.abort();
         abortControllerRef.current = new AbortController();
-        setIsLoading(true);
+        setIsPipelineLoading(true);
         const append = (delta) => {
             setMessages(prev => {
                 const next = [...prev];
@@ -509,7 +540,7 @@ const AppBuilder = () => {
         let lastUIUX = '';
         try {
             append("\nStarting UI/UX Design...\n");
-            await streamPlanningStep('uiux', { requirement: currentRequirement, prd, app_id: appId }, append, (data) => {
+            await streamPlanningStep('uiux', { requirement: currentRequirement, prd, app_id: appId, model_name: selectedModel || undefined }, append, (data) => {
                 if (data.event === 'uiux_chunk') setGeneratedUIUX(prev => prev + data.data);
                 if (data.event === 'uiux_complete') {
                     lastUIUX = data.data || '';
@@ -528,7 +559,61 @@ const AppBuilder = () => {
                 setPipelineError(e.message);
             }
         } finally {
-            setIsLoading(false);
+            setIsPipelineLoading(false);
+            abortControllerRef.current = null;
+        }
+    };
+
+    const handleGenerateStyle = async () => {
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+        abortControllerRef.current = new AbortController();
+        setIsPipelineLoading(true);
+        const append = (delta) => {
+            setMessages(prev => {
+                const next = [...prev];
+                const lastIdx = next.map(m => m.role).lastIndexOf('ai');
+                if (lastIdx !== -1) next[lastIdx].content += delta;
+                return next;
+            });
+        };
+
+        let styleResult = null;
+        try {
+            append("\nStarting Design System generation...\n");
+            await streamPlanningStep('style', {
+                requirement: currentRequirement,
+                prd,
+                uiux: generatedUIUX,
+                app_id: appId,
+                model_name: selectedModel || undefined,
+            }, append, (data) => {
+                if (data.event === 'style_chunk') {
+                    setDesignSystemMd(prev => prev + (data.data || ''));
+                }
+                if (data.event === 'style_complete') {
+                    styleResult = data.data || null;
+                }
+            });
+            if (styleResult) {
+                setDesignTokens(styleResult);
+                setDesignSystemMd(styleResult.summary_md || '');
+                updateAppInDb({
+                    design_tokens: styleResult,
+                    design_system_md: styleResult.summary_md || '',
+                });
+            }
+            append("Design System complete.\n");
+            setPipelineStatus('STYLE_COMPLETE');
+            setPipelineError(null);
+        } catch (e) {
+            if (e.name === 'AbortError') append("\n🛑 Stopped by user.\n");
+            else {
+                append(`Error: ${e.message}\n`);
+                setPipelineStatus('STYLE_FAILED');
+                setPipelineError(e.message);
+            }
+        } finally {
+            setIsPipelineLoading(false);
             abortControllerRef.current = null;
         }
     };
@@ -538,7 +623,7 @@ const AppBuilder = () => {
     const handleGenerateArch = async () => {
         if (abortControllerRef.current) abortControllerRef.current.abort();
         abortControllerRef.current = new AbortController();
-        setIsLoading(true);
+        setIsPipelineLoading(true);
         setStreamingArchitectureText('');
         setGeneratedArchitecture(null);
 
@@ -554,12 +639,18 @@ const AppBuilder = () => {
         let lastArch = null;
         try {
             append("\nStarting Architectural Design...\n");
-            await streamPlanningStep('architecture', { requirement: currentRequirement, prd, uiux: generatedUIUX, app_id: appId }, append, (data) => {
+            await streamPlanningStep('architecture', {
+                requirement: currentRequirement,
+                prd,
+                uiux: generatedUIUX,
+                app_id: appId,
+                model_name: selectedModel || undefined,
+            }, append, (data) => {
                 if (data.event === 'architecture_chunk') setStreamingArchitectureText(prev => prev + data.data);
                 if (data.event === 'architecture_complete') {
                     lastArch = data.data || null;
                     setGeneratedArchitecture(lastArch);
-                    setCurrentPhase('prd_complete'); // Enable "Create Agents" button (no Master Plan step)
+                    setCurrentPhase('prd_complete');
                 }
             });
             append("Architecture complete.\n");
@@ -574,7 +665,7 @@ const AppBuilder = () => {
                 setPipelineError(e.message);
             }
         } finally {
-            setIsLoading(false);
+            setIsPipelineLoading(false);
             abortControllerRef.current = null;
         }
     };
@@ -582,7 +673,7 @@ const AppBuilder = () => {
     const handleGeneratePlan = async () => {
         if (abortControllerRef.current) abortControllerRef.current.abort();
         abortControllerRef.current = new AbortController();
-        setIsLoading(true);
+        setIsPipelineLoading(true);
         const append = (delta) => {
             setMessages(prev => {
                 const next = [...prev];
@@ -595,12 +686,19 @@ const AppBuilder = () => {
         let lastPlan = null;
         try {
             append("\nStarting Implementation Plan...\n");
-            await streamPlanningStep('plan', { requirement: currentRequirement, prd, architecture: generatedArchitecture, app_id: appId }, append, (data) => {
+            await streamPlanningStep('plan', {
+                requirement: currentRequirement,
+                prd,
+                uiux: generatedUIUX,
+                architecture: generatedArchitecture,
+                app_id: appId,
+                model_name: selectedModel || undefined,
+            }, append, (data) => {
                 if (data.event === 'plan_step') setPlan(prev => [...prev, data.data]);
                 if (data.event === 'plan_complete') {
                     lastPlan = data.data || null;
                     setGeneratedPlan(lastPlan);
-                    setCurrentPhase('prd_complete'); // Enable "Create Agents" button
+                    setCurrentPhase('prd_complete');
                 }
             });
             append("Plan complete. Ready to build.\n");
@@ -615,7 +713,7 @@ const AppBuilder = () => {
                 setPipelineError(e.message);
             }
         } finally {
-            setIsLoading(false);
+            setIsPipelineLoading(false);
             abortControllerRef.current = null;
         }
     };
@@ -631,8 +729,8 @@ const AppBuilder = () => {
             return;
         }
 
-        setIsLoading(true);
         setIsCodegenLoading(true);
+        setChatState('idle');
         setCurrentPhase('agents');
         setPipelineStatus('CODEGEN_RUNNING');
         setPipelineError(null);
@@ -671,8 +769,8 @@ const AppBuilder = () => {
             setPipelineError(error.message);
             setCurrentPhase('prd_complete');
         } finally {
-            setIsLoading(false);
             setIsCodegenLoading(false);
+            setChatState('idle');
         }
     };
 
@@ -722,8 +820,19 @@ const AppBuilder = () => {
                     setPlan(planArr);
                     setGeneratedPlan(planArr.length ? planArr : []);
                     setGeneratedArchitecture(app.architecture || null);
+                    setDesignTokens(app.design_tokens || null);
+                    setDesignSystemMd(app.design_system_md || '');
+                    if (app.llm_model) setSelectedModel(app.llm_model);
                     setAppId(app.id);
-                    setPipelineStatus(app.pipeline_status || null);
+                    appIdRef.current = app.id;
+                    const normalizedPipeline = normalizeStalePipelineStatus(app.pipeline_status);
+                    setPipelineStatus(normalizedPipeline);
+                    if (normalizedPipeline !== app.pipeline_status) {
+                        api.put(`/app-builder/apps/${app.id}`, {
+                            pipeline_status: normalizedPipeline,
+                            pipeline_error: 'Interrupted (page reload)',
+                        }).catch(() => {});
+                    }
                     setPipelineError(app.pipeline_error || null);
                     setBuildStatus(app.build_status || null);
                     setBuildError(app.build_error || null);
@@ -1077,6 +1186,8 @@ const AppBuilder = () => {
                     uiux: uiuxText || "",
                     project_name,
                     app_id: appId || null,
+                    model_name: selectedModel || undefined,
+                    design_tokens: designTokens || undefined,
                 })));
             };
 
@@ -1223,6 +1334,8 @@ const AppBuilder = () => {
             handleStartPlanning(currentRequirement);
         } else if (pipelineStatus === 'UIUX_FAILED') {
             handleGenerateUIUX();
+        } else if (pipelineStatus === 'STYLE_FAILED') {
+            handleGenerateStyle();
         } else if (pipelineStatus === 'ARCHITECTURE_FAILED') {
             handleGenerateArch();
         } else if (pipelineStatus === 'PLAN_FAILED') {
@@ -1331,9 +1444,15 @@ const AppBuilder = () => {
                 <ChatInterface
                     onSendMessage={handleChatMessage}
                     messages={messages}
-                    isLoading={isLoading}
+                    chatState={chatState}
+                    isInputDisabled={isCodegenLoading || isPipelineLoading}
                     isUpdateMode={!!(projectName && (currentPhase === 'code_generated' || currentPhase === 'agents_complete' || Object.keys(files).length > 0 || fileTree !== null))}
                     isUpdateCodeInProgress={isUpdateCodeInProgress}
+                    selectedModel={selectedModel}
+                    onModelChange={(model) => {
+                        setSelectedModel(model);
+                        if (appId) updateAppInDb({ llm_model: model });
+                    }}
                 />
                 <TabPanel
                     plan={plan}
@@ -1359,7 +1478,7 @@ const AppBuilder = () => {
                     onRegeneratePrd={() => handleStartPlanning(currentRequirement)}
                     onRegeneratePlan={handleGeneratePlan}
                     onRegenerateAgents={handleCreateAgents}
-                    isLoading={isLoading}
+                    isLoading={isPipelineLoading}
                     isCodegenLoading={isCodegenLoading}
                     isRunLoading={isRunLoading}
                     pipelineStatus={pipelineStatus}
@@ -1370,7 +1489,10 @@ const AppBuilder = () => {
                     generatedUIUX={generatedUIUX}
                     generatedArchitecture={generatedArchitecture}
                     onGenerateUIUX={handleGenerateUIUX}
+                    onGenerateStyle={handleGenerateStyle}
                     onGenerateArch={handleGenerateArch}
+                    designTokens={designTokens}
+                    designSystemMd={designSystemMd}
                     onGeneratePlan={handleGeneratePlan}
                     streamingArchitectureText={streamingArchitectureText}
                     onStopPlanning={handleStopPlanning}

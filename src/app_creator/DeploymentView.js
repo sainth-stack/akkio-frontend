@@ -9,9 +9,11 @@ const TERMINAL = new Set(['RUNNING', 'FAILED', 'deployed', 'failed', 'LOCAL_PREV
 const DeploymentView = ({ projectName, appId }) => {
     const [isDeploying, setIsDeploying] = useState(false);
     const [deployment, setDeployment] = useState(null);
+    const [deploymentHistory, setDeploymentHistory] = useState([]);
     const [buildStatus, setBuildStatus] = useState(null);
     const [error, setError] = useState(null);
     const pollRef = useRef(null);
+    const activeDeploymentIdRef = useRef(null);
 
     const [isPushingToGithub, setIsPushingToGithub] = useState(false);
     const [githubError, setGithubError] = useState(null);
@@ -34,11 +36,28 @@ const DeploymentView = ({ projectName, appId }) => {
         }
     }, []);
 
+    const loadDeploymentHistory = useCallback(async () => {
+        if (!appId) return;
+        try {
+            const response = await api.get('/deployment/history', { params: { app_id: appId, limit: 10 } });
+            if (response.data?.deployments) {
+                setDeploymentHistory(response.data.deployments);
+            }
+        } catch (err) {
+            console.error('Error loading deployment history:', err);
+        }
+    }, [appId]);
+
     const loadDeploymentStatus = useCallback(async () => {
         try {
             const params = {};
-            if (appId) params.app_id = appId;
-            else if (projectName) params.project_name = projectName;
+            if (activeDeploymentIdRef.current) {
+                params.deployment_id = activeDeploymentIdRef.current;
+            } else if (appId) {
+                params.app_id = appId;
+            } else if (projectName) {
+                params.project_name = projectName;
+            }
 
             const response = await api.get('/deployment/status', { params });
             const data = response.data;
@@ -50,18 +69,19 @@ const DeploymentView = ({ projectName, appId }) => {
                 return data;
             }
 
-            if (data.deployment_status === 'LOCAL_PREVIEW') {
-                setDeployment(data);
-                return data;
-            }
-
             setDeployment(data);
 
             const status = data.deployment_status;
-            if (TERMINAL.has(status)) {
+            const trackingActive = activeDeploymentIdRef.current
+                ? String(data.deployment_id) === String(activeDeploymentIdRef.current)
+                : true;
+
+            if (TERMINAL.has(status) && trackingActive) {
                 stopPolling();
                 setIsDeploying(false);
-            } else if (IN_PROGRESS.has(status)) {
+                activeDeploymentIdRef.current = null;
+                loadDeploymentHistory();
+            } else if (IN_PROGRESS.has(status) && trackingActive) {
                 setIsDeploying(true);
             }
 
@@ -73,25 +93,31 @@ const DeploymentView = ({ projectName, appId }) => {
             showToast(msg, 'error');
             return null;
         }
-    }, [appId, projectName, stopPolling]);
+    }, [appId, projectName, stopPolling, loadDeploymentHistory]);
 
     const startPolling = useCallback(() => {
         stopPolling();
         pollRef.current = setInterval(() => {
-            loadDeploymentStatus();
-        }, 3000);
+            if (document.visibilityState === 'visible') {
+                loadDeploymentStatus();
+            }
+        }, 4000);
     }, [loadDeploymentStatus, stopPolling]);
 
     useEffect(() => {
         if (appId || projectName) {
             loadDeploymentStatus().then((data) => {
                 if (data && IN_PROGRESS.has(data.deployment_status)) {
+                    if (data.deployment_id) {
+                        activeDeploymentIdRef.current = String(data.deployment_id);
+                    }
                     startPolling();
                 }
             });
+            loadDeploymentHistory();
         }
         return () => stopPolling();
-    }, [appId, projectName, loadDeploymentStatus, startPolling, stopPolling]);
+    }, [appId, projectName, loadDeploymentStatus, loadDeploymentHistory, startPolling, stopPolling]);
 
     const handleDeploy = async (rebuild = false) => {
         if (!projectName) {
@@ -103,11 +129,15 @@ const DeploymentView = ({ projectName, appId }) => {
         setError(null);
 
         try {
-            await api.post('/deployment/deploy', {
+            const response = await api.post('/deployment/deploy', {
                 app_id: appId || null,
                 project_name: projectName,
                 rebuild,
             });
+            const deploymentId = response.data?.deployment_id;
+            if (deploymentId) {
+                activeDeploymentIdRef.current = String(deploymentId);
+            }
 
             await loadDeploymentStatus();
             startPolling();
@@ -127,10 +157,14 @@ const DeploymentView = ({ projectName, appId }) => {
         setError(null);
 
         try {
-            await api.post('/deployment/redeploy', {
+            const response = await api.post('/deployment/redeploy', {
                 app_id: appId || null,
                 project_name: projectName,
             });
+            const deploymentId = response.data?.deployment_id;
+            if (deploymentId) {
+                activeDeploymentIdRef.current = String(deploymentId);
+            }
 
             await loadDeploymentStatus();
             startPolling();
@@ -185,7 +219,7 @@ const DeploymentView = ({ projectName, appId }) => {
     };
 
     const normalizeStatus = (status) => {
-        if (status === 'LOCAL_PREVIEW') return 'RUNNING';
+        if (status === 'LOCAL_PREVIEW') return 'LOCAL_PREVIEW';
         if (status === 'deployed') return 'RUNNING';
         if (status === 'failed') return 'FAILED';
         if (status === 'deploying') return 'DEPLOYING';
@@ -200,6 +234,7 @@ const DeploymentView = ({ projectName, appId }) => {
             TESTING: { color: '#17a2b8', text: 'Testing' },
             DEPLOYING: { color: '#ffc107', text: 'Deploying' },
             RUNNING: { color: '#28a745', text: 'Live' },
+            LOCAL_PREVIEW: { color: '#0ea5e9', text: 'Preview' },
             FAILED: { color: '#dc3545', text: 'Failed' },
             pending: { color: '#6c757d', text: 'Pending' },
         };
@@ -296,6 +331,30 @@ const DeploymentView = ({ projectName, appId }) => {
             {error && (
                 <div className="deployment-error">
                     <strong>Error:</strong> {error}
+                </div>
+            )}
+
+            {deploymentHistory.length > 1 && (
+                <div style={{ marginBottom: 24, padding: 16, background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                    <h4 style={{ margin: '0 0 12px', fontSize: 15 }}>Deployment History</h4>
+                    <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ textAlign: 'left', color: '#64748b' }}>
+                                <th style={{ padding: '8px 4px' }}>Date</th>
+                                <th style={{ padding: '8px 4px' }}>Status</th>
+                                <th style={{ padding: '8px 4px' }}>URL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {deploymentHistory.map((d) => (
+                                <tr key={d.deployment_id || d.id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                    <td style={{ padding: '8px 4px' }}>{d.deployed_at ? new Date(d.deployed_at).toLocaleString() : '—'}</td>
+                                    <td style={{ padding: '8px 4px' }}>{getStatusBadge(d.deployment_status)}</td>
+                                    <td style={{ padding: '8px 4px', wordBreak: 'break-all' }}>{d.live_url || d.frontend_url || '—'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             )}
 

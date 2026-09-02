@@ -10,6 +10,27 @@ import {
 } from './AppBuilderIcons';
 import './DeploymentView.css';
 
+const API_ORIGIN = (import.meta.env.VITE_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+
+/** Replace localhost URLs stored before PUBLIC_BASE_URL was configured. */
+const normalizePublicUrl = (url) => {
+    if (!url || typeof url !== 'string') return url;
+    if (!API_ORIGIN.includes('localhost') && !API_ORIGIN.includes('127.0.0.1')) {
+        return url
+            .replace(/^https?:\/\/localhost:\d+/i, API_ORIGIN)
+            .replace(/^https?:\/\/127\.0\.0\.1:\d+/i, API_ORIGIN);
+    }
+    return url;
+};
+
+const normalizeDeployLog = (log) => {
+    if (!log) return log;
+    if (API_ORIGIN.includes('localhost') || API_ORIGIN.includes('127.0.0.1')) return log;
+    return log
+        .replace(/https?:\/\/localhost:\d+/gi, API_ORIGIN)
+        .replace(/https?:\/\/127\.0\.0\.1:\d+/gi, API_ORIGIN);
+};
+
 const IN_PROGRESS = new Set(['QUEUED', 'BUILDING', 'TESTING', 'DEPLOYING', 'deploying']);
 const TERMINAL = new Set(['RUNNING', 'FAILED', 'deployed', 'failed', 'LOCAL_PREVIEW']);
 
@@ -264,7 +285,9 @@ const DeploymentView = ({ projectName, appId }) => {
         );
     };
 
-    const liveUrl = deployment?.live_url || deployment?.frontend_url || deployment?.preview_url;
+    const liveUrl = normalizePublicUrl(
+        deployment?.live_url || deployment?.frontend_url || deployment?.preview_url
+    );
     const displayStatus = deployment ? normalizeStatus(deployment.deployment_status) : null;
     const isLocalPreview = deployment?.deployment_status === 'LOCAL_PREVIEW' || deployment?.mode === 'local';
     const showProgress = displayStatus && IN_PROGRESS.has(displayStatus);
@@ -362,7 +385,9 @@ const DeploymentView = ({ projectName, appId }) => {
                                 <tr key={d.deployment_id || d.id} style={{ borderTop: '1px solid #f1f5f9' }}>
                                     <td style={{ padding: '8px 4px' }}>{d.deployed_at ? new Date(d.deployed_at).toLocaleString() : '—'}</td>
                                     <td style={{ padding: '8px 4px' }}>{getStatusBadge(d.deployment_status)}</td>
-                                    <td style={{ padding: '8px 4px', wordBreak: 'break-all' }}>{d.live_url || d.frontend_url || '—'}</td>
+                                    <td style={{ padding: '8px 4px', wordBreak: 'break-all' }}>
+                                        {normalizePublicUrl(d.live_url || d.frontend_url) || '—'}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -542,7 +567,7 @@ const DeploymentView = ({ projectName, appId }) => {
                     <p>
                         {buildStatus === 'BUILD_SUCCESS'
                             ? 'Build succeeded. Click Deploy to register your live URL.'
-                            : <>Run the app in the <strong>Build</strong> tab first, then deploy at <code>http://localhost:8000/app/{projectName || 'project'}</code></>}
+                            : <>Run the app in the <strong>Build</strong> tab first, then deploy at <code>{API_ORIGIN}/app/{projectName || 'project'}</code></>}
                     </p>
                     <button
                         className="btn-deploy"
@@ -600,7 +625,7 @@ const DeploymentView = ({ projectName, appId }) => {
                                 overflow: 'auto',
                                 whiteSpace: 'pre-wrap',
                             }}>
-                                {deployment.deploy_log}
+                                {normalizeDeployLog(deployment.deploy_log)}
                             </pre>
                         </div>
                     )}
@@ -653,12 +678,12 @@ const DeploymentView = ({ projectName, appId }) => {
                                         </div>
                                         <div className="url-content">
                                             <a
-                                                href={deployment.backend_url}
+                                                href={normalizePublicUrl(deployment.backend_url)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="url-link"
                                             >
-                                                {deployment.backend_url}
+                                                {normalizePublicUrl(deployment.backend_url)}
                                             </a>
                                         </div>
                                     </div>

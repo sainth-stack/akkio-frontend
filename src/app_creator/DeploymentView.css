@@ -1,12 +1,23 @@
+/* Deploy tab — scrollable panel */
+.deployment-tab-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: #f8fafc;
+}
+
 .deployment-view {
-    padding: 24px 32px 32px;
+    padding: 24px 32px 40px;
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-    margin: 24px;
+    margin: 16px;
     display: flex;
     flex-direction: column;
     gap: 24px;
+    min-height: min-content;
 }
 
 .deployment-header {

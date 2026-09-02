@@ -614,6 +614,16 @@
   border-bottom-color: #3b82f6;
 }
 
+/* Deploy tab — scrollable panel (also in DeploymentView.css) */
+.deployment-tab-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  background: #f8fafc;
+}
+
 /* Tab content — this is where scroll happens, NOT the whole page */
 .tab-content {
   flex: 1;

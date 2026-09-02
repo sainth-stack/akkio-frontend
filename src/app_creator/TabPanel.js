@@ -182,10 +182,12 @@ const TabPanel = ({
                 return renderBuildContent();
             case 'Deploy':
                 return (
-                    <DeploymentView
-                        projectName={projectName}
-                        appId={appId}
-                    />
+                    <div className="deployment-tab-scroll">
+                        <DeploymentView
+                            projectName={projectName}
+                            appId={appId}
+                        />
+                    </div>
                 );
             default:
                 return null;

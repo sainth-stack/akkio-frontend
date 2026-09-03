@@ -10,26 +10,65 @@ import {
 } from './AppBuilderIcons';
 import './DeploymentView.css';
 
-const API_ORIGIN = (import.meta.env.VITE_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+/** Resolve public API base — env first, then same host as browser (Hostinger), then localhost. */
+const getPublicApiBase = () => {
+    const fromEnv = (import.meta.env.VITE_BASE_URL || '').replace(/\/$/, '');
+    if (fromEnv && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(fromEnv)) {
+        return fromEnv;
+    }
+    if (typeof window !== 'undefined') {
+        const { protocol, hostname } = window.location;
+        if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+            const apiPort = import.meta.env.VITE_API_PORT || '8000';
+            return `${protocol}//${hostname}:${apiPort}`;
+        }
+    }
+    return fromEnv || 'http://localhost:8000';
+};
 
-/** Replace localhost URLs stored before PUBLIC_BASE_URL was configured. */
+const PUBLIC_API_BASE = getPublicApiBase();
+
+/** Build canonical app URL from project name (never localhost when on public host). */
+const resolveAppUrl = (projectName, storedUrl) => {
+    if (projectName) {
+        return `${PUBLIC_API_BASE}/app/${projectName}`;
+    }
+    return normalizePublicUrl(storedUrl);
+};
+
+const resolveBackendUrl = (projectName, storedUrl) => {
+    if (projectName) {
+        return `${PUBLIC_API_BASE}/api/apps/${projectName}`;
+    }
+    return normalizePublicUrl(storedUrl);
+};
+
+/** Replace localhost URLs when a public base is configured. */
 const normalizePublicUrl = (url) => {
     if (!url || typeof url !== 'string') return url;
-    if (!API_ORIGIN.includes('localhost') && !API_ORIGIN.includes('127.0.0.1')) {
-        return url
-            .replace(/^https?:\/\/localhost:\d+/i, API_ORIGIN)
-            .replace(/^https?:\/\/127\.0\.0\.1:\d+/i, API_ORIGIN);
+    if (PUBLIC_API_BASE.includes('localhost') || PUBLIC_API_BASE.includes('127.0.0.1')) {
+        return url;
     }
-    return url;
+    return url
+        .replace(/^https?:\/\/localhost:\d+/i, PUBLIC_API_BASE)
+        .replace(/^https?:\/\/127\.0\.0\.1:\d+/i, PUBLIC_API_BASE);
 };
 
 const normalizeDeployLog = (log) => {
     if (!log) return log;
-    if (API_ORIGIN.includes('localhost') || API_ORIGIN.includes('127.0.0.1')) return log;
+    if (PUBLIC_API_BASE.includes('localhost') || PUBLIC_API_BASE.includes('127.0.0.1')) return log;
     return log
-        .replace(/https?:\/\/localhost:\d+/gi, API_ORIGIN)
-        .replace(/https?:\/\/127\.0\.0\.1:\d+/gi, API_ORIGIN);
+        .replace(/https?:\/\/localhost:\d+/gi, PUBLIC_API_BASE)
+        .replace(/https?:\/\/127\.0\.0\.1:\d+/gi, PUBLIC_API_BASE);
 };
+
+const DEPLOY_STEPS = [
+    { key: 'QUEUED', label: 'Queued' },
+    { key: 'BUILDING', label: 'Building' },
+    { key: 'TESTING', label: 'Testing' },
+    { key: 'DEPLOYING', label: 'Deploying' },
+    { key: 'RUNNING', label: 'Live' },
+];
 
 const IN_PROGRESS = new Set(['QUEUED', 'BUILDING', 'TESTING', 'DEPLOYING', 'deploying']);
 const TERMINAL = new Set(['RUNNING', 'FAILED', 'deployed', 'failed', 'LOCAL_PREVIEW']);
@@ -109,6 +148,9 @@ const DeploymentView = ({ projectName, appId }) => {
                 setIsDeploying(false);
                 activeDeploymentIdRef.current = null;
                 loadDeploymentHistory();
+                if (status === 'RUNNING') {
+                    showToast('Deployment complete — your app is live!', 'success');
+                }
             } else if (IN_PROGRESS.has(status) && trackingActive) {
                 setIsDeploying(true);
             }
@@ -129,7 +171,7 @@ const DeploymentView = ({ projectName, appId }) => {
             if (document.visibilityState === 'visible') {
                 loadDeploymentStatus();
             }
-        }, 4000);
+        }, 2000);
     }, [loadDeploymentStatus, stopPolling]);
 
     useEffect(() => {
@@ -155,6 +197,12 @@ const DeploymentView = ({ projectName, appId }) => {
 
         setIsDeploying(true);
         setError(null);
+        setDeployment((prev) => ({
+            ...(prev || {}),
+            project_name: projectName,
+            deployment_status: 'QUEUED',
+            deploy_log: 'Starting deployment...\nDeploy queued',
+        }));
 
         try {
             const response = await api.post('/deployment/deploy', {
@@ -183,6 +231,12 @@ const DeploymentView = ({ projectName, appId }) => {
 
         setIsDeploying(true);
         setError(null);
+        setDeployment((prev) => ({
+            ...(prev || {}),
+            project_name: projectName,
+            deployment_status: 'QUEUED',
+            deploy_log: 'Starting redeploy (rebuild)...\nDeploy queued',
+        }));
 
         try {
             const response = await api.post('/deployment/redeploy', {
@@ -285,14 +339,74 @@ const DeploymentView = ({ projectName, appId }) => {
         );
     };
 
-    const liveUrl = normalizePublicUrl(
+    const liveUrl = resolveAppUrl(
+        deployment?.project_name || projectName,
         deployment?.live_url || deployment?.frontend_url || deployment?.preview_url
+    );
+    const backendUrl = resolveBackendUrl(
+        deployment?.project_name || projectName,
+        deployment?.backend_url
     );
     const displayStatus = deployment ? normalizeStatus(deployment.deployment_status) : null;
     const isLocalPreview = deployment?.deployment_status === 'LOCAL_PREVIEW' || deployment?.mode === 'local';
-    const showProgress = displayStatus && IN_PROGRESS.has(displayStatus);
+    const showProgress = isDeploying || (displayStatus && IN_PROGRESS.has(displayStatus));
     const isLive = displayStatus === 'RUNNING';
     const isFailed = displayStatus === 'FAILED';
+
+    const activeStepIndex = (() => {
+        if (!displayStatus) return isDeploying ? 0 : -1;
+        const idx = DEPLOY_STEPS.findIndex((s) => s.key === displayStatus);
+        if (idx >= 0) return idx;
+        if (isDeploying) return 0;
+        return -1;
+    })();
+
+    const renderDeployStepper = () => (
+        <div className="deployment-stepper">
+            {DEPLOY_STEPS.map((step, idx) => {
+                const isDone = isLive || activeStepIndex > idx;
+                const isActive = !isLive && activeStepIndex === idx && showProgress;
+                return (
+                    <div
+                        key={step.key}
+                        className={`deployment-step ${isDone ? 'deployment-step--done' : ''} ${isActive ? 'deployment-step--active' : ''}`}
+                    >
+                        <div className="deployment-step-dot">
+                            {isDone && !isActive ? '✓' : isActive ? <Spinner animation="border" size="sm" /> : idx + 1}
+                        </div>
+                        <span className="deployment-step-label">{step.label}</span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+
+    const renderUrlCard = (label, url, icon = null) => (
+        <div className="url-card">
+            <div className="url-label">
+                {icon}
+                <strong>{label}</strong>
+            </div>
+            <div className="url-content">
+                <a href={url} target="_blank" rel="noopener noreferrer" className="url-link">
+                    {url}
+                </a>
+                <button
+                    type="button"
+                    className="btn-copy"
+                    onClick={() => {
+                        navigator.clipboard.writeText(url);
+                        showToast('Copied to clipboard', 'success');
+                    }}
+                >
+                    Copy
+                </button>
+                <a href={url} target="_blank" rel="noopener noreferrer" className="btn-open-live">
+                    Open
+                </a>
+            </div>
+        </div>
+    );
 
     return (
         <div className="deployment-view">
@@ -302,9 +416,13 @@ const DeploymentView = ({ projectName, appId }) => {
                     <div>
                         <h3>Deployment</h3>
                         <p>
-                            {isLocalPreview
-                                ? 'Your app is running locally on this machine'
-                                : 'Deploy your generated app and get a live URL'}
+                            {showProgress
+                                ? 'Publishing your app — this may take a minute...'
+                                : isLive
+                                    ? 'Your app is live and ready to share'
+                                    : isLocalPreview
+                                        ? 'Build succeeded — deploy to get your public URL'
+                                        : 'Deploy your generated app and get a live URL'}
                         </p>
                     </div>
                 </div>
@@ -386,7 +504,7 @@ const DeploymentView = ({ projectName, appId }) => {
                                     <td style={{ padding: '8px 4px' }}>{d.deployed_at ? new Date(d.deployed_at).toLocaleString() : '—'}</td>
                                     <td style={{ padding: '8px 4px' }}>{getStatusBadge(d.deployment_status)}</td>
                                     <td style={{ padding: '8px 4px', wordBreak: 'break-all' }}>
-                                        {normalizePublicUrl(d.live_url || d.frontend_url) || '—'}
+                                        {resolveAppUrl(d.project_name, d.live_url || d.frontend_url) || '—'}
                                     </td>
                                 </tr>
                             ))}
@@ -566,8 +684,8 @@ const DeploymentView = ({ projectName, appId }) => {
                     <h4>Ready to Deploy</h4>
                     <p>
                         {buildStatus === 'BUILD_SUCCESS'
-                            ? 'Build succeeded. Click Deploy to register your live URL.'
-                            : <>Run the app in the <strong>Build</strong> tab first, then deploy at <code>{API_ORIGIN}/app/{projectName || 'project'}</code></>}
+                            ? 'Build succeeded. Click Deploy to publish your live URL.'
+                            : <>Run the app in the <strong>Build</strong> tab first, then deploy at <code>{resolveAppUrl(projectName)}</code></>}
                     </p>
                     <button
                         className="btn-deploy"
@@ -599,19 +717,58 @@ const DeploymentView = ({ projectName, appId }) => {
                         {getStatusBadge(deployment.deployment_status)}
                     </div>
 
+                    {showProgress && renderDeployStepper()}
+
                     {showProgress && (
                         <div className="deployment-progress">
                             <Spinner animation="border" size="sm" />
                             <span>
-                                {displayStatus === 'QUEUED' && 'Waiting to start...'}
-                                {displayStatus === 'BUILDING' && 'Building frontend (npm)...'}
-                                {displayStatus === 'TESTING' && 'Running tests...'}
-                                {displayStatus === 'DEPLOYING' && 'Verifying health check...'}
+                                {displayStatus === 'QUEUED' && 'Waiting to start deployment...'}
+                                {displayStatus === 'BUILDING' && 'Building frontend (npm install + build)...'}
+                                {displayStatus === 'TESTING' && 'Running backend tests...'}
+                                {displayStatus === 'DEPLOYING' && 'Running health check and registering live URL...'}
+                                {!displayStatus && isDeploying && 'Starting deployment...'}
                             </span>
                         </div>
                     )}
 
-                    {deployment.deploy_log && (
+                    {isLive && liveUrl && (
+                        <div className="deployment-success-banner">
+                            <IoGlobeOutline size={20} />
+                            <span>Deployment successful — your app is live</span>
+                        </div>
+                    )}
+
+                    {isLocalPreview && !showProgress && liveUrl && (
+                        <div className="deployment-preview-panel">
+                            <p className="deployment-preview-note">
+                                Preview is ready. Click <strong>Deploy</strong> below to publish the public URL
+                                {PUBLIC_API_BASE.includes('localhost') ? ' (set VITE_BASE_URL to your server IP for production links)' : ''}.
+                            </p>
+                            {renderUrlCard('Preview URL', liveUrl, <IoGlobeOutline size={16} />)}
+                            <button
+                                type="button"
+                                className="btn-deploy"
+                                onClick={() => handleDeploy(false)}
+                                disabled={isDeploying || !projectName}
+                                style={{ marginTop: 16 }}
+                            >
+                                {isDeploying ? (
+                                    <>
+                                        <Spinner animation="border" size="sm" style={{ marginRight: 8 }} />
+                                        Deploying...
+                                    </>
+                                ) : (
+                                    <>
+                                        <IoCloudUploadOutline size={16} />
+                                        Deploy to Live URL
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
+
+                    {deployment.deploy_log && (showProgress || isLive || isFailed || isLocalPreview) && (
                         <div style={{ marginTop: 16 }}>
                             <strong style={{ fontSize: 13 }}>Deploy log</strong>
                             <pre style={{
@@ -632,62 +789,9 @@ const DeploymentView = ({ projectName, appId }) => {
 
                     {isLive && liveUrl && (
                         <>
-                            {isLocalPreview && (
-                                <div style={{
-                                    marginBottom: 12,
-                                    padding: '10px 14px',
-                                    background: '#eff6ff',
-                                    border: '1px solid #bfdbfe',
-                                    borderRadius: 6,
-                                    fontSize: 13,
-                                    color: '#1e40af',
-                                }}>
-                                    Running locally — open the preview below. Click <strong>Deploy</strong> to run health checks and register as live.
-                                </div>
-                            )}
                             <div className="deployment-urls">
-                                <div className="url-card">
-                                    <div className="url-label">
-                                        <strong>Live URL</strong>
-                                    </div>
-                                    <div className="url-content">
-                                        <a
-                                            href={liveUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="url-link"
-                                        >
-                                            {liveUrl}
-                                        </a>
-                                        <button
-                                            className="btn-copy"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(liveUrl);
-                                                alert('Copied to clipboard');
-                                            }}
-                                        >
-                                            Copy
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {deployment.backend_url && (
-                                    <div className="url-card">
-                                        <div className="url-label">
-                                            <strong>Backend API</strong>
-                                        </div>
-                                        <div className="url-content">
-                                            <a
-                                                href={normalizePublicUrl(deployment.backend_url)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="url-link"
-                                            >
-                                                {normalizePublicUrl(deployment.backend_url)}
-                                            </a>
-                                        </div>
-                                    </div>
-                                )}
+                                {renderUrlCard('Live URL', liveUrl, <IoGlobeOutline size={16} />)}
+                                {backendUrl && renderUrlCard('Backend API', backendUrl)}
                             </div>
 
                             <div className="deployment-actions">
@@ -696,7 +800,7 @@ const DeploymentView = ({ projectName, appId }) => {
                                     onClick={handleRedeploy}
                                     disabled={isDeploying}
                                 >
-                                    Redeploy (rebuild)
+                                    {isDeploying ? 'Redeploying...' : 'Redeploy (rebuild)'}
                                 </button>
                             </div>
                         </>

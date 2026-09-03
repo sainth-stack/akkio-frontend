@@ -343,6 +343,12 @@ const PlanView = ({
                             label="Next: Generate UI/UX Design"
                         />
                     )}
+                    {!prdLoading && generatedUIUX && (
+                        <NextStepButton
+                            onClick={() => setActiveSection('uiux')}
+                            label="Next: Review UI/UX Design"
+                        />
+                    )}
                 </>
             ) : (
                 prdLoading ?
@@ -362,17 +368,29 @@ const PlanView = ({
             )}
             <div style={styles.sectionTitle}>
                 <span>UI/UX Design</span>
-                {generatedUIUX && !isLoading && <RegenerateButton onClick={onGenerateUIUX} />}
+                {generatedUIUX && !isLoading && <RegenerateButton onClick={() => onGenerateUIUX({ force: true })} />}
             </div>
 
             {generatedUIUX ? (
                 <>
                     {renderMarkdown(generatedUIUX)}
                     {!isLoading && !designTokens && !designSystemMd && (
-                        <NextStepButton
-                            onClick={() => { setActiveSection('style'); onGenerateStyle?.(); }}
-                            label="Next: Generate Design System"
-                        />
+                        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid #e2e8f0', paddingTop: '24px', flexWrap: 'wrap' }}>
+                            <button
+                                type="button"
+                                onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
+                                style={styles.buttonSecondary}
+                            >
+                                Next: Architecture (use UI/UX only)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setActiveSection('style'); onGenerateStyle?.(); }}
+                                style={styles.buttonPrimary}
+                            >
+                                Next: Generate Design System
+                            </button>
+                        </div>
                     )}
                     {!isLoading && (designTokens || designSystemMd) && !generatedArchitecture && (
                         <NextStepButton

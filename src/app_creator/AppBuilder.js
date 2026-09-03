@@ -116,6 +116,26 @@ const AppBuilder = () => {
     const agentsAccumulatorRef = useRef({}); // mirror of agents state for reliable save
     useEffect(() => { appIdRef.current = appId; }, [appId]);
 
+    const releaseChatForEdits = useCallback(() => {
+        setIsCodegenLoading(false);
+        setIsPipelineLoading(false);
+        setChatState('idle');
+    }, []);
+
+    // Unblock chat when codegen finished (guards against WebSocket race leaving loading stuck)
+    useEffect(() => {
+        if (
+            pipelineStatus === 'CODEGEN_COMPLETE'
+            || pipelineStatus === 'CODEGEN_FAILED'
+            || currentPhase === 'code_generated'
+            || currentPhase === 'agents_complete'
+        ) {
+            if (!codegenWsRef.current && !updateCodeWsRef.current) {
+                releaseChatForEdits();
+            }
+        }
+    }, [pipelineStatus, currentPhase, releaseChatForEdits]);
+
     useEffect(() => {
         try {
             localStorage.setItem('akkio_use_sandbox_build', useSandboxBuild ? '1' : '0');
@@ -128,6 +148,15 @@ const AppBuilder = () => {
 
     // Renamed to be specific to PRD start
     const handleStartPlanning = async (text) => {
+        const hasExistingCode = currentPhase === 'code_generated'
+            || currentPhase === 'agents_complete'
+            || pipelineStatus === 'CODEGEN_COMPLETE'
+            || Object.keys(files).length > 0;
+        if (hasExistingCode && projectName) {
+            handleUpdateCode(text);
+            return;
+        }
+
         // Cancel previous if any
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -141,7 +170,7 @@ const AppBuilder = () => {
         setActiveTab('Plan');
         setPipelineStatus('PRD_RUNNING');
         setPipelineError(null);
-        // Reset all plan states
+        // Reset plan states for a fresh requirement
         setPlan([]);
         setPrd('');
         setGeneratedUIUX('');
@@ -423,11 +452,11 @@ const AppBuilder = () => {
     };
 
     const handleChatMessage = (text) => {
-        // If we already have a project and code has been generated, treat as an update request
         const hasGeneratedCode = currentPhase === 'code_generated'
             || currentPhase === 'agents_complete'
+            || pipelineStatus === 'CODEGEN_COMPLETE'
             || Object.keys(files).length > 0
-            || fileTree !== null;
+            || (fileTree && fileTree.length > 0);
 
         if (projectName && hasGeneratedCode) {
             handleUpdateCode(text);
@@ -524,10 +553,71 @@ const AppBuilder = () => {
         }
     };
 
-    const handleGenerateUIUX = async () => {
+    const handleRegeneratePrd = async () => {
+        if (!currentRequirement?.trim()) return;
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+        abortControllerRef.current = new AbortController();
+        planningSessionRef.current = true;
+        setIsPipelineLoading(true);
+        setChatState('waiting');
+        setPipelineStatus('PRD_RUNNING');
+        setPipelineError(null);
+        setPrd('');
+        setActiveTab('Plan');
+
+        const append = (delta) => {
+            setChatState('streaming');
+            setMessages(prev => {
+                const next = [...prev];
+                const lastIdx = next.map(m => m.role).lastIndexOf('ai');
+                if (lastIdx === -1) return [...prev, { role: 'ai', content: delta }];
+                next[lastIdx] = { ...next[lastIdx], content: (next[lastIdx].content || '') + delta };
+                return next;
+            });
+        };
+
+        let lastPrd = '';
+        try {
+            append('\nRegenerating PRD (keeping your UI/UX and architecture)...\n\n');
+            await streamPlanningStep('prd', {
+                requirement: currentRequirement,
+                app_id: appId,
+                model_name: selectedModel || undefined,
+            }, append, (data) => {
+                if (data.event === 'prd_chunk') setPrd(prev => prev + (data.data || ''));
+                if (data.event === 'prd_complete') {
+                    lastPrd = data.data || '';
+                    setPrd(lastPrd);
+                }
+            });
+            append('PRD updated. Your UI/UX design is unchanged — proceed to Architecture or regenerate code.\n');
+            setPipelineStatus('PRD_COMPLETE');
+            setPipelineError(null);
+            if (lastPrd) updateAppInDb({ prd: lastPrd });
+        } catch (e) {
+            if (e.name === 'AbortError') append('\n🛑 Stopped by user.\n');
+            else {
+                append(`Error: ${e.message}\n`);
+                setPipelineStatus('PRD_FAILED');
+                setPipelineError(e.message);
+            }
+        } finally {
+            setChatState('idle');
+            setIsPipelineLoading(false);
+            abortControllerRef.current = null;
+            planningSessionRef.current = false;
+        }
+    };
+
+    const handleGenerateUIUX = async ({ force = false } = {}) => {
+        if (!force && generatedUIUX?.trim()) {
+            setActiveTab('Plan');
+            return;
+        }
         if (abortControllerRef.current) abortControllerRef.current.abort();
         abortControllerRef.current = new AbortController();
         setIsPipelineLoading(true);
+        setGeneratedUIUX('');
         const append = (delta) => {
             setMessages(prev => {
                 const next = [...prev];
@@ -568,6 +658,8 @@ const AppBuilder = () => {
         if (abortControllerRef.current) abortControllerRef.current.abort();
         abortControllerRef.current = new AbortController();
         setIsPipelineLoading(true);
+        setDesignSystemMd('');
+        setDesignTokens(null);
         const append = (delta) => {
             setMessages(prev => {
                 const next = [...prev];
@@ -643,6 +735,7 @@ const AppBuilder = () => {
                 requirement: currentRequirement,
                 prd,
                 uiux: generatedUIUX,
+                design_tokens: designTokens || undefined,
                 app_id: appId,
                 model_name: selectedModel || undefined,
             }, append, (data) => {
@@ -898,6 +991,9 @@ const AppBuilder = () => {
                     ]);
 
                     setCurrentPhase(deriveCurrentPhase(app));
+                    if (app.pipeline_status === 'CODEGEN_COMPLETE' || app.generated_code_json) {
+                        releaseChatForEdits();
+                    }
                 }
             } catch (e) {
                 console.error('Error loading app:', e);
@@ -1162,6 +1258,7 @@ const AppBuilder = () => {
         return new Promise((resolve, reject) => {
             agentsAccumulatorRef.current = {};
             let settled = false;
+            let codegenDone = false;
             const sessionId = `session_${Date.now()}`;
             const socketUrl = wsUrl(`/codegen/execute/${sessionId}`);
 
@@ -1173,6 +1270,7 @@ const AppBuilder = () => {
             const finish = (fn, arg) => {
                 if (settled) return;
                 settled = true;
+                releaseChatForEdits();
                 fn(arg);
             };
 
@@ -1271,18 +1369,25 @@ const AppBuilder = () => {
                     }
 
                     if (data.event === 'codegen_complete') {
-                        appendAi(`\n${data.message}\n`);
-                        appendAi(`Files generated: ${data.data.files_count}\n\n`);
-                        loadProjectTree(project_name);
-                        loadGeneratedCodeIntoEditor(project_name);
-                        setCurrentPhase('code_generated');
-                        setPipelineStatus('CODEGEN_COMPLETE');
-                        setPipelineError(null);
-                        settled = true;
-                        ws.close();
-                        const agentsToSave = agentsAccumulatorRef.current;
-                        updateAppInDb({ agents_state: agentsToSave });
-                        finish(resolve);
+                        codegenDone = true;
+                        try {
+                            appendAi(`\n${data.message}\n`);
+                            const count = data.data?.files_count;
+                            if (count != null) appendAi(`Files generated: ${count}\n\n`);
+                            loadProjectTree(project_name);
+                            loadGeneratedCodeIntoEditor(project_name);
+                            setCurrentPhase('code_generated');
+                            setPipelineStatus('CODEGEN_COMPLETE');
+                            setPipelineError(null);
+                            updateAppInDb({ agents_state: agentsAccumulatorRef.current });
+                        } finally {
+                            releaseChatForEdits();
+                            if (codegenWsRef.current) {
+                                try { codegenWsRef.current.close(); } catch (_) { /* ignore */ }
+                            }
+                            codegenWsRef.current = null;
+                            finish(resolve);
+                        }
                     }
 
                     if (data.event === 'agent_error') {
@@ -1313,8 +1418,14 @@ const AppBuilder = () => {
             ws.onclose = () => {
                 codegenWsRef.current = null;
                 if (!settled) {
-                    appendAi("\nCode generation connection closed unexpectedly.\n");
-                    finish(reject, new Error('Code generation connection closed'));
+                    if (codegenDone) {
+                        finish(resolve);
+                    } else {
+                        appendAi("\nCode generation connection closed unexpectedly.\n");
+                        finish(reject, new Error('Code generation connection closed'));
+                    }
+                } else {
+                    releaseChatForEdits();
                 }
             };
         });
@@ -1445,7 +1556,7 @@ const AppBuilder = () => {
                     onSendMessage={handleChatMessage}
                     messages={messages}
                     chatState={chatState}
-                    isInputDisabled={isCodegenLoading || isPipelineLoading}
+                    isInputDisabled={loadingApp || isCodegenLoading || isPipelineLoading || isUpdateCodeInProgress}
                     isUpdateMode={!!(projectName && (currentPhase === 'code_generated' || currentPhase === 'agents_complete' || Object.keys(files).length > 0 || fileTree !== null))}
                     isUpdateCodeInProgress={isUpdateCodeInProgress}
                     selectedModel={selectedModel}
@@ -1475,7 +1586,7 @@ const AppBuilder = () => {
                     onCreateAgents={handleCreateAgents}
                     onStartCodegen={handleStartCodegen}
                     onRestartCodegen={handleRestartCodegen}
-                    onRegeneratePrd={() => handleStartPlanning(currentRequirement)}
+                    onRegeneratePrd={handleRegeneratePrd}
                     onRegeneratePlan={handleGeneratePlan}
                     onRegenerateAgents={handleCreateAgents}
                     isLoading={isPipelineLoading}

@@ -192,6 +192,9 @@
 
 .url-label {
     margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .url-label strong {
@@ -305,4 +308,128 @@
 
 .meta-value {
     color: #1a1a1a;
+}
+
+.deployment-stepper {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 20px 16px;
+    background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+}
+
+.deployment-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    position: relative;
+    min-width: 0;
+}
+
+.deployment-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: calc(50% + 18px);
+    right: calc(-50% + 18px);
+    height: 2px;
+    background: #cbd5e1;
+    z-index: 0;
+}
+
+.deployment-step--done:not(:last-child)::after {
+    background: #22c55e;
+}
+
+.deployment-step-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    z-index: 1;
+}
+
+.deployment-step--active .deployment-step-dot {
+    border-color: #2563eb;
+    color: #2563eb;
+    background: #eff6ff;
+}
+
+.deployment-step--done .deployment-step-dot {
+    border-color: #22c55e;
+    background: #22c55e;
+    color: #fff;
+}
+
+.deployment-step-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.deployment-step--active .deployment-step-label {
+    color: #2563eb;
+}
+
+.deployment-step--done .deployment-step-label {
+    color: #15803d;
+}
+
+.deployment-success-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: #ecfdf5;
+    border: 1px solid #86efac;
+    border-radius: 8px;
+    color: #166534;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.deployment-preview-panel {
+    padding: 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+.deployment-preview-note {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.5;
+}
+
+.btn-open-live {
+    padding: 8px 12px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-open-live:hover {
+    background: #1d4ed8;
+    color: #fff;
 }

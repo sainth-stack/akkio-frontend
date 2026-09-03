@@ -18,7 +18,11 @@ const ChatInterface = ({
 
     const showThinking = chatState === 'waiting';
     const isStreaming = chatState === 'streaming';
-    const inputDisabled = isInputDisabled || chatState === 'waiting' || chatState === 'streaming';
+    // In update mode, only block input during an active update — not stale chatState after codegen
+    const inputDisabled = isInputDisabled
+        || (isUpdateMode
+            ? isUpdateCodeInProgress
+            : (chatState === 'waiting' || chatState === 'streaming'));
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

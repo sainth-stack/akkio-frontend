@@ -51,6 +51,9 @@ const AgentsView = ({
             'code_generator_agent': 'Code Generation Agent',
             'coding_agent': 'Coding Agent',
             'validation_agent': 'Validation Agent',
+            'backend_verify_agent': 'Backend Verify Agent',
+            'build_verify_agent': 'Build Verify Agent',
+            'functionality_validator_agent': 'Functionality Validator',
             'runner_agent': 'Execution Agent',
             'update_code_agent': 'Code Update Agent'
         };
@@ -114,6 +117,10 @@ const AgentsView = ({
                     {entries.map(([name, info], index) => {
                         const status = info?.status || 'pending';
                         const isLast = index === entries.length - 1;
+                        const lastProgress = info?.progress?.length
+                            ? info.progress[info.progress.length - 1]?.text
+                            : '';
+                        const runningLabel = lastProgress || info?.message || 'Processing...';
 
                         return (
                             <div key={name} style={{ position: 'relative', paddingLeft: '48px', paddingBottom: '28px' }}>
@@ -242,8 +249,9 @@ const AgentsView = ({
                                                     padding: '8px 0',
                                                     color: '#007bff',
                                                     display: 'flex',
-                                                    alignItems: 'center',
-                                                    fontSize: '12px'
+                                                    alignItems: 'flex-start',
+                                                    fontSize: '12px',
+                                                    lineHeight: '1.5'
                                                 }}>
                                                     <span style={{
                                                         display: 'inline-block',
@@ -252,9 +260,11 @@ const AgentsView = ({
                                                         borderRadius: '50%',
                                                         backgroundColor: '#007bff',
                                                         marginRight: '8px',
+                                                        marginTop: '5px',
+                                                        flexShrink: 0,
                                                         animation: 'pulse 1.5s ease-in-out infinite'
                                                     }} />
-                                                    Processing...
+                                                    <span>{runningLabel}</span>
                                                 </div>
                                             )}
                                         </div>

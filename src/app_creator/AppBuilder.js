@@ -1311,21 +1311,34 @@ const AppBuilder = () => {
                         setAgents(next);
                     }
 
-                    if (data.event === 'agent_progress') {
+                    const appendVerifyAgentProgress = (agentName, message, type = 'progress') => {
+                        if (!agentName || !message) return;
                         const prev = agentsAccumulatorRef.current;
                         const next = {
                             ...prev,
-                            [data.agent]: {
-                                ...prev[data.agent],
-                                message: data.message,
+                            [agentName]: {
+                                ...prev[agentName],
+                                status: prev[agentName]?.status || 'running',
+                                message,
                                 progress: [
-                                    ...(prev[data.agent]?.progress || []),
-                                    { type: 'progress', text: data.message, timestamp: Date.now() }
-                                ]
+                                    ...(prev[agentName]?.progress || []),
+                                    { type, text: message, timestamp: Date.now() }
+                                ],
+                                started_at: prev[agentName]?.started_at || Date.now(),
                             }
                         };
                         agentsAccumulatorRef.current = next;
                         setAgents(next);
+                    };
+
+                    const verifyAgentFromEvent = (eventName) => {
+                        if (String(eventName || '').startsWith('backend_')) return 'backend_verify_agent';
+                        if (String(eventName || '').startsWith('build_')) return 'build_verify_agent';
+                        return null;
+                    };
+
+                    if (data.event === 'agent_progress') {
+                        appendVerifyAgentProgress(data.agent, data.message);
                         appendAi(`  ${data.message}\n`);
                     }
 
@@ -1347,25 +1360,31 @@ const AppBuilder = () => {
                         };
                         agentsAccumulatorRef.current = next;
                         setAgents(next);
-                        if (data.agent === 'build_verify_agent' || data.agent === 'validation_agent') {
+                        if (data.agent === 'build_verify_agent' || data.agent === 'backend_verify_agent' || data.agent === 'validation_agent') {
                             appendAi(`\n${data.message}\n`);
                         }
                     }
 
-                    if (data.event === 'build_start' || data.event === 'build_fix_attempt') {
-                        appendAi(`\n${data.message}\n`);
-                    }
-
-                    if (data.event === 'build_log') {
-                        appendAi(`  ${data.message}\n`);
-                    }
-
-                    if (data.event === 'build_failed') {
-                        appendAi(`\n⚠ ${data.message}\n`);
-                    }
-
-                    if (data.event === 'build_success') {
-                        appendAi(`\n✓ ${data.message}\n`);
+                    const verifyEvents = [
+                        'backend_start', 'backend_log', 'backend_fix_attempt', 'backend_failed', 'backend_success',
+                        'build_start', 'build_log', 'build_fix_attempt', 'build_failed', 'build_success',
+                    ];
+                    if (verifyEvents.includes(data.event)) {
+                        const agent = data.agent || verifyAgentFromEvent(data.event);
+                        const progressType = data.event.endsWith('_failed') ? 'error'
+                            : data.event.endsWith('_success') ? 'complete'
+                                : data.event.endsWith('_start') || data.event.endsWith('_fix_attempt') ? 'start'
+                                    : 'progress';
+                        appendVerifyAgentProgress(agent, data.message, progressType);
+                        if (data.event.endsWith('_start') || data.event.endsWith('_fix_attempt')) {
+                            appendAi(`\n${data.message}\n`);
+                        } else if (data.event.endsWith('_log')) {
+                            appendAi(`  ${data.message}\n`);
+                        } else if (data.event.endsWith('_failed')) {
+                            appendAi(`\n⚠ ${data.message}\n`);
+                        } else if (data.event.endsWith('_success')) {
+                            appendAi(`\n✓ ${data.message}\n`);
+                        }
                     }
 
                     if (data.event === 'codegen_complete') {

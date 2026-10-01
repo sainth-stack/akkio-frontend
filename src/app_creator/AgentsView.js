@@ -54,6 +54,11 @@ const AgentsView = ({
             'backend_verify_agent': 'Backend Verify Agent',
             'build_verify_agent': 'Build Verify Agent',
             'functionality_validator_agent': 'Functionality Validator',
+            'frontend_agent': 'Frontend Agent',
+            'backend_agent': 'Backend Agent',
+            'integration_agent': 'Integration Agent',
+            'screen_qa_agent': 'Screen QA Agent',
+            'mock_fallback_agent': 'Mock Fallback Agent',
             'runner_agent': 'Execution Agent',
             'update_code_agent': 'Code Update Agent'
         };

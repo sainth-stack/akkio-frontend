@@ -12,9 +12,14 @@ const MiddleContent = () => {
                     <p style={{ width: '90%' }}>
                         Decision-based Autonomous GenAI AgenticAI Platform" combines elements of decision support, Autonomous Capability, advanced analytics, data-driven insights, and Generative Artificial intelligence to empower users to make informed decisions and optimize processes across various domains.
                     </p>
-                    <Link to={'/app-builder'} className="nav-link align-middle px-2 nav-item">
-                        <button className={styles.ctaButton} >Get Started</button>
-                    </Link>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+                        <Link to={'/app-builder'} className="nav-link align-middle px-2 nav-item">
+                            <button className={styles.ctaButton}>App Builder</button>
+                        </Link>
+                        <Link to={'/agentic-builder'} className="nav-link align-middle px-2 nav-item">
+                            <button className={styles.ctaButton}>Agentic Builder</button>
+                        </Link>
+                    </div>
                 </div>
                 <div className={`${styles.rightContent} col-6`}>
 

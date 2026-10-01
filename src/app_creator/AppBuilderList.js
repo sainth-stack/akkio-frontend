@@ -7,9 +7,11 @@ import Spinner from 'react-bootstrap/Spinner';
 
 import api from '../utils/api';
 import { IconBadge, IoAppsOutline } from './AppBuilderIcons';
+import { BUILDER_KIND_APP, getBuilderConfig } from './builderConfig';
 import './AppBuilderList.css';
 
-const AppBuilderList = () => {
+const AppBuilderList = ({ builderKind = BUILDER_KIND_APP }) => {
+  const config = getBuilderConfig(builderKind);
   const navigate = useNavigate();
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ const AppBuilderList = () => {
     const fetchApps = async () => {
       setLoading(true);
       try {
-        const res = await api.get('/app-builder/apps');
+        const res = await api.get('/app-builder/apps', { params: { kind: config.kind } });
         const data = res.data;
         if (data.status === 'success' && Array.isArray(data.apps)) {
           setApps(data.apps);
@@ -32,7 +34,7 @@ const AppBuilderList = () => {
       }
     };
     fetchApps();
-  }, []);
+  }, [config.kind]);
 
   const filteredApps = useMemo(() => {
     if (!searchQuery.trim()) return apps;
@@ -64,7 +66,7 @@ const AppBuilderList = () => {
   };
 
   const handleEdit = (app) => {
-    navigate(`/app-builder/edit/${app.id}`);
+    navigate(config.editPath(app.id));
   };
 
   return (
@@ -76,7 +78,7 @@ const AppBuilderList = () => {
       <div className="app-builder-list__search">
         <Input
           prefix={<FaSearch style={{ color: '#94a3b8' }} />}
-          placeholder="Search apps..."
+          placeholder={config.searchPlaceholder}
           size="large"
           allowClear
           value={searchQuery}
@@ -86,7 +88,7 @@ const AppBuilderList = () => {
       </div>
 
       <div>
-        <h3 className="app-builder-list__section-title">Applications</h3>
+        <h3 className="app-builder-list__section-title">{config.listTitle}</h3>
 
         {loading ? (
           <div className="app-builder-list__loading">
@@ -96,12 +98,12 @@ const AppBuilderList = () => {
           <div className="app-builder-list__grid">
             <div
               className="app-builder-list__new-card"
-              onClick={() => navigate('/app-builder/new')}
+              onClick={() => navigate(config.newPath)}
             >
               <div className="app-builder-list__new-icon">
                 <FaPlus size={22} />
               </div>
-              <div className="app-builder-list__new-label">New app</div>
+              <div className="app-builder-list__new-label">{config.newCardLabel}</div>
             </div>
 
             {filteredApps.map((app) => (

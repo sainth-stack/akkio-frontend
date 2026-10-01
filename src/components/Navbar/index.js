@@ -9,6 +9,8 @@ const TITLE_BY_PATH = {
   '/welcome': 'Home',
   '/multi-agent': 'Multi Agent',
   '/app-builder': 'App Builder',
+  '/agentic-builder': 'Agentic Builder',
+  '/fullstack-builder': 'Agentic Builder',
   '/administration': 'Administration',
 };
 
@@ -28,6 +30,10 @@ function Navbar() {
   useEffect(() => {
     if (location.pathname.startsWith('/app-builder')) {
       setName('App Builder')
+      return
+    }
+    if (location.pathname.startsWith('/agentic-builder') || location.pathname.startsWith('/fullstack-builder')) {
+      setName('Agentic Builder')
       return
     }
     if (location.pathname.startsWith('/administration')) {

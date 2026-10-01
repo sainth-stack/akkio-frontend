@@ -4,7 +4,7 @@ import "./akkioSidebar.scss";
 import "./akkioSidebarLayout.scss";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { IoHome, IoChevronForward } from "react-icons/io5";
-import { FaPuzzlePiece, FaUserGear } from "react-icons/fa6";
+import { FaPuzzlePiece, FaLayerGroup, FaUserGear } from "react-icons/fa6";
 import WorkspaceUsageCard from "./WorkspaceUsageCard";
 import { hasPermission } from "../../utils/auth";
 
@@ -12,6 +12,7 @@ const MENU_ITEMS = [
   { name: 'Home', icon: IoHome, path: '/welcome', id: 1, permission: 'home' },
   // { name: 'Multi Agent', icon: FaBrain, path: '/multi-agent', permission: 'reports' },
   { name: 'App Builder', icon: FaPuzzlePiece, path: '/app-builder', permission: 'reports' },
+  { name: 'Agentic Builder', icon: FaLayerGroup, path: '/agentic-builder', permission: 'reports' },
 ];
 
 const ADMIN_CHILDREN = [
@@ -39,6 +40,12 @@ export default function Sidebar() {
 
   const isActive = (item) => {
     if (item.name === "App Builder" && (location.pathname === "/app-builder" || location.pathname.startsWith("/app-builder/"))) {
+      return true;
+    }
+    if (
+      item.name === "Agentic Builder" &&
+      (location.pathname.startsWith("/agentic-builder") || location.pathname.startsWith("/fullstack-builder"))
+    ) {
       return true;
     }
     return location.pathname === item.path;

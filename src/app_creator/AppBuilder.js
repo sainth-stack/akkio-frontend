@@ -5,6 +5,7 @@ import ChatInterface from './ChatInterface';
 import TabPanel from './TabPanel';
 import './AppBuilder.css';
 import api, { apiFetch, wsUrl, wsAuthPayload } from '../utils/api';
+import { BUILDER_KIND_APP, getBuilderConfig } from './builderConfig';
 
 const PIPELINE_RUNNING = [
     'PRD_RUNNING', 'UIUX_RUNNING', 'STYLE_RUNNING', 'ARCHITECTURE_RUNNING', 'PLAN_RUNNING', 'CODEGEN_RUNNING',
@@ -47,7 +48,8 @@ const deriveCurrentPhase = (app) => {
     return 'idle';
 };
 
-const AppBuilder = () => {
+const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
+    const config = getBuilderConfig(builderKind);
     const { id: editId } = useParams();
     const navigate = useNavigate();
     const email = useMemo(() => {
@@ -184,7 +186,7 @@ const AppBuilder = () => {
         setCurrentRequirement(text);
         setClarifiedRequirement('');
 
-        const localProjectName = projectName || ("generated_app_" + Date.now());
+        const localProjectName = projectName || ((config.kind === 'fullstack' ? 'fullstack_app_' : 'generated_app_') + Date.now());
         if (!projectName) setProjectName(localProjectName);
 
         const append = (delta) => {
@@ -216,6 +218,7 @@ const AppBuilder = () => {
                     app_name: appName,
                     prompt: text,
                     project_name: localProjectName,
+                    builder_kind: config.kind,
                 });
                 const createData = createRes.data;
                 if (createData.status === 'success' && createData.app?.id) {
@@ -259,7 +262,7 @@ const AppBuilder = () => {
             }
 
             if (createdAppId && !editId) {
-                navigate(`/app-builder/edit/${createdAppId}`, { replace: true });
+                navigate(config.editPath(createdAppId), { replace: true });
             }
 
         } catch (error) {
@@ -516,7 +519,7 @@ const AppBuilder = () => {
             const response = await apiFetch(`/planning/${step}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
+                body: JSON.stringify({ ...body, builder_kind: config.kind }),
                 signal: abortControllerRef.current?.signal
             });
 
@@ -609,6 +612,38 @@ const AppBuilder = () => {
         }
     };
 
+    const runDesignSystemGeneration = async (append, uiuxOverride) => {
+        let styleResult = null;
+        setDesignSystemMd('');
+        setDesignTokens(null);
+        await streamPlanningStep('style', {
+            requirement: currentRequirement,
+            prd,
+            uiux: uiuxOverride || generatedUIUX,
+            app_id: appId,
+            model_name: selectedModel || undefined,
+        }, append, (data) => {
+            if (data.event === 'style_chunk') {
+                setDesignSystemMd(prev => prev + (data.data || ''));
+            }
+            if (data.event === 'style_complete') {
+                styleResult = data.data || null;
+            }
+        });
+        if (styleResult) {
+            setDesignTokens(styleResult);
+            setDesignSystemMd(styleResult.summary_md || '');
+            updateAppInDb({
+                design_tokens: styleResult,
+                design_system_md: styleResult.summary_md || '',
+            });
+        }
+        append("Design System complete.\n");
+        setPipelineStatus('STYLE_COMPLETE');
+        setPipelineError(null);
+        return styleResult;
+    };
+
     const handleGenerateUIUX = async ({ force = false } = {}) => {
         if (!force && generatedUIUX?.trim()) {
             setActiveTab('Plan');
@@ -641,6 +676,10 @@ const AppBuilder = () => {
             setPipelineStatus('UIUX_COMPLETE');
             setPipelineError(null);
             if (lastUIUX) updateAppInDb({ generated_uiux: lastUIUX });
+            if (config.autoDesignSystem && lastUIUX) {
+                append("\nExtracting design tokens from the prompt and UI/UX...\n");
+                await runDesignSystemGeneration(append, lastUIUX);
+            }
         } catch (e) {
             if (e.name === 'AbortError') append("\n🛑 Stopped by user.\n");
             else {
@@ -672,31 +711,7 @@ const AppBuilder = () => {
         let styleResult = null;
         try {
             append("\nStarting Design System generation...\n");
-            await streamPlanningStep('style', {
-                requirement: currentRequirement,
-                prd,
-                uiux: generatedUIUX,
-                app_id: appId,
-                model_name: selectedModel || undefined,
-            }, append, (data) => {
-                if (data.event === 'style_chunk') {
-                    setDesignSystemMd(prev => prev + (data.data || ''));
-                }
-                if (data.event === 'style_complete') {
-                    styleResult = data.data || null;
-                }
-            });
-            if (styleResult) {
-                setDesignTokens(styleResult);
-                setDesignSystemMd(styleResult.summary_md || '');
-                updateAppInDb({
-                    design_tokens: styleResult,
-                    design_system_md: styleResult.summary_md || '',
-                });
-            }
-            append("Design System complete.\n");
-            setPipelineStatus('STYLE_COMPLETE');
-            setPipelineError(null);
+            styleResult = await runDesignSystemGeneration(append);
         } catch (e) {
             if (e.name === 'AbortError') append("\n🛑 Stopped by user.\n");
             else {
@@ -998,7 +1013,7 @@ const AppBuilder = () => {
             } catch (e) {
                 console.error('Error loading app:', e);
                 alert('Failed to load this app. It may have been deleted.');
-                navigate('/app-builder');
+                navigate(config.listPath);
             } finally {
                 setLoadingApp(false);
             }
@@ -1286,6 +1301,7 @@ const AppBuilder = () => {
                     app_id: appId || null,
                     model_name: selectedModel || undefined,
                     design_tokens: designTokens || undefined,
+                    builder_kind: config.kind,
                 })));
             };
 
@@ -1393,12 +1409,30 @@ const AppBuilder = () => {
                             appendAi(`\n${data.message}\n`);
                             const count = data.data?.files_count;
                             if (count != null) appendAi(`Files generated: ${count}\n\n`);
+                            const previewUrl = data.data?.preview_url;
+                            const backendUrl = data.data?.backend_url;
+                            if (previewUrl) {
+                                appendAi(`Preview: ${previewUrl}\n`);
+                                setRunState({
+                                    project_name,
+                                    frontend_url: previewUrl,
+                                    backend_url: backendUrl || null,
+                                });
+                                setBuildStatus('BUILD_SUCCESS');
+                                setBuildError(null);
+                            }
                             loadProjectTree(project_name);
                             loadGeneratedCodeIntoEditor(project_name);
                             setCurrentPhase('code_generated');
                             setPipelineStatus('CODEGEN_COMPLETE');
                             setPipelineError(null);
-                            updateAppInDb({ agents_state: agentsAccumulatorRef.current });
+                            updateAppInDb({
+                                agents_state: agentsAccumulatorRef.current,
+                                preview_url: previewUrl,
+                                live_url: previewUrl,
+                                build_status: 'BUILD_SUCCESS',
+                                pipeline_status: 'CODEGEN_COMPLETE',
+                            });
                         } finally {
                             releaseChatForEdits();
                             if (codegenWsRef.current) {
@@ -1494,10 +1528,10 @@ const AppBuilder = () => {
                 <header style={{ padding: '12px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 12, backgroundColor: '#fff' }}>
                     <button
                         type="button"
-                        onClick={() => navigate('/app-builder')}
+                        onClick={() => navigate(config.listPath)}
                         style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, background: '#fff', cursor: 'pointer', fontSize: 14, color: '#374151' }}
                     >
-                        ← Back to App Builder
+                        ← {config.backLabel}
                     </button>
                 </header>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', padding: 24 }}>
@@ -1515,10 +1549,10 @@ const AppBuilder = () => {
             <header style={{ padding: '14px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 12, backgroundColor: '#fff', flexShrink: 0 }}>
                 <button
                     type="button"
-                    onClick={() => navigate('/app-builder')}
+                    onClick={() => navigate(config.listPath)}
                     style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 500, color: '#475569' }}
                 >
-                    ← Back to App Builder
+                    ← {config.backLabel}
                 </button>
             </header>
             {showPipelineBanner && (
@@ -1583,6 +1617,9 @@ const AppBuilder = () => {
                         setSelectedModel(model);
                         if (appId) updateAppInDb({ llm_model: model });
                     }}
+                    title={config.chatTitle}
+                    updateTitle={config.chatUpdateTitle}
+                    welcomeMessage={config.chatWelcome}
                 />
                 <TabPanel
                     plan={plan}
@@ -1633,6 +1670,7 @@ const AppBuilder = () => {
                     buildStatus={buildStatus}
                     buildError={buildError}
                     buildLog={buildLog}
+                    builderKind={config.kind}
                 />
             </div>
         </div>

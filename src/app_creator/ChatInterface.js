@@ -11,6 +11,9 @@ const ChatInterface = ({
     isUpdateCodeInProgress,
     selectedModel,
     onModelChange,
+    title,
+    updateTitle,
+    welcomeMessage,
 }) => {
     const [input, setInput] = useState("");
     const textareaRef = useRef(null);
@@ -61,7 +64,7 @@ const ChatInterface = ({
                         variant={isUpdateMode ? 'amber' : 'indigo'}
                         size={15}
                     />
-                    <h2>{isUpdateMode ? 'Update App' : 'App Builder'}</h2>
+                    <h2>{isUpdateMode ? (updateTitle || 'Update App') : (title || 'App Builder')}</h2>
                 </div>
             </div>
 
@@ -76,7 +79,7 @@ const ChatInterface = ({
                     <div className="message ai">
                         {isUpdateMode
                             ? "Your app is ready! Describe any changes or new features you'd like to add."
-                            : "Hi! I'm your App Architect. Describe the app you want to build, and I'll generate the plan and code for you."
+                            : (welcomeMessage || "Hi! I'm your App Architect. Describe the app you want to build, and I'll generate the plan and code for you.")
                         }
                     </div>
                 )}

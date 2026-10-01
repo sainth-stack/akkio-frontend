@@ -83,6 +83,7 @@ const TabPanel = ({
     pipelineStatus,
     pipelineError,
     onRetryPipeline,
+    builderKind,
 }) => {
     const resolvedBuildTab = activeBuildTab || 'Multi Agents';
     const setResolvedBuildTab = onBuildTabChange || (() => { });
@@ -144,7 +145,7 @@ const TabPanel = ({
                             onClick={() => setResolvedBuildTab(id)}
                         >
                             <TabIcon size={15} className="sub-tab-icon" aria-hidden />
-                            {label || id}
+                            {id === 'Multi Agents' && builderKind === 'fullstack' ? 'Coding Agents' : (label || id)}
                         </div>
                     ))}
                 </div>
@@ -177,6 +178,7 @@ const TabPanel = ({
                     pipelineStatus={pipelineStatus}
                     pipelineError={pipelineError}
                     onRetryPipeline={onRetryPipeline}
+                    builderKind={builderKind}
                 />;
             case 'Build':
                 return renderBuildContent();
@@ -223,7 +225,7 @@ const TabPanel = ({
                                 fontWeight: '600'
                             }}
                         >
-                            {(isLoading || isCodegenLoading) ? 'Generating...' : 'Generate Code'}
+                            {(isLoading || isCodegenLoading) ? 'Generating...' : (builderKind === 'fullstack' ? 'Generate Agentic App' : 'Generate Code')}
                         </button>
                     )}
 

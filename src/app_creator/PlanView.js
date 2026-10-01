@@ -27,6 +27,7 @@ const PlanView = ({
     pipelineStatus,
     pipelineError,
     onRetryPipeline,
+    builderKind = 'app',
 }) => {
     const [activeSection, setActiveSection] = useState('prd');
 
@@ -159,12 +160,18 @@ const PlanView = ({
         }
     };
 
-    const sections = [
-        { id: 'prd', label: 'Product Requirements', icon: IoDocumentTextOutline, step: 1 },
-        { id: 'uiux', label: 'UI/UX Design', icon: IoColorPaletteOutline, step: 2 },
-        { id: 'style', label: 'Design System', icon: IoBrushOutline, step: 3 },
-        { id: 'arch', label: 'Architecture', icon: IoLayersOutline, step: 4 },
-    ];
+    const sections = builderKind === 'fullstack'
+        ? [
+            { id: 'prd', label: 'PRD', icon: IoDocumentTextOutline, step: 1 },
+            { id: 'uiux', label: 'UI/UX Design', icon: IoColorPaletteOutline, step: 2 },
+            { id: 'arch', label: 'Architectural Design', icon: IoLayersOutline, step: 3 },
+        ]
+        : [
+            { id: 'prd', label: 'Product Requirements', icon: IoDocumentTextOutline, step: 1 },
+            { id: 'uiux', label: 'UI/UX Design', icon: IoColorPaletteOutline, step: 2 },
+            { id: 'style', label: 'Design System', icon: IoBrushOutline, step: 3 },
+            { id: 'arch', label: 'Architecture', icon: IoLayersOutline, step: 4 },
+        ];
 
     const renderMarkdown = (text) => {
         if (!text) return null;
@@ -371,10 +378,32 @@ const PlanView = ({
                 {generatedUIUX && !isLoading && <RegenerateButton onClick={() => onGenerateUIUX({ force: true })} />}
             </div>
 
-            {generatedUIUX ? (
+                    {generatedUIUX ? (
                 <>
                     {renderMarkdown(generatedUIUX)}
-                    {!isLoading && !designTokens && !designSystemMd && (
+                    {builderKind === 'fullstack' && (designTokens || designSystemMd) && (
+                        <div style={{ marginTop: 20 }}>
+                            {designSystemMd ? renderMarkdown(designSystemMd) : null}
+                            {designTokens?.colors && (
+                                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
+                                    {Object.entries((designTokens.design_tokens || designTokens).colors || designTokens.colors).map(([name, hex]) => (
+                                        <div key={name} style={{ textAlign: 'center' }}>
+                                            <div style={{ width: 48, height: 48, borderRadius: 8, background: hex, border: '1px solid #e2e8f0' }} />
+                                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>{name}</div>
+                                            <div style={{ fontSize: 10, color: '#94a3b8' }}>{hex}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {!isLoading && builderKind === 'fullstack' && !generatedArchitecture && (
+                        <NextStepButton
+                            onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
+                            label="Next: Architectural Design"
+                        />
+                    )}
+                    {!isLoading && builderKind !== 'fullstack' && !designTokens && !designSystemMd && (
                         <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid #e2e8f0', paddingTop: '24px', flexWrap: 'wrap' }}>
                             <button
                                 type="button"
@@ -392,7 +421,7 @@ const PlanView = ({
                             </button>
                         </div>
                     )}
-                    {!isLoading && (designTokens || designSystemMd) && !generatedArchitecture && (
+                    {!isLoading && builderKind !== 'fullstack' && (designTokens || designSystemMd) && !generatedArchitecture && (
                         <NextStepButton
                             onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
                             label="Next: Design Architecture"
@@ -565,7 +594,7 @@ const PlanView = ({
                         <EmptyState
                             message="UI/UX approved. Ready to design architecture."
                             action={() => onGenerateArch()}
-                            actionText="Generate Architecture"
+                            actionText="Generate Architectural Design"
                         />
                 )
             )}
@@ -598,7 +627,7 @@ const PlanView = ({
             <div style={styles.contentArea}>
                 {activeSection === 'prd' && renderPRD()}
                 {activeSection === 'uiux' && renderUIUX()}
-                {activeSection === 'style' && renderDesignSystem()}
+                {builderKind !== 'fullstack' && activeSection === 'style' && renderDesignSystem()}
                 {activeSection === 'arch' && renderArchitecture()}
             </div>
         </div>

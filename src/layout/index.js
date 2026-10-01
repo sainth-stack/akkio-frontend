@@ -47,6 +47,13 @@ export function AdminLayout() {
     return <Navigate to="/welcome" replace />;
   }
 
+  if (
+    (location.pathname.startsWith('/agentic-builder') || location.pathname.startsWith('/fullstack-builder'))
+    && !hasPermission('reports')
+  ) {
+    return <Navigate to="/welcome" replace />;
+  }
+
   return (
     <div className="row p-0 m-0">
       <div className="col-lg-12 col-md-12 col-sm-12 col-xs-12 p-0 m-0 bg-light">

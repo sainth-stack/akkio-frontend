@@ -46,3 +46,21 @@ export function getBuilderConfig(kind) {
 export function isFullstackKind(kind) {
     return kind === BUILDER_KIND_FULLSTACK;
 }
+
+export const PIPELINE_STATE_LABELS = {
+    PRD_RUNNING: 'Generating your plan…',
+    PRD_COMPLETE: 'Plan ready',
+    UIUX_RUNNING: 'Designing UI/UX…',
+    UIUX_COMPLETE: 'UI/UX design ready',
+    STYLE_RUNNING: 'Building design system…',
+    STYLE_COMPLETE: 'Design system ready',
+    ARCH_RUNNING: 'Designing architecture…',
+    ARCH_COMPLETE: 'Architecture ready',
+    CODEGEN_RUNNING: 'Building your app…',
+    CODEGEN_COMPLETE: 'App built successfully',
+    CODEGEN_FAILED: 'Build failed — try again',
+    AGENTS_RUNNING: 'Agents working…',
+    AGENTS_COMPLETE: 'Agents done',
+    IDLE: 'Ready',
+    ERROR: 'Something went wrong',
+};

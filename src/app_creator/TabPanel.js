@@ -1,4 +1,5 @@
 import React from 'react';
+import { getFriendlyPipelineState } from './utils/errorMessages';
 import PlanView from './PlanView';
 import FileExplorer from './FileExplorer';
 import AgentsView from './AgentsView';
@@ -225,7 +226,7 @@ const TabPanel = ({
                                 fontWeight: '600'
                             }}
                         >
-                            {(isLoading || isCodegenLoading) ? 'Generating...' : (builderKind === 'fullstack' ? 'Generate Agentic App' : 'Generate Code')}
+                            {(isLoading || isCodegenLoading) ? 'Building...' : 'Build App'}
                         </button>
                     )}
 
@@ -265,7 +266,7 @@ const TabPanel = ({
                                     cursor: 'pointer',
                                     userSelect: 'none'
                                 }}
-                                title="Runs npm install and npm run build in an E2B cloud sandbox (set E2B_API_KEY on the API server)"
+                                title="Live sandbox preview (contact support to enable)"
                             >
                                 <input
                                     type="checkbox"

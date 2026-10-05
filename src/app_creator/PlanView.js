@@ -7,6 +7,7 @@ import {
     IoLayersOutline,
     IoStopCircleOutline,
 } from './AppBuilderIcons';
+import { PIPELINE_STATE_LABELS } from './builderConfig';
 
 const PlanView = ({
     plan,
@@ -157,7 +158,27 @@ const PlanView = ({
             fontWeight: 600,
             marginRight: '8px',
             marginBottom: '8px'
-        }
+        },
+        sectionHeader: {
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            backgroundColor: '#ffffff',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            paddingTop: '4px',
+            paddingBottom: '14px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px',
+            borderBottom: '1px solid #e2e8f0',
+            marginBottom: '16px',
+            fontSize: '20px',
+            fontWeight: 700,
+            color: '#1e293b',
+            flexWrap: 'wrap',
+        },
     };
 
     const sections = builderKind === 'fullstack'
@@ -336,27 +357,25 @@ const PlanView = ({
             {pipelineStatus === 'PRD_FAILED' && (
                 <FailureBanner label="PRD generation failed" onRetry={onRetryPipeline} />
             )}
-            <div style={styles.sectionTitle}>
+            <div style={styles.sectionHeader}>
                 <span>Product Requirements Document</span>
-                {prd && !prdLoading && <RegenerateButton onClick={onRegeneratePrd} label="Regenerate PRD" />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    {prd && !prdLoading && <RegenerateButton onClick={onRegeneratePrd} label="Regenerate PRD" />}
+                    {prd && !prdLoading && (
+                        <button
+                            onClick={generatedUIUX
+                                ? () => setActiveSection('uiux')
+                                : () => { setActiveSection('uiux'); onGenerateUIUX(); }}
+                            style={styles.buttonPrimary}
+                        >
+                            {generatedUIUX ? 'Next: Review UI/UX Design' : 'Next: Generate UI/UX Design'}
+                        </button>
+                    )}
+                </div>
             </div>
 
             {prd ? (
-                <>
-                    {renderMarkdown(prd)}
-                    {!prdLoading && !generatedUIUX && (
-                        <NextStepButton
-                            onClick={() => { setActiveSection('uiux'); onGenerateUIUX(); }}
-                            label="Next: Generate UI/UX Design"
-                        />
-                    )}
-                    {!prdLoading && generatedUIUX && (
-                        <NextStepButton
-                            onClick={() => setActiveSection('uiux')}
-                            label="Next: Review UI/UX Design"
-                        />
-                    )}
-                </>
+                renderMarkdown(prd)
             ) : (
                 prdLoading ?
                     <LoadingState text="Generating comprehensive requirements..." /> :
@@ -373,12 +392,50 @@ const PlanView = ({
             {pipelineStatus === 'UIUX_FAILED' && (
                 <FailureBanner label="UI/UX generation failed" onRetry={onGenerateUIUX} />
             )}
-            <div style={styles.sectionTitle}>
+            <div style={styles.sectionHeader}>
                 <span>UI/UX Design</span>
-                {generatedUIUX && !isLoading && <RegenerateButton onClick={() => onGenerateUIUX({ force: true })} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {generatedUIUX && !isLoading && <RegenerateButton onClick={() => onGenerateUIUX({ force: true })} />}
+                    {generatedUIUX && !isLoading && builderKind === 'fullstack' && !generatedArchitecture && (
+                        <button
+                            type="button"
+                            onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
+                            style={styles.buttonPrimary}
+                        >
+                            Next: Architectural Design
+                        </button>
+                    )}
+                    {generatedUIUX && !isLoading && builderKind !== 'fullstack' && !designTokens && !designSystemMd && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
+                                style={styles.buttonSecondary}
+                            >
+                                Next: Architecture (use UI/UX only)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setActiveSection('style'); onGenerateStyle?.(); }}
+                                style={styles.buttonPrimary}
+                            >
+                                Next: Generate Design System
+                            </button>
+                        </>
+                    )}
+                    {generatedUIUX && !isLoading && builderKind !== 'fullstack' && (designTokens || designSystemMd) && !generatedArchitecture && (
+                        <button
+                            type="button"
+                            onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
+                            style={styles.buttonPrimary}
+                        >
+                            Next: Design Architecture
+                        </button>
+                    )}
+                </div>
             </div>
 
-                    {generatedUIUX ? (
+            {generatedUIUX ? (
                 <>
                     {renderMarkdown(generatedUIUX)}
                     {builderKind === 'fullstack' && (designTokens || designSystemMd) && (
@@ -396,36 +453,6 @@ const PlanView = ({
                                 </div>
                             )}
                         </div>
-                    )}
-                    {!isLoading && builderKind === 'fullstack' && !generatedArchitecture && (
-                        <NextStepButton
-                            onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
-                            label="Next: Architectural Design"
-                        />
-                    )}
-                    {!isLoading && builderKind !== 'fullstack' && !designTokens && !designSystemMd && (
-                        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid #e2e8f0', paddingTop: '24px', flexWrap: 'wrap' }}>
-                            <button
-                                type="button"
-                                onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
-                                style={styles.buttonSecondary}
-                            >
-                                Next: Architecture (use UI/UX only)
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => { setActiveSection('style'); onGenerateStyle?.(); }}
-                                style={styles.buttonPrimary}
-                            >
-                                Next: Generate Design System
-                            </button>
-                        </div>
-                    )}
-                    {!isLoading && builderKind !== 'fullstack' && (designTokens || designSystemMd) && !generatedArchitecture && (
-                        <NextStepButton
-                            onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
-                            label="Next: Design Architecture"
-                        />
                     )}
                 </>
             ) : (
@@ -509,11 +536,21 @@ const PlanView = ({
             {pipelineStatus === 'STYLE_FAILED' && (
                 <FailureBanner label="Design system generation failed" onRetry={onGenerateStyle} />
             )}
-            <div style={styles.sectionTitle}>
+            <div style={styles.sectionHeader}>
                 <span>Design System</span>
-                {(designTokens || designSystemMd) && !isLoading && (
-                    <RegenerateButton onClick={onGenerateStyle} label="Regenerate" />
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    {(designTokens || designSystemMd) && !isLoading && (
+                        <RegenerateButton onClick={onGenerateStyle} label="Regenerate" />
+                    )}
+                    {(designTokens || designSystemMd) && !isLoading && !generatedArchitecture && (
+                        <button
+                            onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
+                            style={styles.buttonPrimary}
+                        >
+                            Next: Design Architecture
+                        </button>
+                    )}
+                </div>
             </div>
 
             {designSystemMd ? renderMarkdown(designSystemMd) : null}
@@ -530,14 +567,7 @@ const PlanView = ({
                 </div>
             )}
 
-            {(designTokens || designSystemMd) ? (
-                !isLoading && !generatedArchitecture && (
-                    <NextStepButton
-                        onClick={() => { setActiveSection('arch'); onGenerateArch(); }}
-                        label="Next: Design Architecture"
-                    />
-                )
-            ) : (
+            {!(designTokens || designSystemMd) && (
                 isLoading && activeSection === 'style' ?
                     <LoadingState text="Building SaaS design tokens and CSS..." /> :
                     <EmptyState
@@ -554,9 +584,11 @@ const PlanView = ({
             {pipelineStatus === 'ARCHITECTURE_FAILED' && (
                 <FailureBanner label="Architecture generation failed" onRetry={onGenerateArch} />
             )}
-            <div style={styles.sectionTitle}>
+            <div style={styles.sectionHeader}>
                 <span>System Architecture</span>
-                {generatedArchitecture && !isLoading && <RegenerateButton onClick={onGenerateArch} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    {generatedArchitecture && !isLoading && <RegenerateButton onClick={onGenerateArch} />}
+                </div>
             </div>
 
             {/* Streaming View */}

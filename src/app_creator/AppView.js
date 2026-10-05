@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import Spinner from 'react-bootstrap/Spinner';
+import { getFriendlyError } from './utils/errorMessages';
 
 const AppView = ({
     projectName,
@@ -26,6 +27,7 @@ const AppView = ({
         }
     };
 
+    const [showBuildLog, setShowBuildLog] = useState(false);
     const iframeSrc = previewUrlWithAuth();
     if (!projectName) {
         return (
@@ -63,27 +65,63 @@ const AppView = ({
         const failureLog = buildLog || (logs && logs.length ? logs.join('\n') : '');
         return (
             <div style={{ padding: 20, color: '#334155' }}>
-                <h5 style={{ color: '#b91c1c', marginBottom: 12 }}>Build failed</h5>
-                {buildError && (
-                    <p style={{ marginBottom: 12, fontSize: 14 }}>{buildError}</p>
-                )}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                    padding: '16px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: 8,
+                    marginBottom: 16,
+                }}>
+                    <span style={{ fontSize: 20 }}>⚠️</span>
+                    <div style={{ flex: 1 }}>
+                        <h5 style={{ color: '#b91c1c', margin: '0 0 6px 0', fontSize: 15 }}>Build failed</h5>
+                        <p style={{ margin: 0, fontSize: 14, color: '#7f1d1d' }}>
+                            {getFriendlyError(buildError)}
+                        </p>
+                    </div>
+                </div>
+
                 {failureLog && (
-                    <pre style={{
-                        backgroundColor: '#1e1e1e',
-                        color: '#d4d4d4',
-                        padding: 16,
-                        borderRadius: 8,
-                        fontSize: 12,
-                        maxHeight: 320,
-                        overflow: 'auto',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                    }}>
-                        {failureLog}
-                    </pre>
+                    <div style={{ marginBottom: 16 }}>
+                        <button
+                            type="button"
+                            onClick={() => setShowBuildLog(prev => !prev)}
+                            style={{
+                                background: 'none',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: 4,
+                                padding: '4px 12px',
+                                fontSize: 12,
+                                cursor: 'pointer',
+                                color: '#475569',
+                                marginBottom: 8,
+                            }}
+                        >
+                            {showBuildLog ? 'Hide technical details' : 'Show technical details'}
+                        </button>
+                        {showBuildLog && (
+                            <pre style={{
+                                backgroundColor: '#1e1e1e',
+                                color: '#d4d4d4',
+                                padding: 16,
+                                borderRadius: 8,
+                                fontSize: 12,
+                                maxHeight: 320,
+                                overflow: 'auto',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                            }}>
+                                {failureLog}
+                            </pre>
+                        )}
+                    </div>
                 )}
-                <p style={{ marginTop: 16, fontSize: 13, color: '#64748b' }}>
-                    Fix the issue above, then click <strong>Run App</strong> in the Build tab header to try again.
+
+                <p style={{ marginTop: 8, fontSize: 13, color: '#64748b' }}>
+                    Click <strong>Run App</strong> in the Build tab header to try again.
                 </p>
                 {onRetryRun && (
                     <button

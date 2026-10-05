@@ -6,6 +6,7 @@ import TabPanel from './TabPanel';
 import './AppBuilder.css';
 import api, { apiFetch, wsUrl, wsAuthPayload } from '../utils/api';
 import { BUILDER_KIND_APP, getBuilderConfig } from './builderConfig';
+import { getFriendlyError, getFriendlyPipelineState } from './utils/errorMessages';
 
 const PIPELINE_RUNNING = [
     'PRD_RUNNING', 'UIUX_RUNNING', 'STYLE_RUNNING', 'ARCHITECTURE_RUNNING', 'PLAN_RUNNING', 'CODEGEN_RUNNING',
@@ -245,7 +246,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
             });
 
             if (!lastPrd.trim()) {
-                throw new Error('PRD generation returned empty content. Check your OpenAI API key in Settings or akkio-fastapi/.env.');
+                throw new Error('PRD generation returned empty content.');
             }
 
             append("PRD complete. Please review and proceed to UI/UX Design.\n");
@@ -272,9 +273,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                 setPipelineError('Stopped by user');
             } else {
                 console.error('Error in PRD generation:', error);
-                append(`\nError: ${error.message}\n`);
+                append(`\nError: ${getFriendlyError(error)}\n`);
                 setPipelineStatus('PRD_FAILED');
-                setPipelineError(error.message);
+                setPipelineError(getFriendlyError(error));
             }
         } finally {
             setChatState('idle');
@@ -600,9 +601,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         } catch (e) {
             if (e.name === 'AbortError') append('\n🛑 Stopped by user.\n');
             else {
-                append(`Error: ${e.message}\n`);
+                append(`Error: ${getFriendlyError(e)}\n`);
                 setPipelineStatus('PRD_FAILED');
-                setPipelineError(e.message);
+                setPipelineError(getFriendlyError(e));
             }
         } finally {
             setChatState('idle');
@@ -683,9 +684,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         } catch (e) {
             if (e.name === 'AbortError') append("\n🛑 Stopped by user.\n");
             else {
-                append(`Error: ${e.message}\n`);
+                append(`Error: ${getFriendlyError(e)}\n`);
                 setPipelineStatus('UIUX_FAILED');
-                setPipelineError(e.message);
+                setPipelineError(getFriendlyError(e));
             }
         } finally {
             setIsPipelineLoading(false);
@@ -715,9 +716,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         } catch (e) {
             if (e.name === 'AbortError') append("\n🛑 Stopped by user.\n");
             else {
-                append(`Error: ${e.message}\n`);
+                append(`Error: ${getFriendlyError(e)}\n`);
                 setPipelineStatus('STYLE_FAILED');
-                setPipelineError(e.message);
+                setPipelineError(getFriendlyError(e));
             }
         } finally {
             setIsPipelineLoading(false);
@@ -768,9 +769,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         } catch (e) {
             if (e.name === 'AbortError') append("\n🛑 Stopped by user.\n");
             else {
-                append(`Error: ${e.message}\n`);
+                append(`Error: ${getFriendlyError(e)}\n`);
                 setPipelineStatus('ARCHITECTURE_FAILED');
-                setPipelineError(e.message);
+                setPipelineError(getFriendlyError(e));
             }
         } finally {
             setIsPipelineLoading(false);
@@ -816,9 +817,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         } catch (e) {
             if (e.name === 'AbortError') append("\n🛑 Stopped by user.\n");
             else {
-                append(`Error: ${e.message}\n`);
+                append(`Error: ${getFriendlyError(e)}\n`);
                 setPipelineStatus('PLAN_FAILED');
-                setPipelineError(e.message);
+                setPipelineError(getFriendlyError(e));
             }
         } finally {
             setIsPipelineLoading(false);
@@ -828,12 +829,12 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
 
     const handleCreateAgents = async () => {
         if (!generatedArchitecture) {
-            alert('Complete Architecture in the Plan tab before generating code.');
+            setPipelineError('Please complete the Architecture step in the Plan tab first.');
             setActiveTab('Plan');
             return;
         }
         if (!projectName) {
-            alert('Missing project name.');
+            setPipelineError('Unable to start — please describe your app first.');
             return;
         }
 
@@ -872,9 +873,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
             setActiveBuildTab('Code');
         } catch (error) {
             console.error('Error in code generation:', error);
-            appendAi(`\nError: ${error.message}\n`);
+            appendAi(`\nError: ${getFriendlyError(error)}\n`);
             setPipelineStatus('CODEGEN_FAILED');
-            setPipelineError(error.message);
+            setPipelineError(getFriendlyError(error));
             setCurrentPhase('prd_complete');
         } finally {
             setIsCodegenLoading(false);
@@ -1012,7 +1013,6 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                 }
             } catch (e) {
                 console.error('Error loading app:', e);
-                alert('Failed to load this app. It may have been deleted.');
                 navigate(config.listPath);
             } finally {
                 setLoadingApp(false);
@@ -1167,9 +1167,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                         }
 
                         if (data.event === 'error') {
-                            setLogs(prev => [...prev, `[Error] ${data.message}`]);
+                            setLogs(prev => [...prev, `[Error] ${getFriendlyError(data.message)}`]);
                             setBuildStatus('BUILD_FAILED');
-                            setBuildError(data.message);
+                            setBuildError(getFriendlyError(data.message));
                         }
 
                         if (data.event === 'warning') {
@@ -1206,9 +1206,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
 
         } catch (error) {
             console.error('Error starting project:', error);
-            const msg = error.message === 'Failed to fetch'
-                ? 'Connection lost during build (server may still be building). Wait and click Retry Run, or check the API server logs.'
-                : error.message;
+            const msg = getFriendlyError(error);
             setLogs(prev => [...prev, `Error: ${msg}`]);
             setBuildStatus('BUILD_FAILED');
             setBuildError(msg);
@@ -1486,7 +1484,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
 
     const handleStartCodegen = async () => {
         if (!projectName || !generatedArchitecture) {
-            alert('Cannot start code generation: missing project name or architecture.');
+            setPipelineError('Please complete the Plan steps (PRD, UI/UX, Architecture) before building.');
             return;
         }
         await handleCreateAgents();
@@ -1571,14 +1569,14 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                 >
                     <div style={{ fontSize: 13, color: '#334155' }}>
                         {PIPELINE_RUNNING.includes(pipelineStatus) && (
-                            <span>Pipeline in progress: <strong>{pipelineStatus.replace(/_/g, ' ')}</strong></span>
+                            <span>Pipeline in progress: <strong>{getFriendlyPipelineState(pipelineStatus)}</strong></span>
                         )}
                         {(PIPELINE_FAILED.includes(pipelineStatus) || buildStatus === 'BUILD_FAILED') && (
                             <span>
-                                {buildStatus === 'BUILD_FAILED' ? 'Build failed' : (pipelineStatus || 'Pipeline failed').replace(/_/g, ' ')}
+                                {buildStatus === 'BUILD_FAILED' ? 'Build failed' : getFriendlyPipelineState(pipelineStatus)}
                                 {(pipelineError || buildError) && (
                                     <span style={{ color: '#b91c1c', marginLeft: 8 }}>
-                                        — {(pipelineError || buildError).slice(0, 200)}
+                                        — {getFriendlyError(pipelineError || buildError)}
                                     </span>
                                 )}
                             </span>

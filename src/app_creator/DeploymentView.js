@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../utils/api';
+import { getFriendlyError } from './utils/errorMessages';
 import Spinner from 'react-bootstrap/Spinner';
 import {
     IconBadge,
@@ -158,7 +159,7 @@ const DeploymentView = ({ projectName, appId }) => {
             return data;
         } catch (err) {
             console.error('Error loading deployment status:', err);
-            const msg = err.response?.data?.detail || err.message || 'Failed to load deployment status';
+            const msg = getFriendlyError(err.response?.data?.detail || err.message || 'Failed to load deployment status');
             setError(msg);
             showToast(msg, 'error');
             return null;
@@ -218,7 +219,7 @@ const DeploymentView = ({ projectName, appId }) => {
             await loadDeploymentStatus();
             startPolling();
         } catch (err) {
-            setError(err.response?.data?.detail || `Deployment error: ${err.message}`);
+            setError(getFriendlyError(err.response?.data?.detail || err.message));
             setIsDeploying(false);
         }
     };
@@ -251,7 +252,7 @@ const DeploymentView = ({ projectName, appId }) => {
             await loadDeploymentStatus();
             startPolling();
         } catch (err) {
-            setError(err.response?.data?.detail || `Redeployment error: ${err.message}`);
+            setError(getFriendlyError(err.response?.data?.detail || err.message));
             setIsDeploying(false);
         }
     };
@@ -294,7 +295,7 @@ const DeploymentView = ({ projectName, appId }) => {
             setGithubRepoUrl('');
             setNewRepoName('');
         } catch (err) {
-            setGithubError(err.response?.data?.detail || `GitHub push error: ${err.message}`);
+            setGithubError(getFriendlyError(err.response?.data?.detail || err.message));
         } finally {
             setIsPushingToGithub(false);
         }
@@ -453,17 +454,16 @@ const DeploymentView = ({ projectName, appId }) => {
             )}
 
             {!projectName && (
-                <div className="deployment-debug" style={{
+                <div style={{
                     padding: '12px',
                     background: '#fff3cd',
                     border: '1px solid #ffc107',
                     borderRadius: '4px',
                     marginBottom: '16px',
-                    fontSize: '13px'
+                    fontSize: '13px',
+                    color: '#856404',
                 }}>
-                    <strong>Debug Info:</strong>
-                    <div>Project Name: {projectName || 'Missing'}</div>
-                    <div>App ID: {appId || 'Not saved (optional)'}</div>
+                    Please generate your app first before deploying.
                 </div>
             )}
 
@@ -810,8 +810,7 @@ const DeploymentView = ({ projectName, appId }) => {
                         <>
                             {deployment.error_message && (
                                 <div className="deployment-error">
-                                    <strong>Error Details:</strong>
-                                    <pre>{deployment.error_message}</pre>
+                                    <strong>Error:</strong> {getFriendlyError(deployment.error_message)}
                                 </div>
                             )}
                             <div className="deployment-actions">

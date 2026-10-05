@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { getFriendlyError } from './utils/errorMessages';
 
 const AgentsView = ({
     agents,
@@ -6,6 +7,7 @@ const AgentsView = ({
     isLoading
 }) => {
     const entries = Object.entries(agents || {});
+    const [showDetails, setShowDetails] = useState({});
 
     if (!entries.length) {
         return (
@@ -285,7 +287,7 @@ const AgentsView = ({
                                             marginTop: '12px',
                                             fontSize: '13px'
                                         }}>
-                                            <strong>Error:</strong> {info.error}
+                                            <strong>Error:</strong> {getFriendlyError(info.error)}
                                         </div>
                                     )}
 
@@ -299,71 +301,90 @@ const AgentsView = ({
                                             border: '1px solid #e9ecef',
                                             boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
                                         }}>
+                                            {/* Summary row — always visible */}
                                             <div style={{
                                                 display: 'flex',
                                                 justifyContent: 'space-between',
                                                 alignItems: 'center',
-                                                marginBottom: '8px'
                                             }}>
-                                                <strong style={{ color: '#495057' }}>Output Result:</strong>
-                                                <span style={{ fontSize: '11px', color: '#adb5bd' }}>
-                                                    {typeof info.data === 'object' ? 'Structured Data' : 'Text'}
+                                                <span style={{ color: '#495057', fontWeight: '600' }}>
+                                                    {info.data.generated_files
+                                                        ? `✓ ${Object.keys(info.data.generated_files).length} files generated`
+                                                        : info.data.db_schema?.schema
+                                                            ? '✓ Schema ready'
+                                                            : info.message || 'Completed'}
                                                 </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowDetails(prev => ({ ...prev, [index]: !prev[index] }))}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: '1px solid #ced4da',
+                                                        borderRadius: '4px',
+                                                        padding: '2px 10px',
+                                                        fontSize: '11px',
+                                                        cursor: 'pointer',
+                                                        color: '#6c757d'
+                                                    }}
+                                                >
+                                                    {showDetails[index] ? 'Hide Details' : 'View Details'}
+                                                </button>
                                             </div>
 
-                                            <div style={{
-                                                maxHeight: '200px',
-                                                overflowY: 'auto',
-                                                backgroundColor: '#fff',
-                                                padding: '10px',
-                                                borderRadius: '4px',
-                                                border: '1px solid #dee2e6'
-                                            }}>
-                                                {(() => {
-                                                    const data = info.data;
+                                            {/* Collapsible detail panel */}
+                                            {showDetails[index] && (
+                                                <div style={{
+                                                    marginTop: '10px',
+                                                    maxHeight: '200px',
+                                                    overflowY: 'auto',
+                                                    backgroundColor: '#fff',
+                                                    padding: '10px',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid #dee2e6'
+                                                }}>
+                                                    {(() => {
+                                                        const data = info.data;
 
-                                                    // Special handling for coding agent files
-                                                    if (data.generated_files) {
-                                                        const fileNames = Object.keys(data.generated_files);
-                                                        return (
-                                                            <div>
-                                                                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#28a745' }}>
-                                                                    ✓ {fileNames.length} files generated successfully
+                                                        // Special handling for coding agent files
+                                                        if (data.generated_files) {
+                                                            const fileNames = Object.keys(data.generated_files);
+                                                            return (
+                                                                <div>
+                                                                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#666' }}>
+                                                                        {fileNames.map(f => <li key={f}>{f}</li>)}
+                                                                    </ul>
                                                                 </div>
-                                                                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#666' }}>
-                                                                    {fileNames.map(f => <li key={f}>{f}</li>)}
-                                                                </ul>
-                                                            </div>
-                                                        );
-                                                    }
+                                                            );
+                                                        }
 
-                                                    // Special handling for db_schema
-                                                    if (data.db_schema?.schema) {
+                                                        // Special handling for db_schema
+                                                        if (data.db_schema?.schema) {
+                                                            return (
+                                                                <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '12px' }}>
+                                                                    {data.db_schema.schema}
+                                                                </div>
+                                                            );
+                                                        }
+
+                                                        // Fallback to JSON or string
                                                         return (
-                                                            <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '12px' }}>
-                                                                {data.db_schema.schema}
-                                                            </div>
+                                                            <pre style={{
+                                                                margin: 0,
+                                                                whiteSpace: 'pre-wrap',
+                                                                wordBreak: 'break-word',
+                                                                fontSize: '12px',
+                                                                color: '#333',
+                                                                fontFamily: 'Monaco, Consolas, monospace'
+                                                            }}>
+                                                                {typeof data === 'string'
+                                                                    ? data
+                                                                    : JSON.stringify(data, null, 2)
+                                                                }
+                                                            </pre>
                                                         );
-                                                    }
-
-                                                    // Fallback to JSON or string
-                                                    return (
-                                                        <pre style={{
-                                                            margin: 0,
-                                                            whiteSpace: 'pre-wrap',
-                                                            wordBreak: 'break-word',
-                                                            fontSize: '12px',
-                                                            color: '#333',
-                                                            fontFamily: 'Monaco, Consolas, monospace'
-                                                        }}>
-                                                            {typeof data === 'string'
-                                                                ? data
-                                                                : JSON.stringify(data, null, 2)
-                                                            }
-                                                        </pre>
-                                                    );
-                                                })()}
-                                            </div>
+                                                    })()}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 

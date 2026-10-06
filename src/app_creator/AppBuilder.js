@@ -205,31 +205,50 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         const existingId = appId || editId;
         let createdAppId = existingId || null;
 
-        try {
-            const appName = (text || '').slice(0, 100) || localProjectName;
+        const _saveAppRecord = async (projectNameToUse, attempt = 1) => {
+            const appName = (text || '').slice(0, 100) || projectNameToUse;
             if (existingId) {
                 await api.put(`/app-builder/apps/${existingId}`, {
                     app_name: appName,
                     prompt: text,
-                    project_name: localProjectName,
+                    project_name: projectNameToUse,
                 });
                 setAppId(existingId);
+                return existingId;
             } else {
                 const createRes = await api.post('/app-builder/apps', {
                     app_name: appName,
                     prompt: text,
-                    project_name: localProjectName,
+                    project_name: projectNameToUse,
                     builder_kind: config.kind,
                 });
                 const createData = createRes.data;
                 if (createData.status === 'success' && createData.app?.id) {
-                    createdAppId = createData.app.id;
                     setAppId(createData.app.id);
+                    return createData.app.id;
                 }
+                throw new Error('Create did not return an app id');
             }
+        };
+
+        try {
+            createdAppId = await _saveAppRecord(localProjectName);
         } catch (e) {
-            console.error('Error saving app record:', e);
-            append("Could not save app record. Planning will continue, but progress may not persist.\n");
+            console.warn('App record save failed (attempt 1):', e);
+            // Retry once with a fresh project name to avoid unique-constraint conflicts
+            try {
+                await new Promise(r => setTimeout(r, 800));
+                const retryProjectName = (config.kind === 'fullstack' ? 'fullstack_app_' : 'generated_app_') + Date.now();
+                if (!projectName) setProjectName(retryProjectName);
+                createdAppId = await _saveAppRecord(retryProjectName);
+            } catch (e2) {
+                console.error('App record save failed after retry:', e2);
+                append("⚠️ Unable to initialize your project. Please check your connection and try again.\n");
+                setPipelineStatus('ERROR');
+                setPipelineError('Unable to initialize project. Please try again.');
+                setChatState('idle');
+                return;
+            }
         }
 
         let lastPrd = '';

@@ -49,6 +49,12 @@ const TestView = ({ projectName }) => {
             if (testFile) {
                 body.test_files = [testFile];
             }
+            try {
+                const token = localStorage.getItem('access_token') || '';
+                if (token) body.access_token = token;
+            } catch {
+                /* ignore */
+            }
 
             const res = await api.post('/test-suite/run', body);
             const data = res.data;
@@ -75,7 +81,7 @@ const TestView = ({ projectName }) => {
                         <FaList /> Test Suite
                     </h3>
                     <p style={{ margin: '5px 0 0', color: '#666', fontSize: '13px' }}>
-                        {tests.length > 0 ? `${tests.length} test scripts available` : 'No tests generated yet'}
+                        {tests.length > 0 ? `${tests.length} UI e2e scripts available` : 'No UI tests generated yet'}
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -87,7 +93,7 @@ const TestView = ({ projectName }) => {
                             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                         >
                             {isLoading ? <Spinner size="sm" animation="border" /> : null}
-                            Generate Test Scripts
+                            Generate UI Tests
                         </button>
                     ) : (
                         <>
@@ -97,7 +103,7 @@ const TestView = ({ projectName }) => {
                                 className="btn btn-outline-secondary"
                                 style={{ fontSize: '13px' }}
                             >
-                                {isLoading ? 'Regenerating...' : 'Regenerate Tests'}
+                                {isLoading ? 'Regenerating...' : 'Regenerate UI Tests'}
                             </button>
                             <button
                                 onClick={() => handleRunTests()}
@@ -133,7 +139,7 @@ const TestView = ({ projectName }) => {
                         </div>
                     ) : (
                         <div style={{ padding: '20px', textAlign: 'center', color: '#999', fontSize: '13px' }}>
-                            No tests found. Click "Generate Test Scripts" to start.
+                            No UI tests found. Build the app in App View, then click &quot;Generate UI Tests&quot;.
                         </div>
                     )}
                 </div>
@@ -175,7 +181,7 @@ const TestView = ({ projectName }) => {
                         whiteSpace: 'pre-wrap'
                     }}>
                         {isRunning ? 'Running tests...\n' : ''}
-                        {output || (tests.length > 0 ? 'Ready to run tests.' : 'Waiting for test generation...')}
+                        {output || (tests.length > 0 ? 'Ready to run Playwright UI tests (app must be built).' : 'Waiting for UI test generation...')}
                     </pre>
                 </div>
             </div>

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ModelSelector from './ModelSelector';
+import SamplePromptTemplates from './SamplePromptTemplates';
 import { IconBadge, IoSend, IoSparkles, FaPenToSquare } from './AppBuilderIcons';
 
 const ChatInterface = ({
@@ -72,6 +73,14 @@ const ChatInterface = ({
                 value={selectedModel}
                 onChange={onModelChange}
                 disabled={inputDisabled}
+            />
+
+            <SamplePromptTemplates
+                disabled={inputDisabled}
+                onSelect={(text) => {
+                    setInput(text);
+                    requestAnimationFrame(() => textareaRef.current?.focus());
+                }}
             />
 
             <div className="chat-messages">

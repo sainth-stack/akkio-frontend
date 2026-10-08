@@ -6,7 +6,6 @@ import AgentsView from './AgentsView';
 import AppView from './AppView';
 import DeploymentView from './DeploymentView';
 import TestView from './TestView';
-import SampleTemplateView from './SampleTemplateView';
 import Spinner from 'react-bootstrap/Spinner';
 import {
     IoDocumentTextOutline,
@@ -30,7 +29,6 @@ const MAIN_TABS = [
 const BUILD_TABS = [
     { id: 'Multi Agents', icon: IoPeopleOutline },
     { id: 'Code', icon: IoCodeSlashOutline },
-    { id: 'Sample Templates', icon: IoDocumentTextOutline },
     { id: 'Build', icon: IoPhonePortraitOutline, label: 'App View' },
     { id: 'Test', icon: IoFlaskOutline },
 ];
@@ -112,13 +110,6 @@ const TabPanel = ({
                             onLoadFile={onLoadFile}
                             onSaveFile={onSaveFile}
                             isTreeLoading={isTreeLoading}
-                        />
-                    );
-                case 'Sample Templates':
-                    return (
-                        <SampleTemplateView
-                            projectName={projectName}
-                            onDownloadSampleData={onDownloadSampleData}
                         />
                     );
                 case 'Build': // App View
@@ -297,10 +288,10 @@ const TabPanel = ({
                                 className="download-button tab-action-btn tab-action-btn--secondary"
                                 onClick={onDownloadSampleData}
                                 disabled={!projectName || !onDownloadSampleData}
-                                title="Download demo inventory/materials/PO data as Excel"
+                                title="Download synthetic demo data (KPIs, Detail rows, Breakdown) as Excel"
                             >
                                 <IoDownloadOutline size={15} />
-                                Download Data
+                                Download synthetic data
                             </button>
                             <button
                                 className="run-button tab-action-btn tab-action-btn--primary"

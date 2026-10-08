@@ -1,0 +1,68 @@
+.sample-prompt-templates {
+    flex-shrink: 0;
+    padding: 10px 14px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fff;
+}
+
+.sample-prompt-templates__head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 8px;
+}
+
+.sample-prompt-templates__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+}
+
+.sample-prompt-templates__hint {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    line-height: 1.3;
+}
+
+.sample-prompt-templates__list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sample-prompt-templates__item {
+    text-align: left;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.sample-prompt-templates__item:hover:not(:disabled) {
+    border-color: #93c5fd;
+    background: #eff6ff;
+}
+
+.sample-prompt-templates__item:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.sample-prompt-templates__item-title {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.sample-prompt-templates__item-sub {
+    display: block;
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-top: 2px;
+    line-height: 1.25;
+}

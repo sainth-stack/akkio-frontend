@@ -1138,6 +1138,26 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         }
     }, [projectName]);
 
+    const handleDownloadSampleData = useCallback(async () => {
+        if (!projectName) return;
+        try {
+            const response = await apiFetch(`/app-builder/projects/${projectName}/sample-data.xlsx`);
+            if (!response.ok) throw new Error('Failed to download sample data');
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${projectName}_sample_data.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Error downloading sample data:', error);
+            setPipelineError(getFriendlyError(error));
+        }
+    }, [projectName]);
+
     const handleRun = useCallback(async () => {
         if (!projectName) return;
         setLogs(prev => [...prev, `Starting project ${projectName}...`]);
@@ -1682,6 +1702,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     onStopPlanning={handleStopPlanning}
                     onStopCodegen={handleStopCodegen}
                     onDownloadCode={handleDownloadCode}
+                    onDownloadSampleData={handleDownloadSampleData}
                     appId={appId}
                     isTreeLoading={isTreeLoading}
                     buildStatus={buildStatus}

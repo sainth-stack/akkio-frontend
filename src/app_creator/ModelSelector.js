@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../utils/api';
+import ChatSidebarSection from './ChatSidebarSection';
 import {
-    IconBadge,
     IoChevronDown,
     IoCheckmark,
     FaStar,
-    SiOpenai,
     TIER_ICONS,
 } from './AppBuilderIcons';
 
@@ -90,50 +89,34 @@ const ModelSelector = ({ value, onChange, disabled }) => {
         setOpen(false);
     };
 
+    const summaryLabel = loading
+        ? 'Loading…'
+        : (selected?.label || 'Select model');
+
     return (
-        <div className="model-selector" ref={rootRef}>
-            <div className="model-selector-label-row">
-                <IconBadge icon={SiOpenai} variant="indigo" size={13} />
-                <span className="model-selector-title">AI Model</span>
-                {selected?.recommended && (
-                    <span className="model-recommended-pill">Recommended</span>
-                )}
-            </div>
+        <ChatSidebarSection title="Model" summary={summaryLabel} defaultOpen={false}>
+            <div className="model-selector model-selector--compact" ref={rootRef}>
+                <button
+                    type="button"
+                    className={`model-selector-trigger model-selector-trigger--compact ${open ? 'open' : ''}`}
+                    onClick={() => !disabled && !loading && setOpen((v) => !v)}
+                    disabled={disabled || loading}
+                    aria-haspopup="listbox"
+                    aria-expanded={open}
+                >
+                    <span className="model-selector-current-name">
+                        {loading ? 'Loading models…' : (selected?.label || 'Select model')}
+                    </span>
+                    <div className="model-selector-trigger-meta model-selector-trigger-meta--inline">
+                        {selected?.tier && !loading && (
+                            <TierBadge tier={selected.tier} tiers={tiers} />
+                        )}
+                        <IoChevronDown className={`model-selector-chevron ${open ? 'up' : ''}`} size={14} aria-hidden />
+                    </div>
+                </button>
 
-            <button
-                type="button"
-                className={`model-selector-trigger ${open ? 'open' : ''}`}
-                onClick={() => !disabled && !loading && setOpen((v) => !v)}
-                disabled={disabled || loading}
-                aria-haspopup="listbox"
-                aria-expanded={open}
-            >
-                <div className="model-selector-trigger-main">
-                    {loading ? (
-                        <span className="model-selector-placeholder">Loading models…</span>
-                    ) : (
-                        <>
-                            <span className="model-selector-current-name">
-                                {selected?.label || 'Select model'}
-                            </span>
-                            {selected?.description && (
-                                <span className="model-selector-current-desc">
-                                    {selected.description}
-                                </span>
-                            )}
-                        </>
-                    )}
-                </div>
-                <div className="model-selector-trigger-meta">
-                    {selected?.tier && !loading && (
-                        <TierBadge tier={selected.tier} tiers={tiers} />
-                    )}
-                    <IoChevronDown className={`model-selector-chevron ${open ? 'up' : ''}`} size={16} aria-hidden />
-                </div>
-            </button>
-
-            {open && !loading && (
-                <div className="model-selector-menu" role="listbox">
+                {open && !loading && (
+                    <div className="model-selector-menu" role="listbox">
                     {grouped.map(({ tier, items }) => (
                         <div key={tier} className="model-selector-group">
                             <div className="model-selector-group-label">
@@ -174,9 +157,10 @@ const ModelSelector = ({ value, onChange, disabled }) => {
                             })}
                         </div>
                     ))}
-                </div>
-            )}
-        </div>
+                    </div>
+                )}
+            </div>
+        </ChatSidebarSection>
     );
 };
 

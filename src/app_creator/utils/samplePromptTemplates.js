@@ -1,57 +1,55 @@
 /**
- * Two generic prompt formats — any domain (ops, ecommerce, monitoring, CRM, etc.).
- * User edits bracketed placeholders, then sends.
+ * Two ready-to-send sample prompts (no placeholders). User can read them in the sidebar and click Use.
  */
 export const SAMPLE_PROMPT_TEMPLATES = [
     {
         id: 'operations_records_v1',
         title: 'Operations & records',
-        subtitle: 'Dashboard, lists, workflows, two report layouts',
-        prompt: `Build an operations app for a [industry / company type].
+        subtitle: 'Inventory / supply chain style operations app',
+        prompt: `Build a supply chain inventory management app for a manufacturing company.
 
-Core entities (tables with list + detail pages):
-- [Entity 1, e.g. customers or materials]
-- [Entity 2, e.g. orders or purchase orders]
-- [Entity 3, e.g. suppliers or locations]
+Core entities with list and detail pages:
+- Materials / SKUs with on-hand quantity, reorder point, and safety stock
+- Suppliers with lead time and on-time delivery score
+- Purchase orders with status (Draft, In Transit, Received)
 
-Dashboard KPIs (must show realistic non-zero demo numbers):
-- [KPI 1]
-- [KPI 2]
-- [KPI 3]
-- [KPI 4]
+Dashboard KPIs with realistic non-zero demo data:
+- Total SKUs and total inventory value
+- Low-stock and excess-stock alert counts
+- Inventory turnover and supplier on-time percentage
 
 Pages:
-- Dashboard with KPI cards and at least one chart
-- Searchable tables for each main entity
-- Alerts or tasks for exceptions (low stock, delays, etc.)
-- Reports page with two sample templates: (1) Summary report — KPIs plus a breakdown table (2) Detail table — one row per record
+- Dashboard with KPI cards and a consumption or stock trend chart
+- Materials table with search, filters, and row status (OK, Low, Critical)
+- Purchase orders and suppliers views
+- Alerts for low stock, delayed POs, and abnormal consumption
+- Reports page with summary report (KPIs + breakdown table) and detail table (one row per material)
 
-Workflows: [e.g. create → review → approve → complete].
+Workflows: material receipt, reorder suggestion, and PO approval (simple statuses).
 
-Ship realistic synthetic demo data on every screen by default. No login required.`,
+Use realistic synthetic demo data on every screen by default. No login required.`,
     },
     {
         id: 'monitoring_insights_v1',
         title: 'Monitoring & insights',
-        subtitle: 'Metrics, alerts, trends, summary + detail reports',
-        prompt: `Build a monitoring and insights app for [domain / use case, e.g. equipment, sales, or quality].
+        subtitle: 'Equipment / anomaly monitoring style app',
+        prompt: `Build an equipment monitoring and anomaly detection app for a CNC production line.
 
-Metrics to track (with thresholds):
-- [Metric 1 + unit]
-- [Metric 2 + unit]
-- [Metric 3 + unit]
+Metrics to track with thresholds:
+- Spindle speed (RPM), feed rate (mm/min), tool wear index (%)
+- Vibration (mm/s) and coolant temperature (°C)
 
-Dashboard:
-- KPI tiles (counts, rates, scores — non-zero demo values)
-- Trend or time-series chart
-- Highlight recent anomalies, alerts, or outliers
+Dashboard with non-zero demo values:
+- Anomalies detected today and active alerts
+- Metrics monitored and average anomaly score
+- Live trend charts per metric with anomaly markers
 
 Pages:
-- Main dashboard
-- Event / anomaly / alert feed with severity and status
-- Simple rules or threshold configuration
-- Reports page with two sample templates: (1) Summary report — KPIs plus breakdown table (2) Detail table — one row per event or record
+- Main operations dashboard
+- Anomaly feed with timestamp, metric, severity, and status (Open, Acknowledged, Resolved)
+- Threshold configuration per metric (min, max, z-score)
+- Reports page with summary report (KPIs + severity breakdown) and detail table (one row per anomaly event)
 
-Use realistic synthetic demo data everywhere. No login required.`,
+Use realistic synthetic time-series and alert data everywhere. No login required.`,
     },
 ];

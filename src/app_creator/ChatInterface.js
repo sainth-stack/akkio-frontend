@@ -69,19 +69,20 @@ const ChatInterface = ({
                 </div>
             </div>
 
-            <ModelSelector
-                value={selectedModel}
-                onChange={onModelChange}
-                disabled={inputDisabled}
-            />
-
-            <SamplePromptTemplates
-                disabled={inputDisabled}
-                onSelect={(text) => {
-                    setInput(text);
-                    requestAnimationFrame(() => textareaRef.current?.focus());
-                }}
-            />
+            <div className="chat-sidebar-tools">
+                <ModelSelector
+                    value={selectedModel}
+                    onChange={onModelChange}
+                    disabled={inputDisabled}
+                />
+                <SamplePromptTemplates
+                    disabled={inputDisabled}
+                    onSelect={(text) => {
+                        setInput(text);
+                        requestAnimationFrame(() => textareaRef.current?.focus());
+                    }}
+                />
+            </div>
 
             <div className="chat-messages">
                 {messages.length === 0 && (

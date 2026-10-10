@@ -98,7 +98,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
 
     // ── Frontend-only track: structured JSON contracts ─────────────────────
     const [planJson, setPlanJson] = useState(null);          // { prd, uiux, design_tokens, blueprint }
-    const [appTrack, setAppTrack] = useState(null);          // "legacy" | "frontend_only"
+    const [appTrack, setAppTrack] = useState(null);          // "legacy" | "json_app" | "frontend_only"
     // ───────────────────────────────────────────────────────────────────────
     const [buildStatus, setBuildStatus] = useState(null);
     const [buildError, setBuildError] = useState(null);
@@ -272,7 +272,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     setPlanJson(prev => {
                         const next = { ...(prev || {}), prd: data.data };
                         // also learn the track from the prd_json signal
-                        setAppTrack('frontend_only');
+                        setAppTrack('json_app');
                         return next;
                     });
                 }
@@ -1436,7 +1436,20 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                         appendAi(`${data.message}\n\n`);
                     }
 
+                    if (data.event === 'pipeline_log' && data.message) {
+                        appendAi(`[${data.agent || 'pipeline'}] ${data.message}\n`);
+                    }
+
+                    if (data.event === 'app_definition_json' && data.data) {
+                        setPlanJson(prev => ({ ...(prev || {}), app_definition: data.data }));
+                        const pageCount = data.data?.pages?.length ?? 0;
+                        appendAi(`\nApp definition ready (${pageCount} page${pageCount === 1 ? '' : 's'}) — see Architecture tab → Structured Plan.\n`);
+                    }
+
                     if (data.event === 'agent_start') {
+                        if (['app_definition_agent', 'template_agent'].includes(data.agent)) {
+                            appendAi(`\n[${data.agent}] ${data.message}\n`);
+                        }
                         const next = {
                             ...agentsAccumulatorRef.current,
                             [data.agent]: {
@@ -1499,7 +1512,13 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                         };
                         agentsAccumulatorRef.current = next;
                         setAgents(next);
-                        if (data.agent === 'build_verify_agent' || data.agent === 'backend_verify_agent' || data.agent === 'validation_agent') {
+                        if (
+                            data.agent === 'build_verify_agent'
+                            || data.agent === 'backend_verify_agent'
+                            || data.agent === 'validation_agent'
+                            || data.agent === 'app_definition_agent'
+                            || data.agent === 'template_agent'
+                        ) {
                             appendAi(`\n${data.message}\n`);
                         }
                     }
@@ -1561,7 +1580,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                             setCurrentPhase('code_generated');
                             setPipelineStatus('CODEGEN_COMPLETE');
                             setPipelineError(null);
-                            if (genTrack === 'frontend_only') setAppTrack('frontend_only');
+                            if (genTrack === 'json_app' || genTrack === 'frontend_only') setAppTrack(genTrack);
                             updateAppInDb({
                                 agents_state: agentsAccumulatorRef.current,
                                 preview_url: previewUrl,

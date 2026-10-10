@@ -589,6 +589,7 @@ const PlanView = ({
         const uiuxData  = planJson.uiux;
         const tokData   = planJson.design_tokens;
         const bpData    = planJson.blueprint;
+        const appDef    = planJson.app_definition;
 
         const sectionStyle = {
             background: '#fff',
@@ -620,7 +621,7 @@ const PlanView = ({
         return (
             <div style={{ marginTop: '24px', borderTop: '2px solid #e8eaed', paddingTop: '20px' }}>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#6366f1', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>✦</span> Structured Plan (frontend-only track)
+                    <span>✦</span> Structured Plan (JSON app track)
                 </div>
 
                 {/* Screens list */}
@@ -711,6 +712,65 @@ const PlanView = ({
                                 <b>Font:</b> {tokData.font_family} &nbsp; <b>Radius:</b> {tokData.border_radius}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Compiled app definition (runtime JSON) */}
+                {appDef && (
+                    <div style={sectionStyle}>
+                        <h4 style={headingStyle}>App definition (runtime)</h4>
+                        {appDef.meta?.title && (
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937', marginBottom: '8px' }}>
+                                {appDef.meta.title}
+                            </div>
+                        )}
+                        {appDef.navigation?.length > 0 && (
+                            <div style={{ marginBottom: '12px' }}>
+                                <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>Navigation</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                    {appDef.navigation.map((item) => (
+                                        <span key={item.path || item.label} style={tagStyle('#0ea5e9')}>
+                                            {item.label} → {item.path}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {appDef.pages?.length > 0 && (
+                            <div style={{ marginBottom: '12px' }}>
+                                <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>
+                                    Pages ({appDef.pages.length})
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px,1fr))', gap: '10px' }}>
+                                    {appDef.pages.map((p) => (
+                                        <div key={p.id || p.path} style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '10px 12px' }}>
+                                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#0369a1' }}>{p.title || p.id}</div>
+                                            <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>{p.path}</div>
+                                            <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                                                {p.blocks?.length ?? 0} block{(p.blocks?.length ?? 0) === 1 ? '' : 's'}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        <details style={{ marginTop: '8px' }}>
+                            <summary style={{ fontSize: '12px', color: '#6366f1', cursor: 'pointer', fontWeight: 600 }}>
+                                View full JSON
+                            </summary>
+                            <pre style={{
+                                marginTop: '10px',
+                                padding: '12px',
+                                background: '#0f172a',
+                                color: '#e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '11px',
+                                overflow: 'auto',
+                                maxHeight: '320px',
+                            }}>
+                                {JSON.stringify(appDef, null, 2)}
+                            </pre>
+                        </details>
                     </div>
                 )}
 
@@ -826,7 +886,7 @@ const PlanView = ({
                 {builderKind !== 'fullstack' && activeSection === 'style' && renderDesignSystem()}
                 {activeSection === 'arch' && renderArchitecture()}
                 {/* Frontend-only structured plan overlay (shown in arch tab when available) */}
-                {activeSection === 'arch' && appTrack === 'frontend_only' && planJson && renderStructuredPlan()}
+                {activeSection === 'arch' && ['json_app', 'json_spec', 'frontend_only'].includes(appTrack) && planJson && renderStructuredPlan()}
             </div>
         </div>
     );

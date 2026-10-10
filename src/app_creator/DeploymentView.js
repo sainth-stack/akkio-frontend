@@ -79,6 +79,11 @@ const DeploymentView = ({ projectName, appId }) => {
     const [deployment, setDeployment] = useState(null);
     const [deploymentHistory, setDeploymentHistory] = useState([]);
     const [buildStatus, setBuildStatus] = useState(null);
+    const [failingStage, setFailingStage] = useState(null);    // e.g. "S4" or "gate_playwright"
+    const [pipelineStatusLabel, setPipelineStatusLabel] = useState(null);
+    const [gateResults, setGateResults] = useState(null);
+    const [isRunningChecks, setIsRunningChecks] = useState(false);
+    const [checksOutput, setChecksOutput] = useState('');
     const [error, setError] = useState(null);
     const pollRef = useRef(null);
     const activeDeploymentIdRef = useRef(null);
@@ -131,6 +136,20 @@ const DeploymentView = ({ projectName, appId }) => {
             const data = response.data;
 
             if (data.build_status) setBuildStatus(data.build_status);
+            if (data.failing_stage) setFailingStage(data.failing_stage);
+            if (data.gate_results) setGateResults(data.gate_results);
+            // Build a human-readable pipeline label
+            if (data.build_status) {
+                const labels = {
+                    'BUILD_SUCCESS': '✅ Build passed',
+                    'BUILD_COMPLETE': '✅ Build complete',
+                    'BUILD_FAILED': '❌ Build failed',
+                    'GATE_FAILED': '❌ Playwright gate failed',
+                    'GATE_PASSED': '✅ Gate passed',
+                    'IN_PROGRESS': '⏳ Building…',
+                };
+                setPipelineStatusLabel(labels[data.build_status] || data.build_status);
+            }
 
             if (data.deployment_status === 'not_deployed') {
                 setDeployment(null);
@@ -480,6 +499,115 @@ const DeploymentView = ({ projectName, appId }) => {
                     Run the app in the <strong>Build</strong> tab first (build must succeed), or redeploy with rebuild.
                 </div>
             )}
+
+            {/* ── Build status banner ───────────────────────────────── */}
+            {pipelineStatusLabel && (
+                <div style={{
+                    padding: '10px 14px',
+                    background: buildStatus && buildStatus.includes('FAIL') ? '#fef2f2' : '#f0fdf4',
+                    border: `1px solid ${buildStatus && buildStatus.includes('FAIL') ? '#fca5a5' : '#86efac'}`,
+                    borderRadius: '6px',
+                    marginBottom: '14px',
+                    fontSize: '13px',
+                    color: buildStatus && buildStatus.includes('FAIL') ? '#991b1b' : '#166534',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                }}>
+                    <span style={{ fontWeight: 600 }}>{pipelineStatusLabel}</span>
+                    {failingStage && (
+                        <span style={{ fontSize: '12px', opacity: 0.85 }}>
+                            Failing stage: <code style={{ background: '#fecaca', padding: '1px 5px', borderRadius: '3px' }}>{failingStage}</code>
+                        </span>
+                    )}
+                    {gateResults && gateResults.failing_routes && gateResults.failing_routes.length > 0 && (
+                        <details style={{ fontSize: '12px', marginTop: '2px' }}>
+                            <summary style={{ cursor: 'pointer', fontWeight: 500 }}>
+                                {gateResults.failing_routes.length} failing route(s)
+                            </summary>
+                            <ul style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                                {gateResults.failing_routes.map((r, i) => (
+                                    <li key={i} style={{ marginTop: '2px' }}>
+                                        <code>{r.route}</code>
+                                        {r.console_errors && r.console_errors.length > 0 && (
+                                            <span style={{ color: '#7f1d1d', marginLeft: 6 }}>
+                                                {r.console_errors.length} console error(s)
+                                            </span>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        </details>
+                    )}
+                </div>
+            )}
+
+            {/* ── Run checks button (wired to test_api.py gate) ────── */}
+            <div style={{ marginBottom: '16px' }}>
+                <button
+                    onClick={async () => {
+                        setIsRunningChecks(true);
+                        setChecksOutput('Running checks…');
+                        try {
+                            const resp = await api.post('/api/test-suite/run-checks', {
+                                project_name: projectName,
+                                app_id: appId,
+                            });
+                            const out = resp.data;
+                            setChecksOutput(
+                                out.passed
+                                    ? `✅ All checks passed in ${out.duration_s?.toFixed(1)}s`
+                                    : `❌ Checks failed:\n${out.errors?.join('\n') || out.error || 'unknown error'}`
+                            );
+                            if (out.build_status) setBuildStatus(out.build_status);
+                            if (out.failing_stage) setFailingStage(out.failing_stage);
+                            if (out.gate_results) setGateResults(out.gate_results);
+                            if (out.build_status) {
+                                const labels = {
+                                    'BUILD_SUCCESS': '✅ Build passed',
+                                    'BUILD_COMPLETE': '✅ Build complete',
+                                    'BUILD_FAILED': '❌ Build failed',
+                                    'GATE_FAILED': '❌ Playwright gate failed',
+                                    'GATE_PASSED': '✅ Gate passed',
+                                };
+                                setPipelineStatusLabel(labels[out.build_status] || out.build_status);
+                            }
+                        } catch (e) {
+                            setChecksOutput(`❌ Error: ${e?.response?.data?.detail || e.message}`);
+                        } finally {
+                            setIsRunningChecks(false);
+                        }
+                    }}
+                    disabled={isRunningChecks}
+                    style={{
+                        padding: '8px 16px',
+                        background: isRunningChecks ? '#94a3b8' : '#0f172a',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '13px',
+                        cursor: isRunningChecks ? 'not-allowed' : 'pointer',
+                        fontWeight: 500,
+                    }}
+                >
+                    {isRunningChecks ? '⏳ Running…' : '🧪 Run checks'}
+                </button>
+                {checksOutput && (
+                    <pre style={{
+                        marginTop: '10px',
+                        padding: '10px',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-all',
+                        color: checksOutput.startsWith('✅') ? '#166534' : '#991b1b',
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                    }}>{checksOutput}</pre>
+                )}
+            </div>
 
             {error && (
                 <div className="deployment-error">

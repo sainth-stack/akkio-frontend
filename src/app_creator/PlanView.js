@@ -29,6 +29,8 @@ const PlanView = ({
     pipelineError,
     onRetryPipeline,
     builderKind = 'app',
+    planJson = null,
+    appTrack = null,
 }) => {
     const [activeSection, setActiveSection] = useState('prd');
 
@@ -579,6 +581,168 @@ const PlanView = ({
         </div>
     );
 
+
+    // ── Frontend-only: structured plan panels ──────────────────────────────
+    const renderStructuredPlan = () => {
+        if (!planJson) return null;
+        const prdData   = planJson.prd;
+        const uiuxData  = planJson.uiux;
+        const tokData   = planJson.design_tokens;
+        const bpData    = planJson.blueprint;
+
+        const sectionStyle = {
+            background: '#fff',
+            border: '1px solid #e8eaed',
+            borderRadius: '8px',
+            padding: '16px 20px',
+            marginBottom: '16px',
+        };
+        const headingStyle = {
+            margin: '0 0 12px',
+            fontSize: '13px',
+            fontWeight: 700,
+            color: '#1a202c',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+        };
+        const tagStyle = (color) => ({
+            display: 'inline-block',
+            background: color + '1a',
+            color: color,
+            border: `1px solid ${color}44`,
+            borderRadius: '4px',
+            fontSize: '11px',
+            padding: '2px 7px',
+            marginRight: '6px',
+            marginBottom: '4px',
+        });
+
+        return (
+            <div style={{ marginTop: '24px', borderTop: '2px solid #e8eaed', paddingTop: '20px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#6366f1', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>✦</span> Structured Plan (frontend-only track)
+                </div>
+
+                {/* Screens list */}
+                {prdData?.screens?.length > 0 && (
+                    <div style={sectionStyle}>
+                        <h4 style={headingStyle}>Screens ({prdData.screens.length})</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px,1fr))', gap: '10px' }}>
+                            {prdData.screens.map((s) => (
+                                <div key={s.id} style={{ background: '#f8f9ff', border: '1px solid #e0e7ff', borderRadius: '6px', padding: '10px 12px' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#3730a3', marginBottom: '4px' }}>
+                                        {s.id} — {s.name}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>{s.purpose}</div>
+                                    {s.entities?.length > 0 && (
+                                        <div>{s.entities.map(e => <span key={e} style={tagStyle('#6366f1')}>{e}</span>)}</div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Entities */}
+                {bpData?.entities?.length > 0 && (
+                    <div style={sectionStyle}>
+                        <h4 style={headingStyle}>Entities</h4>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px,1fr))', gap: '10px' }}>
+                            {bpData.entities.map((ent) => (
+                                <div key={ent.name} style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px 12px' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#166534', marginBottom: '6px' }}>{ent.name}</div>
+                                    <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ textAlign: 'left', color: '#374151', paddingBottom: '4px' }}>field</th>
+                                                <th style={{ textAlign: 'left', color: '#374151', paddingBottom: '4px' }}>type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {ent.fields?.map(f => (
+                                                <tr key={f.name}>
+                                                    <td style={{ color: '#1f2937', paddingBottom: '2px', paddingRight: '8px' }}>{f.name}</td>
+                                                    <td style={{ color: '#6b7280' }}>{f.type}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Design token swatches */}
+                {tokData && (
+                    <div style={sectionStyle}>
+                        <h4 style={headingStyle}>Design Tokens</h4>
+                        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                            {['light', 'dark'].map(mode => {
+                                const palette = tokData[mode];
+                                if (!palette) return null;
+                                return (
+                                    <div key={mode}>
+                                        <div style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>{mode}</div>
+                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                            {Object.entries(palette).map(([key, hex]) => (
+                                                <div key={key} title={`${key}: ${hex}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
+                                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: hex, border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(0,0,0,.1)' }} />
+                                                    <span style={{ fontSize: '9px', color: '#9ca3af', maxWidth: '32px', textAlign: 'center', wordBreak: 'break-all' }}>{key}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {tokData.chart_palette?.length > 0 && (
+                                <div>
+                                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase' }}>Charts</div>
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        {tokData.chart_palette.map((hex, i) => (
+                                            <div key={i} title={hex} style={{ width: '28px', height: '28px', borderRadius: '4px', background: hex, border: '1px solid #e5e7eb' }} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {tokData.font_family && (
+                            <div style={{ marginTop: '10px', fontSize: '11px', color: '#6b7280' }}>
+                                <b>Font:</b> {tokData.font_family} &nbsp; <b>Radius:</b> {tokData.border_radius}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Route map */}
+                {bpData?.routes?.length > 0 && (
+                    <div style={sectionStyle}>
+                        <h4 style={headingStyle}>Route Map</h4>
+                        <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                    <th style={{ textAlign: 'left', padding: '4px 8px', color: '#374151' }}>Path</th>
+                                    <th style={{ textAlign: 'left', padding: '4px 8px', color: '#374151' }}>Page</th>
+                                    <th style={{ textAlign: 'left', padding: '4px 8px', color: '#374151' }}>Screen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {bpData.routes.map((r, i) => (
+                                    <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                        <td style={{ padding: '4px 8px', fontFamily: 'monospace', color: '#6366f1' }}>{r.path}</td>
+                                        <td style={{ padding: '4px 8px', color: '#1f2937' }}>{r.page}</td>
+                                        <td style={{ padding: '4px 8px', color: '#6b7280' }}>{r.screen_id}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        );
+    };
+    // ─────────────────────────────────────────────────────────────────────
+
     const renderArchitecture = () => (
         <div style={styles.card}>
             {pipelineStatus === 'ARCHITECTURE_FAILED' && (
@@ -661,6 +825,8 @@ const PlanView = ({
                 {activeSection === 'uiux' && renderUIUX()}
                 {builderKind !== 'fullstack' && activeSection === 'style' && renderDesignSystem()}
                 {activeSection === 'arch' && renderArchitecture()}
+                {/* Frontend-only structured plan overlay (shown in arch tab when available) */}
+                {activeSection === 'arch' && appTrack === 'frontend_only' && planJson && renderStructuredPlan()}
             </div>
         </div>
     );

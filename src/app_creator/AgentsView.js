@@ -62,7 +62,15 @@ const AgentsView = ({
             'screen_qa_agent': 'Screen QA Agent',
             'mock_fallback_agent': 'Mock Fallback Agent',
             'runner_agent': 'Execution Agent',
-            'update_code_agent': 'Code Update Agent'
+            'update_code_agent': 'Code Update Agent',
+            // Frontend-only pipeline stages
+            'fo_stage_s1': '① Types & Mock Data',
+            'fo_stage_s2': '② Theme & Layout',
+            'fo_stage_s3': '③ Shared Components',
+            'fo_stage_s4': '④ Page Generation',
+            'fo_stage_s5': '⑤ Router & Nav',
+            'fo_stage_s6': '⑥ Final Verification',
+            'fo_pipeline': 'Frontend Pipeline',
         };
         if (mapping[name]) return mapping[name];
 
@@ -244,7 +252,11 @@ const AgentsView = ({
                                                     }}>
                                                         {item.type === 'start' ? 'Start' :
                                                             item.type === 'complete' ? 'Done' :
-                                                                item.type === 'stopped' ? 'Stopped' : 'Update'}
+                                                                item.type === 'stopped' ? 'Stopped' :
+                                                                item.type === 'stage_file' ? 'Gen' :
+                                                                item.type === 'stage_verify' ? 'Verify' :
+                                                                item.type === 'stage_fix' ? 'Fix' :
+                                                                'Update'}
                                                     </span>
                                                     <span style={{ flex: 1, lineHeight: '1.5' }}>{item.text}</span>
                                                 </div>

@@ -95,6 +95,11 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
     });
     const [pipelineStatus, setPipelineStatus] = useState(null);
     const [pipelineError, setPipelineError] = useState(null);
+
+    // ── Frontend-only track: structured JSON contracts ─────────────────────
+    const [planJson, setPlanJson] = useState(null);          // { prd, uiux, design_tokens, blueprint }
+    const [appTrack, setAppTrack] = useState(null);          // "legacy" | "frontend_only"
+    // ───────────────────────────────────────────────────────────────────────
     const [buildStatus, setBuildStatus] = useState(null);
     const [buildError, setBuildError] = useState(null);
     const [buildLog, setBuildLog] = useState('');
@@ -262,6 +267,15 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     lastPrd = data.data || '';
                     setPrd(lastPrd);
                 }
+                // frontend_only track: capture structured PRDPlan JSON
+                if (data.event === 'prd_json' && data.data) {
+                    setPlanJson(prev => {
+                        const next = { ...(prev || {}), prd: data.data };
+                        // also learn the track from the prd_json signal
+                        setAppTrack('frontend_only');
+                        return next;
+                    });
+                }
             });
 
             if (!lastPrd.trim()) {
@@ -344,6 +358,42 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     };
                     agentsAccumulatorRef.current = next;
                     setAgents(next);
+                    // Log stage starts for LogsView
+                    if (data.stage) {
+                        setLogs(prev => [...prev, `▶ [${data.stage}] ${data.label || data.message}`]);
+                    }
+                }
+
+                // Frontend-only pipeline: per-file and verify events
+                if (data.event === 'stage_file' || data.event === 'stage_verify' || data.event === 'stage_fix') {
+                    const agentKey = `fo_stage_${(data.stage || '').toLowerCase()}`;
+                    const prev = agentsAccumulatorRef.current;
+                    const agentEntry = prev[agentKey] || { status: 'running', progress: [] };
+                    let text = '';
+                    let progressType = 'progress';
+                    if (data.event === 'stage_file') {
+                        const fname = (data.file || '').split('/').pop();
+                        text = `${data.status === 'generating' ? '→' : '✓'} ${fname}`;
+                        progressType = 'stage_file';
+                        setLogs(l => [...l, `  gen: ${data.file || ''}`]);
+                    } else if (data.event === 'stage_verify') {
+                        text = `tsc: ${data.status}${data.errors?.length ? ` (${data.errors.length} errors)` : ''}`;
+                        progressType = 'stage_verify';
+                        setLogs(l => [...l, `  verify[${data.stage}]: ${data.status}`]);
+                    } else if (data.event === 'stage_fix') {
+                        text = `fix attempt ${data.attempt}: ${(data.file || '').split('/').pop()}`;
+                        progressType = 'stage_fix';
+                        setLogs(l => [...l, `  fix[${data.stage}] attempt ${data.attempt}: ${data.file || ''}`]);
+                    }
+                    const nextAgents = {
+                        ...prev,
+                        [agentKey]: {
+                            ...agentEntry,
+                            progress: [...(agentEntry.progress || []), { type: progressType, text, timestamp: Date.now() }]
+                        }
+                    };
+                    agentsAccumulatorRef.current = nextAgents;
+                    setAgents(nextAgents);
                 }
 
                 if (data.event === 'agent_progress') {
@@ -612,6 +662,12 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     lastPrd = data.data || '';
                     setPrd(lastPrd);
                 }
+                if (data.event === 'prd_json' && data.data) {
+                    setPlanJson(prev => {
+                        const next = { ...(prev || {}), prd: data.data };
+                        return next;
+                    });
+                }
             });
             append('PRD updated. Your UI/UX design is unchanged — proceed to Architecture or regenerate code.\n');
             setPipelineStatus('PRD_COMPLETE');
@@ -648,6 +704,14 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
             }
             if (data.event === 'style_complete') {
                 styleResult = data.data || null;
+            }
+            // frontend_only track: capture structured DesignTokenSchema JSON
+            if (data.event === 'style_json' && data.data) {
+                setPlanJson(prev => {
+                    const next = { ...(prev || {}), design_tokens: data.data };
+                    updateAppInDb({ plan_json: next });
+                    return next;
+                });
             }
         });
         if (styleResult) {
@@ -690,6 +754,14 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                 if (data.event === 'uiux_complete') {
                     lastUIUX = data.data || '';
                     setGeneratedUIUX(lastUIUX);
+                }
+                // frontend_only track: capture structured UXPlan JSON
+                if (data.event === 'uiux_json' && data.data) {
+                    setPlanJson(prev => {
+                        const next = { ...(prev || {}), uiux: data.data };
+                        updateAppInDb({ plan_json: next });
+                        return next;
+                    });
                 }
             });
             append("UI/UX Design complete.\n");
@@ -779,6 +851,14 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     lastArch = data.data || null;
                     setGeneratedArchitecture(lastArch);
                     setCurrentPhase('prd_complete');
+                }
+                // frontend_only track: capture Blueprint JSON
+                if (data.event === 'blueprint_json' && data.data) {
+                    setPlanJson(prev => {
+                        const next = { ...(prev || {}), blueprint: data.data };
+                        updateAppInDb({ plan_json: next });
+                        return next;
+                    });
                 }
             });
             append("Architecture complete.\n");
@@ -953,6 +1033,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     if (app.llm_model) setSelectedModel(app.llm_model);
                     setAppId(app.id);
                     appIdRef.current = app.id;
+                    // Restore frontend-only track state
+                    if (app.track) setAppTrack(app.track);
+                    if (app.plan_json) setPlanJson(app.plan_json);
                     const normalizedPipeline = normalizeStalePipelineStatus(app.pipeline_status);
                     setPipelineStatus(normalizedPipeline);
                     if (normalizedPipeline !== app.pipeline_status) {
@@ -1339,6 +1422,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     model_name: selectedModel || undefined,
                     design_tokens: designTokens || undefined,
                     builder_kind: config.kind,
+                    // Frontend-only track: pass structured planning contracts
+                    plan_json: planJson || undefined,
+                    resume_stage: undefined, // set by retry handler if needed
                 })));
             };
 
@@ -1448,6 +1534,8 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                             if (count != null) appendAi(`Files generated: ${count}\n\n`);
                             const previewUrl = data.data?.preview_url;
                             const backendUrl = data.data?.backend_url;
+                            const filesReady = data.data?.files_ready === true;
+                            const genTrack = data.data?.track || 'legacy';
                             if (previewUrl) {
                                 appendAi(`Preview: ${previewUrl}\n`);
                                 setRunState({
@@ -1458,11 +1546,22 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                                 setBuildStatus('BUILD_SUCCESS');
                                 setBuildError(null);
                             }
-                            loadProjectTree(project_name);
-                            loadGeneratedCodeIntoEditor(project_name);
+                            // Fix /tree 404 race: files_ready=true means files are
+                            // already on disk — load immediately. Otherwise add a small
+                            // delay for legacy track to finish disk write.
+                            if (filesReady) {
+                                loadProjectTree(project_name);
+                                loadGeneratedCodeIntoEditor(project_name);
+                            } else {
+                                setTimeout(() => {
+                                    loadProjectTree(project_name);
+                                    loadGeneratedCodeIntoEditor(project_name);
+                                }, 800);
+                            }
                             setCurrentPhase('code_generated');
                             setPipelineStatus('CODEGEN_COMPLETE');
                             setPipelineError(null);
+                            if (genTrack === 'frontend_only') setAppTrack('frontend_only');
                             updateAppInDb({
                                 agents_state: agentsAccumulatorRef.current,
                                 preview_url: previewUrl,
@@ -1709,6 +1808,8 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     buildError={buildError}
                     buildLog={buildLog}
                     builderKind={config.kind}
+                    planJson={planJson}
+                    appTrack={appTrack}
                 />
             </div>
         </div>

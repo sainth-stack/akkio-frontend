@@ -86,6 +86,8 @@ const TabPanel = ({
     pipelineError,
     onRetryPipeline,
     builderKind,
+    planJson,
+    appTrack,
 }) => {
     const resolvedBuildTab = activeBuildTab || 'Multi Agents';
     const setResolvedBuildTab = onBuildTabChange || (() => { });
@@ -181,6 +183,8 @@ const TabPanel = ({
                     pipelineError={pipelineError}
                     onRetryPipeline={onRetryPipeline}
                     builderKind={builderKind}
+                    planJson={planJson}
+                    appTrack={appTrack}
                 />;
             case 'Build':
                 return renderBuildContent();

@@ -1446,9 +1446,27 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                         appendAi(`\nApp definition ready (${pageCount} page${pageCount === 1 ? '' : 's'}) — see Architecture tab → Structured Plan.\n`);
                     }
 
+                    const codegenAgentLabel = (agentId) => {
+                        const labels = {
+                            catalog_agent: 'Catalog & Domain',
+                            planning_agent: 'Planning',
+                            app_definition_agent: 'App Definition',
+                            theme_agent: 'Theme',
+                            mock_data_agent: 'Mock Data',
+                            template_agent: 'Template',
+                            code_generator_agent: 'Code Generator',
+                            frontend_agent: 'Frontend',
+                            backend_agent: 'Backend',
+                            integration_agent: 'Integration',
+                            validation_agent: 'Validation',
+                            build_verify_agent: 'Build Verify',
+                        };
+                        return labels[agentId] || (agentId || 'Agent').replace(/_/g, ' ');
+                    };
+
                     if (data.event === 'agent_start') {
-                        if (['app_definition_agent', 'template_agent'].includes(data.agent)) {
-                            appendAi(`\n[${data.agent}] ${data.message}\n`);
+                        if (data.agent) {
+                            appendAi(`\n▶ ${codegenAgentLabel(data.agent)}: ${data.message}\n`);
                         }
                         const next = {
                             ...agentsAccumulatorRef.current,
@@ -1512,14 +1530,8 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                         };
                         agentsAccumulatorRef.current = next;
                         setAgents(next);
-                        if (
-                            data.agent === 'build_verify_agent'
-                            || data.agent === 'backend_verify_agent'
-                            || data.agent === 'validation_agent'
-                            || data.agent === 'app_definition_agent'
-                            || data.agent === 'template_agent'
-                        ) {
-                            appendAi(`\n${data.message}\n`);
+                        if (data.agent) {
+                            appendAi(`\n✓ ${codegenAgentLabel(data.agent)}: ${data.message}\n`);
                         }
                     }
 

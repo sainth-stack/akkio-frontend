@@ -71,6 +71,13 @@ const AgentsView = ({
             'fo_stage_s5': '⑤ Router & Nav',
             'fo_stage_s6': '⑥ Final Verification',
             'fo_pipeline': 'Frontend Pipeline',
+            'app_definition_agent': 'App Definition Agent',
+            'template_agent': 'Template Binding Agent',
+            'catalog_agent': 'Catalog & Domain Agent',
+            'planning_agent': 'Planning Contract Agent',
+            'theme_agent': 'Theme Agent',
+            'mock_data_agent': 'Mock Data Agent',
+            'code_generator_agent': 'Code Generator Agent',
         };
         if (mapping[name]) return mapping[name];
 

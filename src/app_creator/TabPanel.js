@@ -55,6 +55,8 @@ const TabPanel = ({
     onStartCodegen,
     onRestartCodegen,
     onRegeneratePrd,
+    onGeneratePrd,
+    requirementReady,
     onRegeneratePlan,
     onRegenerateAgents,
     isLoading,
@@ -88,6 +90,7 @@ const TabPanel = ({
     builderKind,
     planJson,
     appTrack,
+    selectedDomain,
 }) => {
     const resolvedBuildTab = activeBuildTab || 'Multi Agents';
     const setResolvedBuildTab = onBuildTabChange || (() => { });
@@ -175,6 +178,8 @@ const TabPanel = ({
                     designTokens={designTokens}
                     designSystemMd={designSystemMd}
                     onRegeneratePrd={onRegeneratePrd}
+                    onGeneratePrd={onGeneratePrd}
+                    requirementReady={requirementReady}
                     onRegeneratePlan={onRegeneratePlan}
                     isLoading={isLoading}
                     streamingArchitectureText={streamingArchitectureText}
@@ -185,6 +190,7 @@ const TabPanel = ({
                     builderKind={builderKind}
                     planJson={planJson}
                     appTrack={appTrack}
+                    selectedDomain={selectedDomain}
                 />;
             case 'Build':
                 return renderBuildContent();
@@ -219,10 +225,10 @@ const TabPanel = ({
                 </div>
                 <div className="tabs-actions">
                     {/* Common actions can go here */}
-                    {currentPhase === 'prd_complete' && activeTab === 'Plan' && generatedArchitecture && (
+                    {activeTab === 'Plan' && generatedArchitecture && (
                         <button
                             className="run-button"
-                            onClick={onCreateAgents}
+                            onClick={onStartCodegen || onCreateAgents}
                             disabled={isLoading || isCodegenLoading}
                             style={{
                                 backgroundColor: '#28a745',
@@ -230,8 +236,9 @@ const TabPanel = ({
                                 fontSize: '13px',
                                 fontWeight: '600'
                             }}
+                            title="Step 4 — run Coding, Integration, and Validator agents"
                         >
-                            {(isLoading || isCodegenLoading) ? 'Building...' : 'Build App'}
+                            {(isLoading || isCodegenLoading) ? 'Generating code...' : 'Generate Code'}
                         </button>
                     )}
 

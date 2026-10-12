@@ -28,7 +28,7 @@ const FULLSTACK_CONFIG = {
     newCardLabel: 'New agentic app',
     searchPlaceholder: 'Search agentic apps...',
     chatTitle: 'Agentic Builder',
-    chatWelcome: "Hi! I'm your Agentic Architect. Describe the production app you want — I'll write a PRD, UI/UX, architecture, then generate frontend, backend, and integration with mock fallback if APIs fail.",
+    chatWelcome: "Hi! I'm your Agentic Architect. First choose App domain above (Retail or Manufacturing), then describe your app. I'll write a PRD, UI/UX, architecture, then generate your app from dynamic template data.",
     chatUpdateTitle: 'Update Agentic App',
     backLabel: 'Back to Agentic Builder',
     planSteps: ['prd', 'uiux', 'arch'],

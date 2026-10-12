@@ -226,6 +226,42 @@
   padding: 0 14px 10px;
 }
 
+/* ─── Domain selector (Agentic Builder) ───────────────────────────────── */
+.domain-selector-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.domain-selector-select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.domain-selector-select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.domain-selector-desc {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.domain-selector-section .chat-sidebar-section__title {
+  color: #4338ca;
+}
+
 /* ─── Model selector (chat panel) ─────────────────────────────────────── */
 .model-selector {
   position: relative;

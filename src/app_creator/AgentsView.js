@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
 import { getFriendlyError } from './utils/errorMessages';
+import { formatPipelineAgentName, sortAgentEntries } from './agentPipeline';
 
 const AgentsView = ({
     agents,
     onRegenerate,
     isLoading
 }) => {
-    const entries = Object.entries(agents || {});
+    const entries = sortAgentEntries(Object.entries(agents || {}));
     const [showDetails, setShowDetails] = useState({});
 
     if (!entries.length) {
         return (
             <div style={{ padding: 40, color: '#666', textAlign: 'center' }}>
-                <h3>Agent Execution</h3>
-                <p>No agent activity yet. Click &quot;Generate Code&quot; to start code generation.</p>
+                <h3>Production agent pipeline</h3>
+                <p>
+                    Complete Plan (PRD → UI/UX → Architecture), then click <strong>Generate Code</strong>.
+                    You will see Planner, Styling, App Definition, Coding, Integration, and Validator agents
+                    stream live progress like a production release.
+                </p>
             </div>
         );
     }
@@ -28,6 +33,8 @@ const AgentsView = ({
                 return '#dc3545';
             case 'stopped':
                 return '#6b7280';
+            case 'pending':
+                return '#94a3b8';
             default:
                 return '#6c757d';
         }
@@ -71,7 +78,13 @@ const AgentsView = ({
             'fo_stage_s5': '⑤ Router & Nav',
             'fo_stage_s6': '⑥ Final Verification',
             'fo_pipeline': 'Frontend Pipeline',
+            'planner_agent': 'Planner Agent',
+            'styling_agent': 'Styling Agent',
+            'coding_agent': 'Coding Agent',
+            'integration_agent': 'Integration Agent',
+            'validator_agent': 'Validator Agent',
             'app_definition_agent': 'App Definition Agent',
+            'app_definition': 'App Definition Agent',
             'template_agent': 'Template Binding Agent',
             'catalog_agent': 'Catalog & Domain Agent',
             'planning_agent': 'Planning Contract Agent',
@@ -80,6 +93,8 @@ const AgentsView = ({
             'code_generator_agent': 'Code Generator Agent',
         };
         if (mapping[name]) return mapping[name];
+        const piped = formatPipelineAgentName(name);
+        if (piped) return piped;
 
         return name
             .split('_')
@@ -103,9 +118,9 @@ const AgentsView = ({
                 alignItems: 'center'
             }}>
                 <div>
-                    <h2 style={{ margin: 0, color: '#333', fontSize: '20px' }}>Agent Execution Pipeline</h2>
+                    <h2 style={{ margin: 0, color: '#333', fontSize: '20px' }}>Production build pipeline</h2>
                     <p style={{ margin: '8px 0 0 0', color: '#666', fontSize: '14px' }}>
-                        Real-time agent execution status
+                        Planner → Styling → App Definition → Coding → Integration → Validator
                     </p>
                 </div>
                 {onRegenerate && (
@@ -138,6 +153,7 @@ const AgentsView = ({
                 <div className="agents-timeline" style={{ position: 'relative', maxWidth: '900px', margin: '0 auto' }}>
                     {entries.map(([name, info], index) => {
                         const status = info?.status || 'pending';
+                        const displayStatus = status === 'pending' ? 'pending' : status;
                         const isLast = index === entries.length - 1;
                         const lastProgress = info?.progress?.length
                             ? info.progress[info.progress.length - 1]?.text
@@ -167,7 +183,7 @@ const AgentsView = ({
                                     height: '40px',
                                     borderRadius: '50%',
                                     backgroundColor: 'white',
-                                    border: `3px solid ${getStatusColor(status)}`,
+                                    border: `3px solid ${getStatusColor(displayStatus === 'pending' ? 'pending' : status)}`,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -205,7 +221,7 @@ const AgentsView = ({
                                             textTransform: 'uppercase',
                                             letterSpacing: '0.5px'
                                         }}>
-                                            {status}
+                                            {displayStatus}
                                         </span>
                                     </div>
 

@@ -5,8 +5,15 @@ import ChatInterface from './ChatInterface';
 import TabPanel from './TabPanel';
 import './AppBuilder.css';
 import api, { apiFetch, wsUrl, wsAuthPayload } from '../utils/api';
-import { BUILDER_KIND_APP, getBuilderConfig } from './builderConfig';
+import { BUILDER_KIND_APP, getBuilderConfig, isFullstackKind } from './builderConfig';
+import { AGENTIC_DOMAIN_RETAIL } from './agenticDomains';
 import { getFriendlyError, getFriendlyPipelineState } from './utils/errorMessages';
+import {
+    formatPipelineAgentName,
+    mergeAgentEvent,
+    seedCodegenAgentPipeline,
+    seedProductionCodegenPipeline,
+} from './agentPipeline';
 
 const PIPELINE_RUNNING = [
     'PRD_RUNNING', 'UIUX_RUNNING', 'STYLE_RUNNING', 'ARCHITECTURE_RUNNING', 'PLAN_RUNNING', 'CODEGEN_RUNNING',
@@ -68,6 +75,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
     const [isPipelineLoading, setIsPipelineLoading] = useState(false);
     const [chatState, setChatState] = useState('idle');
     const [selectedModel, setSelectedModel] = useState('');
+    const [selectedDomain, setSelectedDomain] = useState(
+        () => (isFullstackKind(builderKind) ? AGENTIC_DOMAIN_RETAIL : '')
+    );
     const [designTokens, setDesignTokens] = useState(null);
     const [designSystemMd, setDesignSystemMd] = useState('');
     const [activeTab, setActiveTab] = useState('Plan');
@@ -122,6 +132,20 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
     const planningSessionRef = useRef(false);
     const appIdRef = useRef(null); // current app id for section-wise save
     const agentsAccumulatorRef = useRef({}); // mirror of agents state for reliable save
+
+    const pushAgentEvent = useCallback((data, options = {}) => {
+        if (!['agent_start', 'agent_complete', 'agent_progress', 'agent_error'].includes(data?.event)) {
+            return;
+        }
+        if (!data?.agent) return;
+        const next = mergeAgentEvent(agentsAccumulatorRef.current, data);
+        agentsAccumulatorRef.current = next;
+        setAgents(next);
+        if (options.focusAgentsTab && data.event === 'agent_start') {
+            setActiveTab('Build');
+            setActiveBuildTab('Multi Agents');
+        }
+    }, []);
     useEffect(() => { appIdRef.current = appId; }, [appId]);
 
     const releaseChatForEdits = useCallback(() => {
@@ -155,7 +179,65 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
     const [clarifiedRequirement, setClarifiedRequirement] = useState('');
 
     // Renamed to be specific to PRD start
-    const handleStartPlanning = async (text) => {
+    const persistSelectedDomain = useCallback((domain) => {
+        if (!domain) return;
+        setPlanJson((prev) => {
+            const next = {
+                ...(prev || {}),
+                blueprint: { ...((prev || {}).blueprint || {}), selected_domain: domain, domain },
+            };
+            if (appId) {
+                updateAppInDb({ plan_json: next });
+            }
+            return next;
+        });
+    }, [appId]); // eslint-disable-line react-hooks/exhaustive-deps -- updateAppInDb stable enough
+
+    const saveAppRecordForRequirement = async (text, projectNameToUse) => {
+        const existingId = appId || editId;
+        const appName = (text || '').slice(0, 100) || projectNameToUse;
+        if (existingId) {
+            await api.put(`/app-builder/apps/${existingId}`, {
+                app_name: appName,
+                prompt: text,
+                project_name: projectNameToUse,
+            });
+            setAppId(existingId);
+            return existingId;
+        }
+        const createRes = await api.post('/app-builder/apps', {
+            app_name: appName,
+            prompt: text,
+            project_name: projectNameToUse,
+            builder_kind: config.kind,
+            ...(isFullstackKind(config.kind) && selectedDomain ? {
+                plan_json: {
+                    blueprint: { selected_domain: selectedDomain, domain: selectedDomain },
+                },
+            } : {}),
+        });
+        const createData = createRes.data;
+        if (createData.status === 'success' && createData.app?.id) {
+            setAppId(createData.app.id);
+            return createData.app.id;
+        }
+        throw new Error('Create did not return an app id');
+    };
+
+    /** Chat: save requirement only — user runs PRD / UI/UX / Arch from Plan tab. */
+    const handleCaptureRequirement = async (text) => {
+        if (isFullstackKind(config.kind) && !selectedDomain) {
+            setMessages((prev) => [
+                ...prev,
+                { role: 'user', content: text },
+                {
+                    role: 'ai',
+                    content: 'Please select an App domain (Retail or Manufacturing) in the sidebar, then send your requirement again.\n',
+                },
+            ]);
+            return;
+        }
+
         const hasExistingCode = currentPhase === 'code_generated'
             || currentPhase === 'agents_complete'
             || pipelineStatus === 'CODEGEN_COMPLETE'
@@ -165,153 +247,123 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
             return;
         }
 
-        // Cancel previous if any
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-        }
-        abortControllerRef.current = new AbortController();
-        planningSessionRef.current = true;
-
         const newMessage = { role: 'user', content: text };
-        setMessages(prev => [...prev, newMessage, { role: 'ai', content: "" }]);
-        setChatState('waiting');
+        const aiReply = isFullstackKind(config.kind)
+            ? 'Requirement saved. On the Plan tab: (1) Generate PRD → (2) UI/UX → (3) Architecture. Then click Generate Code in the header for Coding / Integration / Validator agents.\n'
+            : 'Requirement saved. Open the Plan tab and run each step: PRD → UI/UX → Design → Architecture.\n';
+        setMessages(prev => [...prev, newMessage, { role: 'ai', content: aiReply }]);
+        setChatState('idle');
         setActiveTab('Plan');
-        setPipelineStatus('PRD_RUNNING');
         setPipelineError(null);
-        // Reset plan states for a fresh requirement
-        setPlan([]);
-        setPrd('');
-        setGeneratedUIUX('');
-        setGeneratedArchitecture(null);
-        setFileTree(null);
-        setFiles({});
-        setAgents({});
-        setLogs([]);
-        setRunState(null);
-        setCurrentPhase('prd');
         setCurrentRequirement(text);
         setClarifiedRequirement('');
+        setCurrentPhase('prd');
 
         const localProjectName = projectName || ((config.kind === 'fullstack' ? 'fullstack_app_' : 'generated_app_') + Date.now());
         if (!projectName) setProjectName(localProjectName);
 
+        agentsAccumulatorRef.current = {};
+        setAgents({});
+
+        try {
+            let createdAppId = await saveAppRecordForRequirement(text, localProjectName);
+            if (createdAppId && !editId) {
+                navigate(config.editPath(createdAppId), { replace: true });
+            }
+        } catch (e) {
+            console.error('App record save failed:', e);
+            setPipelineError('Unable to save project. Please try again.');
+        }
+    };
+
+    const runPrdGeneration = async () => {
+        const text = currentRequirement?.trim();
+        if (!text) {
+            setPipelineError('Enter your app requirement in chat first.');
+            setActiveTab('Plan');
+            return;
+        }
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+        abortControllerRef.current = new AbortController();
+        planningSessionRef.current = true;
+        setIsPipelineLoading(true);
+        setChatState('waiting');
+        setActiveTab('Plan');
+        setPipelineStatus('PRD_RUNNING');
+        setPipelineError(null);
+        setPrd('');
+
         const append = (delta) => {
             setChatState('streaming');
             setMessages(prev => {
-                if (prev.length === 0) return prev;
                 const next = [...prev];
                 const lastIdx = next.map(m => m.role).lastIndexOf('ai');
-                if (lastIdx === -1) return prev;
-                next[lastIdx] = { ...next[lastIdx], content: (next[lastIdx].content || "") + delta };
+                if (lastIdx === -1) return [...prev, { role: 'ai', content: delta }];
+                next[lastIdx] = { ...next[lastIdx], content: (next[lastIdx].content || '') + delta };
                 return next;
             });
         };
 
-        const existingId = appId || editId;
-        let createdAppId = existingId || null;
-
-        const _saveAppRecord = async (projectNameToUse, attempt = 1) => {
-            const appName = (text || '').slice(0, 100) || projectNameToUse;
-            if (existingId) {
-                await api.put(`/app-builder/apps/${existingId}`, {
-                    app_name: appName,
-                    prompt: text,
-                    project_name: projectNameToUse,
-                });
-                setAppId(existingId);
-                return existingId;
-            } else {
-                const createRes = await api.post('/app-builder/apps', {
-                    app_name: appName,
-                    prompt: text,
-                    project_name: projectNameToUse,
-                    builder_kind: config.kind,
-                });
-                const createData = createRes.data;
-                if (createData.status === 'success' && createData.app?.id) {
-                    setAppId(createData.app.id);
-                    return createData.app.id;
-                }
-                throw new Error('Create did not return an app id');
-            }
-        };
+        let createdAppId = appId || editId;
+        const localProjectName = projectName || ((config.kind === 'fullstack' ? 'fullstack_app_' : 'generated_app_') + Date.now());
+        if (!projectName) setProjectName(localProjectName);
 
         try {
-            createdAppId = await _saveAppRecord(localProjectName);
-        } catch (e) {
-            console.warn('App record save failed (attempt 1):', e);
-            // Retry once with a fresh project name to avoid unique-constraint conflicts
-            try {
-                await new Promise(r => setTimeout(r, 800));
-                const retryProjectName = (config.kind === 'fullstack' ? 'fullstack_app_' : 'generated_app_') + Date.now();
-                if (!projectName) setProjectName(retryProjectName);
-                createdAppId = await _saveAppRecord(retryProjectName);
-            } catch (e2) {
-                console.error('App record save failed after retry:', e2);
-                append("⚠️ Unable to initialize your project. Please check your connection and try again.\n");
-                setPipelineStatus('ERROR');
-                setPipelineError('Unable to initialize project. Please try again.');
-                setChatState('idle');
-                return;
+            if (!createdAppId) {
+                createdAppId = await saveAppRecordForRequirement(text, localProjectName);
             }
+        } catch (e) {
+            console.error('App save before PRD:', e);
+            setPipelineStatus('PRD_FAILED');
+            setPipelineError('Unable to save project.');
+            setIsPipelineLoading(false);
+            planningSessionRef.current = false;
+            return;
         }
 
         let lastPrd = '';
         try {
-            append("Starting PRD generation...\n\n");
-
-            // Call new planning API for PRD
-            await streamPlanningStep('prd', { requirement: text, app_id: createdAppId || appId, model_name: selectedModel || undefined }, append, (data) => {
+            append('\nStarting PRD generation (Planner Agent)…\n\n');
+            await streamPlanningStep('prd', {
+                requirement: text,
+                app_id: createdAppId || appId,
+                model_name: selectedModel || undefined,
+            }, append, (data) => {
                 if (data.event === 'prd_chunk') setPrd(prev => prev + (data.data || ''));
                 if (data.event === 'prd_complete') {
                     lastPrd = data.data || '';
                     setPrd(lastPrd);
                 }
-                // frontend_only track: capture structured PRDPlan JSON
                 if (data.event === 'prd_json' && data.data) {
                     setPlanJson(prev => {
                         const next = { ...(prev || {}), prd: data.data };
-                        // also learn the track from the prd_json signal
                         setAppTrack('json_app');
                         return next;
                     });
                 }
             });
 
-            if (!lastPrd.trim()) {
-                throw new Error('PRD generation returned empty content.');
-            }
+            if (!lastPrd.trim()) throw new Error('PRD generation returned empty content.');
 
-            append("PRD complete. Please review and proceed to UI/UX Design.\n");
+            append('PRD complete. Review it here, then click **Next: Generate UI/UX Design**.\n');
             setPipelineStatus('PRD_COMPLETE');
-            setPipelineError(null);
-
-            // Update app in DB with PRD
+            setCurrentPhase('prd_complete');
             if (createdAppId && lastPrd) {
-                try {
-                    await api.put(`/app-builder/apps/${createdAppId}`, { prd: lastPrd });
-                } catch (e) {
-                    console.error('Error updating app with PRD:', e);
-                }
+                await api.put(`/app-builder/apps/${createdAppId}`, { prd: lastPrd }).catch(() => {});
             }
-
-            if (createdAppId && !editId) {
-                navigate(config.editPath(createdAppId), { replace: true });
-            }
-
         } catch (error) {
             if (error.name === 'AbortError') {
-                append("\n🛑 Process stopped by user.\n");
+                append('\n🛑 Process stopped by user.\n');
                 setPipelineStatus('PRD_FAILED');
                 setPipelineError('Stopped by user');
             } else {
-                console.error('Error in PRD generation:', error);
                 append(`\nError: ${getFriendlyError(error)}\n`);
                 setPipelineStatus('PRD_FAILED');
                 setPipelineError(getFriendlyError(error));
             }
         } finally {
             setChatState('idle');
+            setIsPipelineLoading(false);
             abortControllerRef.current = null;
             planningSessionRef.current = false;
         }
@@ -534,7 +586,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         if (projectName && hasGeneratedCode) {
             handleUpdateCode(text);
         } else {
-            handleStartPlanning(text);
+            handleCaptureRequirement(text);
         }
     };
 
@@ -589,7 +641,11 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
             const response = await apiFetch(`/planning/${step}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...body, builder_kind: config.kind }),
+                body: JSON.stringify({
+                    ...body,
+                    builder_kind: config.kind,
+                    ...(isFullstackKind(config.kind) && selectedDomain ? { domain: selectedDomain } : {}),
+                }),
                 signal: abortControllerRef.current?.signal
             });
 
@@ -618,6 +674,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     }
                     if (data.event === 'start') append(`${data.message}\n`);
                     if (data.event === 'error') throw new Error(data.message || `Failed to generate ${step}`);
+                    if (['agent_start', 'agent_complete', 'agent_progress', 'agent_error'].includes(data.event)) {
+                        pushAgentEvent(data, { focusAgentsTab: false });
+                    }
                     onData(data);
                 }
             }
@@ -626,67 +685,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         }
     };
 
-    const handleRegeneratePrd = async () => {
-        if (!currentRequirement?.trim()) return;
-        if (abortControllerRef.current) abortControllerRef.current.abort();
-        abortControllerRef.current = new AbortController();
-        planningSessionRef.current = true;
-        setIsPipelineLoading(true);
-        setChatState('waiting');
-        setPipelineStatus('PRD_RUNNING');
-        setPipelineError(null);
-        setPrd('');
-        setActiveTab('Plan');
+    const handleRegeneratePrd = () => runPrdGeneration();
 
-        const append = (delta) => {
-            setChatState('streaming');
-            setMessages(prev => {
-                const next = [...prev];
-                const lastIdx = next.map(m => m.role).lastIndexOf('ai');
-                if (lastIdx === -1) return [...prev, { role: 'ai', content: delta }];
-                next[lastIdx] = { ...next[lastIdx], content: (next[lastIdx].content || '') + delta };
-                return next;
-            });
-        };
-
-        let lastPrd = '';
-        try {
-            append('\nRegenerating PRD (keeping your UI/UX and architecture)...\n\n');
-            await streamPlanningStep('prd', {
-                requirement: currentRequirement,
-                app_id: appId,
-                model_name: selectedModel || undefined,
-            }, append, (data) => {
-                if (data.event === 'prd_chunk') setPrd(prev => prev + (data.data || ''));
-                if (data.event === 'prd_complete') {
-                    lastPrd = data.data || '';
-                    setPrd(lastPrd);
-                }
-                if (data.event === 'prd_json' && data.data) {
-                    setPlanJson(prev => {
-                        const next = { ...(prev || {}), prd: data.data };
-                        return next;
-                    });
-                }
-            });
-            append('PRD updated. Your UI/UX design is unchanged — proceed to Architecture or regenerate code.\n');
-            setPipelineStatus('PRD_COMPLETE');
-            setPipelineError(null);
-            if (lastPrd) updateAppInDb({ prd: lastPrd });
-        } catch (e) {
-            if (e.name === 'AbortError') append('\n🛑 Stopped by user.\n');
-            else {
-                append(`Error: ${getFriendlyError(e)}\n`);
-                setPipelineStatus('PRD_FAILED');
-                setPipelineError(getFriendlyError(e));
-            }
-        } finally {
-            setChatState('idle');
-            setIsPipelineLoading(false);
-            abortControllerRef.current = null;
-            planningSessionRef.current = false;
-        }
-    };
+    const handleGeneratePrd = () => runPrdGeneration();
 
     const runDesignSystemGeneration = async (append, uiuxOverride) => {
         let styleResult = null;
@@ -733,9 +734,15 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
             setActiveTab('Plan');
             return;
         }
+        if (!prd?.trim()) {
+            setPipelineError('Complete PRD (step 1) before UI/UX.');
+            setActiveTab('Plan');
+            return;
+        }
         if (abortControllerRef.current) abortControllerRef.current.abort();
         abortControllerRef.current = new AbortController();
         setIsPipelineLoading(true);
+        setActiveTab('Plan');
         setGeneratedUIUX('');
         const append = (delta) => {
             setMessages(prev => {
@@ -820,9 +827,15 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
     const [streamingArchitectureText, setStreamingArchitectureText] = useState('');
 
     const handleGenerateArch = async () => {
+        if (!generatedUIUX?.trim()) {
+            setPipelineError('Complete UI/UX (step 2) before architecture.');
+            setActiveTab('Plan');
+            return;
+        }
         if (abortControllerRef.current) abortControllerRef.current.abort();
         abortControllerRef.current = new AbortController();
         setIsPipelineLoading(true);
+        setActiveTab('Plan');
         setStreamingArchitectureText('');
         setGeneratedArchitecture(null);
 
@@ -944,6 +957,10 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         setPipelineError(null);
         setActiveTab('Build');
         setActiveBuildTab('Multi Agents');
+        agentsAccumulatorRef.current = isFullstackKind(config.kind)
+            ? seedProductionCodegenPipeline()
+            : { ...agentsAccumulatorRef.current, ...seedCodegenAgentPipeline() };
+        setAgents(agentsAccumulatorRef.current);
 
         const appendAi = (delta) => {
             setMessages(prev => {
@@ -1035,7 +1052,15 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     appIdRef.current = app.id;
                     // Restore frontend-only track state
                     if (app.track) setAppTrack(app.track);
-                    if (app.plan_json) setPlanJson(app.plan_json);
+                    if (app.plan_json) {
+                        setPlanJson(app.plan_json);
+                        const savedDomain = app.plan_json?.blueprint?.selected_domain
+                            || app.plan_json?.blueprint?.domain
+                            || app.plan_json?.selected_domain;
+                        if (savedDomain && isFullstackKind(config.kind)) {
+                            setSelectedDomain(savedDomain);
+                        }
+                    }
                     const normalizedPipeline = normalizeStalePipelineStatus(app.pipeline_status);
                     setPipelineStatus(normalizedPipeline);
                     if (normalizedPipeline !== app.pipeline_status) {
@@ -1391,7 +1416,10 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
 
     const executeCodegenWithWebSocket = async (requirement, plan, architecture, project_name, prdText, uiuxText, appendAi) => {
         return new Promise((resolve, reject) => {
-            agentsAccumulatorRef.current = {};
+            agentsAccumulatorRef.current = isFullstackKind(config.kind)
+                ? seedProductionCodegenPipeline()
+                : { ...agentsAccumulatorRef.current, ...seedCodegenAgentPipeline() };
+            setAgents(agentsAccumulatorRef.current);
             let settled = false;
             let codegenDone = false;
             const sessionId = `session_${Date.now()}`;
@@ -1423,7 +1451,19 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     design_tokens: designTokens || undefined,
                     builder_kind: config.kind,
                     // Frontend-only track: pass structured planning contracts
-                    plan_json: planJson || undefined,
+                    plan_json: (() => {
+                        if (!isFullstackKind(config.kind)) return planJson || undefined;
+                        const base = planJson || {};
+                        return {
+                            ...base,
+                            blueprint: {
+                                ...((base.blueprint) || {}),
+                                selected_domain: selectedDomain,
+                                domain: selectedDomain,
+                            },
+                        };
+                    })(),
+                    domain: isFullstackKind(config.kind) ? selectedDomain : undefined,
                     resume_stage: undefined, // set by retry handler if needed
                 })));
             };
@@ -1446,39 +1486,11 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                         appendAi(`\nApp definition ready (${pageCount} page${pageCount === 1 ? '' : 's'}) — see Architecture tab → Structured Plan.\n`);
                     }
 
-                    const codegenAgentLabel = (agentId) => {
-                        const labels = {
-                            catalog_agent: 'Catalog & Domain',
-                            planning_agent: 'Planning',
-                            app_definition_agent: 'App Definition',
-                            theme_agent: 'Theme',
-                            mock_data_agent: 'Mock Data',
-                            template_agent: 'Template',
-                            code_generator_agent: 'Code Generator',
-                            frontend_agent: 'Frontend',
-                            backend_agent: 'Backend',
-                            integration_agent: 'Integration',
-                            validation_agent: 'Validation',
-                            build_verify_agent: 'Build Verify',
-                        };
-                        return labels[agentId] || (agentId || 'Agent').replace(/_/g, ' ');
-                    };
-
                     if (data.event === 'agent_start') {
+                        pushAgentEvent(data, { focusAgentsTab: true });
                         if (data.agent) {
-                            appendAi(`\n▶ ${codegenAgentLabel(data.agent)}: ${data.message}\n`);
+                            appendAi(`\n▶ ${formatPipelineAgentName(data.agent)}: ${data.message}\n`);
                         }
-                        const next = {
-                            ...agentsAccumulatorRef.current,
-                            [data.agent]: {
-                                status: 'running',
-                                message: data.message,
-                                progress: [{ type: 'start', text: data.message, timestamp: Date.now() }],
-                                started_at: Date.now()
-                            }
-                        };
-                        agentsAccumulatorRef.current = next;
-                        setAgents(next);
                     }
 
                     const appendVerifyAgentProgress = (agentName, message, type = 'progress') => {
@@ -1502,37 +1514,27 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     };
 
                     const verifyAgentFromEvent = (eventName) => {
-                        if (String(eventName || '').startsWith('backend_')) return 'backend_verify_agent';
-                        if (String(eventName || '').startsWith('build_')) return 'build_verify_agent';
+                        if (String(eventName || '').startsWith('backend_')) return 'integration_agent';
+                        if (String(eventName || '').startsWith('build_')) return 'validator_agent';
                         return null;
                     };
 
                     if (data.event === 'agent_progress') {
+                        pushAgentEvent(data, { focusAgentsTab: false });
                         appendVerifyAgentProgress(data.agent, data.message);
                         appendAi(`  ${data.message}\n`);
                     }
 
                     if (data.event === 'agent_complete') {
-                        const prev = agentsAccumulatorRef.current;
-                        const next = {
-                            ...prev,
-                            [data.agent]: {
-                                ...prev[data.agent],
-                                status: 'complete',
-                                message: data.message,
-                                data: data.data,
-                                progress: [
-                                    ...(prev[data.agent]?.progress || []),
-                                    { type: 'complete', text: data.message, timestamp: Date.now() }
-                                ],
-                                completed_at: Date.now()
-                            }
-                        };
-                        agentsAccumulatorRef.current = next;
-                        setAgents(next);
+                        pushAgentEvent(data, { focusAgentsTab: false });
                         if (data.agent) {
-                            appendAi(`\n✓ ${codegenAgentLabel(data.agent)}: ${data.message}\n`);
+                            appendAi(`\n✓ ${formatPipelineAgentName(data.agent)}: ${data.message}\n`);
                         }
+                    }
+
+                    if (data.event === 'agent_error') {
+                        pushAgentEvent(data, { focusAgentsTab: false });
+                        appendAi(`\n⚠ ${formatPipelineAgentName(data.agent)}: ${data.message || data.error}\n`);
                     }
 
                     const verifyEvents = [
@@ -1662,7 +1664,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
     const handlePipelineRetry = useCallback(() => {
         if (!pipelineStatus && buildStatus !== 'BUILD_FAILED') return;
         if (pipelineStatus === 'PRD_FAILED') {
-            handleStartPlanning(currentRequirement);
+            runPrdGeneration();
         } else if (pipelineStatus === 'UIUX_FAILED') {
             handleGenerateUIUX();
         } else if (pipelineStatus === 'STYLE_FAILED') {
@@ -1787,6 +1789,12 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     title={config.chatTitle}
                     updateTitle={config.chatUpdateTitle}
                     welcomeMessage={config.chatWelcome}
+                    showDomainSelector={isFullstackKind(config.kind)}
+                    selectedDomain={selectedDomain}
+                    onDomainChange={(domain) => {
+                        setSelectedDomain(domain);
+                        persistSelectedDomain(domain);
+                    }}
                 />
                 <TabPanel
                     plan={plan}
@@ -1810,6 +1818,8 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     onStartCodegen={handleStartCodegen}
                     onRestartCodegen={handleRestartCodegen}
                     onRegeneratePrd={handleRegeneratePrd}
+                    onGeneratePrd={handleGeneratePrd}
+                    requirementReady={!!currentRequirement?.trim()}
                     onRegeneratePlan={handleGeneratePlan}
                     onRegenerateAgents={handleCreateAgents}
                     isLoading={isPipelineLoading}
@@ -1841,6 +1851,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     builderKind={config.kind}
                     planJson={planJson}
                     appTrack={appTrack}
+                    selectedDomain={isFullstackKind(config.kind) ? selectedDomain : null}
                 />
             </div>
         </div>

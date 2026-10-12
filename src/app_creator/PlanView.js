@@ -8,6 +8,7 @@ import {
     IoStopCircleOutline,
 } from './AppBuilderIcons';
 import { PIPELINE_STATE_LABELS } from './builderConfig';
+import { getAgenticDomainLabel } from './agenticDomains';
 
 const PlanView = ({
     plan,
@@ -21,6 +22,8 @@ const PlanView = ({
     designTokens,
     designSystemMd,
     onRegeneratePrd,
+    onGeneratePrd,
+    requirementReady = false,
     onRegeneratePlan,
     isLoading,
     streamingArchitectureText,
@@ -31,6 +34,7 @@ const PlanView = ({
     builderKind = 'app',
     planJson = null,
     appTrack = null,
+    selectedDomain = null,
 }) => {
     const [activeSection, setActiveSection] = useState('prd');
 
@@ -382,7 +386,11 @@ const PlanView = ({
                 prdLoading ?
                     <LoadingState text="Generating comprehensive requirements..." /> :
                     <EmptyState
-                        message="Please enter your app requirements in the chat to start."
+                        message={requirementReady
+                            ? 'Your requirement is saved. Run step 1 to generate the PRD (Planner Agent).'
+                            : 'Enter your app requirements in the chat, then return here to start step 1.'}
+                        action={requirementReady ? (onGeneratePrd || onRegeneratePrd) : undefined}
+                        actionText="Generate PRD"
                     />
             )}
         </div>
@@ -861,6 +869,7 @@ const PlanView = ({
         <div style={styles.container}>
             {/* Tab Header */}
             <div style={styles.tabHeader}>
+                <div style={{ display: 'flex', flex: 1, minWidth: 0 }}>
                 {sections.map((s) => {
                     const isActive = activeSection === s.id;
                     const SectionIcon = s.icon;
@@ -877,6 +886,23 @@ const PlanView = ({
                         </div>
                     );
                 })}
+                </div>
+                {builderKind === 'fullstack' && selectedDomain && (
+                    <div style={{
+                        marginRight: '12px',
+                        alignSelf: 'center',
+                        flexShrink: 0,
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#4338ca',
+                        background: '#eef2ff',
+                        border: '1px solid #c7d2fe',
+                        borderRadius: '999px',
+                        padding: '6px 12px',
+                    }}>
+                        Domain: {getAgenticDomainLabel(selectedDomain)}
+                    </div>
+                )}
             </div>
 
             {/* Content Area */}

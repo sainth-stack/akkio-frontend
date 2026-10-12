@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ModelSelector from './ModelSelector';
+import DomainSelector from './DomainSelector';
 import SamplePromptTemplates from './SamplePromptTemplates';
 import { IconBadge, IoSend, IoSparkles, FaPenToSquare } from './AppBuilderIcons';
 
@@ -12,6 +13,9 @@ const ChatInterface = ({
     isUpdateCodeInProgress,
     selectedModel,
     onModelChange,
+    showDomainSelector,
+    selectedDomain,
+    onDomainChange,
     title,
     updateTitle,
     welcomeMessage,
@@ -70,6 +74,14 @@ const ChatInterface = ({
             </div>
 
             <div className="chat-sidebar-tools">
+                {showDomainSelector && (
+                    <DomainSelector
+                        value={selectedDomain}
+                        onChange={onDomainChange}
+                        disabled={inputDisabled}
+                        required
+                    />
+                )}
                 <ModelSelector
                     value={selectedModel}
                     onChange={onModelChange}

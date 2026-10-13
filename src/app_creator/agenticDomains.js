@@ -5,14 +5,14 @@ export const AGENTIC_DOMAIN_MANUFACTURING = 'manufacturing';
 
 export const AGENTIC_DOMAINS = [
     {
-        id: AGENTIC_DOMAIN_RETAIL,
-        label: 'Retail (E-Commerce)',
-        description: 'Online store, catalog, cart, orders, customers',
-    },
-    {
         id: AGENTIC_DOMAIN_MANUFACTURING,
         label: 'Manufacturing',
         description: 'Production, OEE, quality, work orders, plant KPIs',
+    },
+    {
+        id: AGENTIC_DOMAIN_RETAIL,
+        label: 'Retail (E-Commerce)',
+        description: 'Online store, catalog, cart, orders, customers',
     },
 ];
 

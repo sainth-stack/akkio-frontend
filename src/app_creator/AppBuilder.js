@@ -6,7 +6,7 @@ import TabPanel from './TabPanel';
 import './AppBuilder.css';
 import api, { apiFetch, wsUrl, wsAuthPayload } from '../utils/api';
 import { BUILDER_KIND_APP, getBuilderConfig, isFullstackKind } from './builderConfig';
-import { AGENTIC_DOMAIN_RETAIL } from './agenticDomains';
+import { AGENTIC_DOMAIN_MANUFACTURING } from './agenticDomains';
 import { getFriendlyError, getFriendlyPipelineState } from './utils/errorMessages';
 import {
     formatPipelineAgentName,
@@ -76,7 +76,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
     const [chatState, setChatState] = useState('idle');
     const [selectedModel, setSelectedModel] = useState('');
     const [selectedDomain, setSelectedDomain] = useState(
-        () => (isFullstackKind(builderKind) ? AGENTIC_DOMAIN_RETAIL : '')
+        () => (isFullstackKind(builderKind) ? AGENTIC_DOMAIN_MANUFACTURING : '')
     );
     const [designTokens, setDesignTokens] = useState(null);
     const [designSystemMd, setDesignSystemMd] = useState('');
@@ -1250,7 +1250,14 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         if (!projectName) return;
         try {
             const response = await apiFetch(`/app-builder/projects/${projectName}/sample-data.xlsx`);
-            if (!response.ok) throw new Error('Failed to download sample data');
+            if (!response.ok) {
+                let detail = 'Failed to download sample data';
+                try {
+                    const err = await response.json();
+                    if (err?.detail) detail = String(err.detail);
+                } catch (_) { /* blob */ }
+                throw new Error(detail);
+            }
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');

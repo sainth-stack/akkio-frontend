@@ -441,7 +441,7 @@ const DeploymentView = ({ projectName, appId }) => {
                                 : isLive
                                     ? 'Your app is live and ready to share'
                                     : isLocalPreview
-                                        ? 'Build succeeded — deploy to get your public URL'
+                                        ? 'Preview is ready — click Deploy to publish your live URL'
                                         : 'Deploy your generated app and get a live URL'}
                         </p>
                     </div>
@@ -549,7 +549,7 @@ const DeploymentView = ({ projectName, appId }) => {
                         setIsRunningChecks(true);
                         setChecksOutput('Running checks…');
                         try {
-                            const resp = await api.post('/api/test-suite/run-checks', {
+                            const resp = await api.post('/test-suite/run-checks', {
                                 project_name: projectName,
                                 app_id: appId,
                             });

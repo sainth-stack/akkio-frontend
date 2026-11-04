@@ -4,7 +4,14 @@ import { akkiourl } from './const';
 const api = axios.create({
   baseURL: akkiourl,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 60000,
 });
+
+export function isNetworkError(error) {
+  if (!error) return false;
+  if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') return true;
+  return !error.response && Boolean(error.request);
+}
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
@@ -20,11 +27,17 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url || '';
+    const skipRedirect =
+      error.config?.skipAuthRedirect ||
+      url.includes('/usage') ||
+      url.includes('/health');
+
+    if (error.response?.status === 401 && !skipRedirect) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
       localStorage.removeItem('email');
-      if (window.location.pathname !== '/login') {
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
         window.location.href = '/login';
       }
     }

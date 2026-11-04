@@ -8,7 +8,7 @@ import './styles.css'
 import { useNavigate } from "react-router-dom";
 import { message } from "antd";
 import { GoogleLogin } from "@react-oauth/google";
-import api from "../../utils/api";
+import api, { isNetworkError } from "../../utils/api";
 import { clearAuthStorage } from "../../utils/auth";
 
 export const Login = () => {
@@ -45,7 +45,11 @@ export const Login = () => {
       navigate('/welcome');
     } catch (error) {
       console.error('Login error:', error);
-      message.error('Invalid email or password');
+      if (isNetworkError(error)) {
+        message.error('Cannot reach the API server (port 8000). Check that the backend is running and firewall allows port 8000.');
+      } else {
+        message.error('Invalid email or password');
+      }
     } finally {
       setLoading(false);
     }

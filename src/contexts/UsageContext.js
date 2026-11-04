@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import api from '../utils/api';
+import api, { getAccessToken } from '../utils/api';
 
 const UsageContext = createContext(null);
 
@@ -11,8 +11,12 @@ export function UsageProvider({ children }) {
   });
 
   const loadUsage = async () => {
+    if (!getAccessToken()) {
+      setUsage((prev) => ({ ...prev, loading: false }));
+      return;
+    }
     try {
-      const resp = await api.get('/usage');
+      const resp = await api.get('/usage', { skipAuthRedirect: true });
       const data = resp.data;
       if (data) {
         setUsage({
@@ -22,7 +26,9 @@ export function UsageProvider({ children }) {
         });
       }
     } catch (e) {
-      console.error('Error loading workspace usage:', e);
+      if (e.response?.status !== 401) {
+        console.warn('Usage unavailable (API may be down):', e.message || e);
+      }
       setUsage((prev) => ({ ...prev, loading: false }));
     }
   };

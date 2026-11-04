@@ -4,11 +4,13 @@ import Sidebar from "../components/Sidebar";
 import './style.css'
 import { Outlet, Navigate, useLocation } from "react-router-dom";
 import { isAuthenticated, hasAdminAccess, hasPermission } from "../utils/auth";
-import { refreshCurrentUser } from "../utils/api";
+import { refreshCurrentUser, isNetworkError } from "../utils/api";
+import Spinner from "react-bootstrap/Spinner";
 
 export function AdminLayout() {
   const location = useLocation();
   const [ready, setReady] = useState(false);
+  const [apiOffline, setApiOffline] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -19,8 +21,14 @@ export function AdminLayout() {
       }
       try {
         await refreshCurrentUser();
+        if (!cancelled) setApiOffline(false);
       } catch (e) {
-        console.warn('Could not refresh user profile', e);
+        if (isNetworkError(e)) {
+          console.warn('API unreachable; using cached session', e.message || e);
+          if (!cancelled) setApiOffline(true);
+        } else {
+          console.warn('Could not refresh user profile', e);
+        }
       }
       if (!cancelled) setReady(true);
     })();
@@ -28,7 +36,11 @@ export function AdminLayout() {
   }, []);
 
   if (!ready) {
-    return null;
+    return (
+      <div className="d-flex align-items-center justify-content-center vh-100 bg-light">
+        <Spinner animation="border" role="status" />
+      </div>
+    );
   }
 
   if (!isAuthenticated()) {
@@ -57,6 +69,14 @@ export function AdminLayout() {
   return (
     <div className="row p-0 m-0">
       <div className="col-lg-12 col-md-12 col-sm-12 col-xs-12 p-0 m-0 bg-light">
+        {apiOffline ? (
+          <div
+            className="px-3 py-2 text-center small"
+            style={{ background: '#fef3c7', color: '#92400e', borderBottom: '1px solid #fcd34d' }}
+          >
+            API server unreachable (port 8000). Shell UI works; login, builder, and previews need the backend running.
+          </div>
+        ) : null}
         <Navbar />
         <div className="d-flex justify-content-between">
           <div>

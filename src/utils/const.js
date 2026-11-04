@@ -1,4 +1,26 @@
-export const akkiourl = `${(import.meta.env.VITE_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')}/api`;
+/** API origin (no trailing slash). Uses VITE_BASE_URL unless the UI is opened by IP/hostname while env still points at localhost. */
+export function resolveApiOrigin() {
+  const envUrl = (import.meta.env.VITE_BASE_URL || '').replace(/\/$/, '');
+  if (typeof window === 'undefined') {
+    return envUrl || 'http://localhost:8000';
+  }
+  const { protocol, hostname } = window.location;
+  const local = new Set(['localhost', '127.0.0.1', '[::1]']);
+  let envHost = '';
+  if (envUrl) {
+    try {
+      envHost = new URL(envUrl).hostname;
+    } catch {
+      envHost = '';
+    }
+  }
+  if (!envUrl || (local.has(envHost) && !local.has(hostname))) {
+    return `${protocol}//${hostname}:8000`;
+  }
+  return envUrl;
+}
+
+export const akkiourl = `${resolveApiOrigin()}/api`;
 export function getFinalData(uniqueArr, isDate, length) {
   // Add early return if input array is empty or undefined
   if (!uniqueArr || uniqueArr.length === 0) {

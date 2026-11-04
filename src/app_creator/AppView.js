@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import Spinner from 'react-bootstrap/Spinner';
 import { getFriendlyError } from './utils/errorMessages';
@@ -28,7 +28,24 @@ const AppView = ({
     };
 
     const [showBuildLog, setShowBuildLog] = useState(false);
+    const [previewBlocked, setPreviewBlocked] = useState(false);
+    const previewLoadedRef = useRef(false);
     const iframeSrc = previewUrlWithAuth();
+
+    useEffect(() => {
+        if (!iframeSrc) return undefined;
+        previewLoadedRef.current = false;
+        setPreviewBlocked(false);
+        const t = window.setTimeout(() => {
+            if (!previewLoadedRef.current) setPreviewBlocked(true);
+        }, 12000);
+        return () => window.clearTimeout(t);
+    }, [iframeSrc, appRefreshKey]);
+
+    const onIframeLoad = () => {
+        previewLoadedRef.current = true;
+        setPreviewBlocked(false);
+    };
     if (!projectName) {
         return (
             <div style={{ padding: 20, color: '#666' }}>
@@ -51,11 +68,21 @@ const AppView = ({
                         </a>
                     </div>
                 </div>
+                {previewBlocked ? (
+                    <div
+                        className="px-3 py-2 small"
+                        style={{ background: '#fef3c7', color: '#92400e', borderBottom: '1px solid #fcd34d' }}
+                    >
+                        Preview may not have loaded (port 8000 unreachable or asset still building). Use{' '}
+                        <strong>Open in new tab</strong> or confirm the API on port 8000 is running and firewall allows it.
+                    </div>
+                ) : null}
                 <iframe
                     key={appRefreshKey}
                     title="Generated App"
                     src={iframeSrc}
                     className="app-iframe"
+                    onLoad={onIframeLoad}
                 />
             </div>
         );

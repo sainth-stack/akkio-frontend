@@ -3,11 +3,13 @@
  */
 import { AGENTIC_DOMAIN_SAP } from '../agenticDomains';
 
-export const SAP_PROMPT_STEP1 = `Create my SAP Similarity Tickets dashboard.
+export const SAP_PROMPT_STEP1 = `Build my SAP Similarity Tickets app with one screen only: Dashboard.
 
-Include KPI cards for ticket volume and a Community-style list where I can search tickets.
+On the dashboard show KPIs for tickets and the full Community ticket list (searchable).
 
-Seed 10 example tickets for now. Add the chat assistant in the app — we will load real SAP context in the next step.`;
+Seed 10 tickets. Use the floating chat assistant — no extra pages like Predict or Ticket List.
+
+We will load SAP Community RAG in step 2.`;
 
 export const SAP_PROMPT_STEP2 = `Step 2 — load SAP ticket data and context.
 

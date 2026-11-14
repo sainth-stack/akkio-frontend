@@ -3,7 +3,7 @@ import ChatSidebarSection from './ChatSidebarSection';
 import { AGENTIC_DOMAINS, getAgenticDomainLabel } from './agenticDomains';
 
 /**
- * Required for Agentic Builder — pick retail vs manufacturing before describing the app.
+ * Required for Agentic Builder — pick domain before describing the app.
  */
 const DomainSelector = ({ value, onChange, disabled, required }) => {
     const summary = value ? getAgenticDomainLabel(value) : (required ? 'Required' : 'Not set');
@@ -16,7 +16,7 @@ const DomainSelector = ({ value, onChange, disabled, required }) => {
             className="domain-selector-section"
         >
             <p className="domain-selector-hint">
-                Choose the industry template. Prompts outside this domain (e.g. task manager) will be rejected.
+                SAP uses two prompts: Step 1 (dashboard) then Generate Code; Step 2 (RAG) in chat after build.
             </p>
             <select
                 className="domain-selector-select"

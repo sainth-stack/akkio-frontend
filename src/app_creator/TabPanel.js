@@ -104,6 +104,7 @@ const TabPanel = ({
                             agents={agents}
                             onRegenerate={onRegenerateAgents}
                             isLoading={isLoading}
+                            selectedDomain={selectedDomain}
                         />
                     );
                 case 'Code':

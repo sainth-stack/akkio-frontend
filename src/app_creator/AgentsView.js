@@ -5,9 +5,11 @@ import { formatPipelineAgentName, sortAgentEntries } from './agentPipeline';
 const AgentsView = ({
     agents,
     onRegenerate,
-    isLoading
+    isLoading,
+    selectedDomain,
 }) => {
-    const entries = sortAgentEntries(Object.entries(agents || {}));
+    const sapDomain = selectedDomain === 'sap';
+    const entries = sortAgentEntries(Object.entries(agents || {}), { sapDomain });
     const [showDetails, setShowDetails] = useState({});
 
     if (!entries.length) {
@@ -84,6 +86,10 @@ const AgentsView = ({
             'integration_agent': 'Integration Agent',
             'validator_agent': 'Validator Agent',
             'app_definition_agent': 'App Definition Agent',
+            'sap_dashboard_agent': 'Dashboard Agent',
+            'sap_data_definition_agent': 'Data Definition Agent',
+            'sap_rag_agent': 'RAG Agent',
+            'sap_integration_agent': 'Integration Agent',
             'app_definition': 'App Definition Agent',
             'template_agent': 'Template Binding Agent',
             'catalog_agent': 'Catalog & Domain Agent',

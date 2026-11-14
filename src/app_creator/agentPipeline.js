@@ -1,6 +1,13 @@
 /**
  * Canonical Agentic Builder pipeline — IDs match backend agent_pipeline_events.py
  */
+export const SAP_AGENT_PIPELINE_ORDER = [
+    'sap_dashboard_agent',
+    'sap_data_definition_agent',
+    'sap_rag_agent',
+    'sap_integration_agent',
+];
+
 export const AGENT_PIPELINE_ORDER = [
     'planner_agent',
     'styling_agent',
@@ -21,6 +28,10 @@ export const AGENT_PIPELINE_ORDER = [
 ];
 
 export const AGENT_DISPLAY_NAMES = {
+    sap_dashboard_agent: 'Dashboard Agent',
+    sap_data_definition_agent: 'Data Definition Agent',
+    sap_rag_agent: 'RAG Agent',
+    sap_integration_agent: 'Integration Agent',
     planner_agent: 'Planner Agent',
     styling_agent: 'Styling Agent',
     app_definition_agent: 'App Definition Agent',
@@ -49,8 +60,8 @@ export function formatPipelineAgentName(agentId) {
         .join(' ');
 }
 
-export function sortAgentEntries(entries) {
-    const order = AGENT_PIPELINE_ORDER;
+export function sortAgentEntries(entries, { sapDomain = false } = {}) {
+    const order = sapDomain ? SAP_AGENT_PIPELINE_ORDER : AGENT_PIPELINE_ORDER;
     return [...entries].sort(([a], [b]) => {
         const ia = order.indexOf(a);
         const ib = order.indexOf(b);
@@ -176,5 +187,32 @@ export function seedCodegenAgentPipeline() {
 /** Full production pipeline (Agentic / json_app track). */
 export function seedProductionCodegenPipeline() {
     return { ...PRODUCTION_AGENT_SEED };
+}
+
+const SAP_AGENT_SEED = {
+    sap_dashboard_agent: {
+        status: 'pending',
+        message: 'Step 1 — KPIs + Community ticket feed.',
+        progress: [],
+    },
+    sap_data_definition_agent: {
+        status: 'pending',
+        message: 'Step 1 — ticket schema and seed rows.',
+        progress: [],
+    },
+    sap_rag_agent: {
+        status: 'pending',
+        message: 'Step 2 — SAP Community search per ticket.',
+        progress: [],
+    },
+    sap_integration_agent: {
+        status: 'pending',
+        message: 'Wire data.json, chat, and routes.',
+        progress: [],
+    },
+};
+
+export function seedSapCodegenPipeline() {
+    return { ...SAP_AGENT_SEED };
 }
 

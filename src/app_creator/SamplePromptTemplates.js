@@ -1,10 +1,16 @@
 import React from 'react';
 import ChatSidebarSection from './ChatSidebarSection';
+import { AGENTIC_DOMAIN_SAP } from './agenticDomains';
 import { SAMPLE_PROMPT_TEMPLATES } from './utils/samplePromptTemplates';
+import { sapTemplatesForDomain } from './utils/sapPromptTemplates';
 import './SamplePromptTemplates.css';
 
-export default function SamplePromptTemplates({ onSelect, disabled }) {
-    const count = SAMPLE_PROMPT_TEMPLATES.length;
+export default function SamplePromptTemplates({ onSelect, disabled, selectedDomain }) {
+    const templates =
+        selectedDomain === AGENTIC_DOMAIN_SAP
+            ? sapTemplatesForDomain(AGENTIC_DOMAIN_SAP)
+            : SAMPLE_PROMPT_TEMPLATES;
+    const count = templates.length;
 
     return (
         <ChatSidebarSection
@@ -12,9 +18,13 @@ export default function SamplePromptTemplates({ onSelect, disabled }) {
             summary={`${count} samples`}
             defaultOpen={false}
         >
-            <p className="sample-prompt-templates__hint">Read the sample below, then use it in the chat input.</p>
+            <p className="sample-prompt-templates__hint">
+                {selectedDomain === AGENTIC_DOMAIN_SAP
+                    ? 'SAP: use Step 1 before Generate Code, then Step 2 in chat after the app is built.'
+                    : 'Read the sample below, then use it in the chat input.'}
+            </p>
             <div className="sample-prompt-templates__list">
-                {SAMPLE_PROMPT_TEMPLATES.map((t) => (
+                {templates.map((t) => (
                     <article key={t.id} className="sample-prompt-templates__card">
                         <header className="sample-prompt-templates__card-head">
                             <div>

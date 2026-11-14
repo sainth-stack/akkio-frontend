@@ -6,13 +6,14 @@ import TabPanel from './TabPanel';
 import './AppBuilder.css';
 import api, { apiFetch, wsUrl, wsAuthPayload } from '../utils/api';
 import { BUILDER_KIND_APP, getBuilderConfig, isFullstackKind } from './builderConfig';
-import { AGENTIC_DOMAIN_MANUFACTURING } from './agenticDomains';
+import { AGENTIC_DOMAIN_MANUFACTURING, AGENTIC_DOMAIN_SAP } from './agenticDomains';
 import { getFriendlyError, getFriendlyPipelineState } from './utils/errorMessages';
 import {
     formatPipelineAgentName,
     mergeAgentEvent,
     seedCodegenAgentPipeline,
     seedProductionCodegenPipeline,
+    seedSapCodegenPipeline,
 } from './agentPipeline';
 
 const PIPELINE_RUNNING = [
@@ -232,7 +233,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                 { role: 'user', content: text },
                 {
                     role: 'ai',
-                    content: 'Please select an App domain (Retail or Manufacturing) in the sidebar, then send your requirement again.\n',
+                    content: 'Please select an App domain (Manufacturing, Retail, or SAP) in the sidebar, then send your requirement again.\n',
                 },
             ]);
             return;
@@ -378,6 +379,11 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         setIsUpdateCodeInProgress(true);
         setActiveTab('Build');
         setActiveBuildTab('Multi Agents');
+
+        if (selectedDomain === AGENTIC_DOMAIN_SAP) {
+            agentsAccumulatorRef.current = seedSapCodegenPipeline();
+            setAgents(agentsAccumulatorRef.current);
+        }
 
         const sessionId = `session_update_${Date.now()}`;
         const socketUrl = wsUrl(`/agents/update-code-ws/${sessionId}`);
@@ -1424,7 +1430,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
     const executeCodegenWithWebSocket = async (requirement, plan, architecture, project_name, prdText, uiuxText, appendAi) => {
         return new Promise((resolve, reject) => {
             agentsAccumulatorRef.current = isFullstackKind(config.kind)
-                ? seedProductionCodegenPipeline()
+                ? (selectedDomain === AGENTIC_DOMAIN_SAP
+                    ? seedSapCodegenPipeline()
+                    : seedProductionCodegenPipeline())
                 : { ...agentsAccumulatorRef.current, ...seedCodegenAgentPipeline() };
             setAgents(agentsAccumulatorRef.current);
             let settled = false;

@@ -2,6 +2,7 @@
 
 export const AGENTIC_DOMAIN_RETAIL = 'retail';
 export const AGENTIC_DOMAIN_MANUFACTURING = 'manufacturing';
+export const AGENTIC_DOMAIN_SAP = 'sap';
 
 export const AGENTIC_DOMAINS = [
     {
@@ -13,6 +14,11 @@ export const AGENTIC_DOMAINS = [
         id: AGENTIC_DOMAIN_RETAIL,
         label: 'Retail (E-Commerce)',
         description: 'Online store, catalog, cart, orders, customers',
+    },
+    {
+        id: AGENTIC_DOMAIN_SAP,
+        label: 'SAP (Similarity Tickets)',
+        description: 'Community tickets, per-ticket RAG, KPIs, similarity assistant',
     },
 ];
 

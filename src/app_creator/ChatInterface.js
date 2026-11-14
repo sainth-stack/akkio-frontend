@@ -88,6 +88,7 @@ const ChatInterface = ({
                     disabled={inputDisabled}
                 />
                 <SamplePromptTemplates
+                    selectedDomain={selectedDomain}
                     disabled={inputDisabled}
                     onSelect={(text) => {
                         setInput(text);

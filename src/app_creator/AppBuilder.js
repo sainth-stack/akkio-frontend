@@ -15,6 +15,11 @@ import {
     seedProductionCodegenPipeline,
     seedSapCodegenPipeline,
 } from './agentPipeline';
+import {
+    definitionLooksLikeSapFromFiles,
+    textLooksLikeSapApp,
+    textLooksLikeSapStep2,
+} from './utils/sapProjectDetect';
 
 const PIPELINE_RUNNING = [
     'PRD_RUNNING', 'UIUX_RUNNING', 'STYLE_RUNNING', 'ARCHITECTURE_RUNNING', 'PLAN_RUNNING', 'CODEGEN_RUNNING',
@@ -114,6 +119,14 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
     const [buildStatus, setBuildStatus] = useState(null);
     const [buildError, setBuildError] = useState(null);
     const [buildLog, setBuildLog] = useState('');
+
+    const sapProjectActive = useMemo(
+        () =>
+            selectedDomain === AGENTIC_DOMAIN_SAP
+            || definitionLooksLikeSapFromFiles(files)
+            || textLooksLikeSapApp(currentRequirement),
+        [selectedDomain, files, currentRequirement],
+    );
 
     const updateAppInDb = useCallback(async (updates) => {
         const id = appIdRef.current;
@@ -380,7 +393,8 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         setActiveTab('Build');
         setActiveBuildTab('Multi Agents');
 
-        if (selectedDomain === AGENTIC_DOMAIN_SAP) {
+        const useSapPipeline = sapProjectActive || textLooksLikeSapStep2(text);
+        if (useSapPipeline) {
             agentsAccumulatorRef.current = seedSapCodegenPipeline();
             setAgents(agentsAccumulatorRef.current);
         }
@@ -503,20 +517,29 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                         updateAppInDb({ agents_state: next });
                     }
 
-                    const responseData = data.data;
+                    const responseData = data.data || {};
 
                     setMessages(prev => {
                         const next = [...prev];
                         const lastIdx = next.map(m => m.role).lastIndexOf('ai');
                         if (lastIdx !== -1) {
                             const filesList = (responseData.updated_files || []).map(f => `  • ${f}`).join('\n');
-                            next[lastIdx].content = `\n✅ Code updated!\n\n${responseData.analysis}\n\nFiles updated:\n${filesList || '  (none)'}\n\nRun the app again to see your changes.`;
+                            if (responseData.update_type === 'sap_rag') {
+                                next[lastIdx].content = (
+                                    `✅ Step 2 complete — SAP Community RAG loaded.\n\n`
+                                    + `${responseData.analysis || 'Ticket context refreshed.'}\n\n`
+                                    + `Files updated:\n${filesList || '  • frontend/src/mock/data.json'}\n\n`
+                                    + `Open **App View** again (or refresh the preview) to see the KPI + ticket table and richer chat answers.`
+                                );
+                            } else {
+                                next[lastIdx].content = `\n✅ Code updated!\n\n${responseData.analysis || ''}\n\nFiles updated:\n${filesList || '  (none)'}\n\nRun the app again to see your changes.`;
+                            }
                         }
                         return next;
                     });
 
                     // Evict updated files from the local cache so FileExplorer re-fetches fresh content
-                    if (responseData.updated_files && responseData.updated_files.length > 0) {
+                    if (responseData.update_type === 'sap_rag' || (responseData.updated_files && responseData.updated_files.length > 0)) {
                         setFiles(prev => {
                             const next = { ...prev };
                             responseData.updated_files.forEach(f => {
@@ -1806,6 +1829,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     welcomeMessage={config.chatWelcome}
                     showDomainSelector={isFullstackKind(config.kind)}
                     selectedDomain={selectedDomain}
+                    promptTemplatesDomain={sapProjectActive ? AGENTIC_DOMAIN_SAP : selectedDomain}
                     onDomainChange={(domain) => {
                         setSelectedDomain(domain);
                         persistSelectedDomain(domain);

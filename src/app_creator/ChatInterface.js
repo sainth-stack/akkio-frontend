@@ -15,6 +15,7 @@ const ChatInterface = ({
     onModelChange,
     showDomainSelector,
     selectedDomain,
+    promptTemplatesDomain,
     onDomainChange,
     title,
     updateTitle,
@@ -88,7 +89,7 @@ const ChatInterface = ({
                     disabled={inputDisabled}
                 />
                 <SamplePromptTemplates
-                    selectedDomain={selectedDomain}
+                    selectedDomain={promptTemplatesDomain || selectedDomain}
                     disabled={inputDisabled}
                     onSelect={(text) => {
                         setInput(text);

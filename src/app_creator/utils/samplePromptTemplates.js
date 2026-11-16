@@ -30,6 +30,16 @@ Workflows: material receipt, reorder suggestion, and PO approval (simple statuse
 Use realistic synthetic demo data on every screen by default. No login required.`,
     },
     {
+        id: 'procurement_v1',
+        title: 'Procurement & spend',
+        subtitle: 'Manufacturing procurement (3 pages + RAG, Predict, Observability)',
+        prompt: `Build a manufacturing procurement dashboard (Dashboard, Analytics, Reports)
+with RAG chat, Predict, and LLM observability to track prompts, outputs, tokens, and model cost.
+
+Use realistic synthetic demo data: purchase orders, vendors, spend, and cycle-time KPIs.
+App domain: Manufacturing. No login required.`,
+    },
+    {
         id: 'monitoring_insights_v1',
         title: 'Monitoring & insights',
         subtitle: 'Equipment / anomaly monitoring style app',

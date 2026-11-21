@@ -12,6 +12,11 @@ export function isSupplyChainContext(plan, prd, requirement = '') {
     }
     const text = parts.join(' ').toLowerCase();
     const keywords = [
+        'manufacturing inventory',
+        'manufacturing supply',
+        'manufacturing vendor',
+        'manufacturing procurement',
+        'vendor management',
         'supply chain',
         'inventory management',
         'inventory level',

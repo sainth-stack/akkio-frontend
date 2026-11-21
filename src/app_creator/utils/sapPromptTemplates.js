@@ -7,7 +7,7 @@ export const SAP_PROMPT_STEP1 = `Build SAP Similarity Tickets app with Dashboard
 
 On the dashboard show KPIs and a simple table of 10 SAP tickets (no extra charts or community panels).
 
-Seed 10 tickets. Use the app chat assistant.
+Seed 10 SAP tickets. Use the app chat assistant.
 
 We will load SAP Community RAG in step 2.`;
 

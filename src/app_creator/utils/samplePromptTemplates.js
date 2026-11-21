@@ -33,11 +33,13 @@ Use realistic synthetic demo data on every screen by default. No login required.
         id: 'procurement_v1',
         title: 'Procurement & spend',
         subtitle: 'Manufacturing procurement (3 pages + RAG, Predict, Observability)',
-        prompt: `Build a manufacturing procurement dashboard (Dashboard, Analytics, Reports)
+        prompt: `Build a manufacturing supply chain dashboard (Dashboard, Analytics, Reports)
 with RAG chat, Predict, and LLM observability to track prompts, outputs, tokens, and model cost.
 
-Use realistic synthetic demo data: purchase orders, vendors, spend, and cycle-time KPIs.
-App domain: Manufacturing. No login required.`,
+Seed realistic demo data for inventory, purchase orders, suppliers/vendors, quality, and plant performance KPIs.
+RAG chat should answer questions about quality, performance, supply, vendor management, and spend using only app data.
+Render all three pages (Dashboard, Analytics, Reports) with KPIs and charts on each.
+Include Predict and Observability. App domain: Manufacturing. No login required.`,
     },
     {
         id: 'monitoring_insights_v1',

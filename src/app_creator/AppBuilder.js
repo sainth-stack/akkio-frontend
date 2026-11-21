@@ -17,9 +17,9 @@ import {
 } from './agentPipeline';
 import {
     definitionLooksLikeSapFromFiles,
-    textLooksLikeSapApp,
     textLooksLikeSapStep2,
 } from './utils/sapProjectDetect';
+import { resolveEffectiveDomain, shouldUseSapCodegenPipeline } from './utils/domainResolve';
 
 const PIPELINE_RUNNING = [
     'PRD_RUNNING', 'UIUX_RUNNING', 'STYLE_RUNNING', 'ARCHITECTURE_RUNNING', 'PLAN_RUNNING', 'CODEGEN_RUNNING',
@@ -120,12 +120,14 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
     const [buildError, setBuildError] = useState(null);
     const [buildLog, setBuildLog] = useState('');
 
+    const effectiveDomain = useMemo(
+        () => resolveEffectiveDomain(selectedDomain, currentRequirement, prd),
+        [selectedDomain, currentRequirement, prd],
+    );
+
     const sapProjectActive = useMemo(
-        () =>
-            selectedDomain === AGENTIC_DOMAIN_SAP
-            || definitionLooksLikeSapFromFiles(files)
-            || textLooksLikeSapApp(currentRequirement),
-        [selectedDomain, files, currentRequirement],
+        () => shouldUseSapCodegenPipeline(selectedDomain, currentRequirement, prd, files),
+        [selectedDomain, currentRequirement, prd, files],
     );
 
     const updateAppInDb = useCallback(async (updates) => {
@@ -270,6 +272,11 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
         setActiveTab('Plan');
         setPipelineError(null);
         setCurrentRequirement(text);
+        const domainForPrompt = resolveEffectiveDomain(selectedDomain, text, prd);
+        if (domainForPrompt && domainForPrompt !== selectedDomain) {
+            setSelectedDomain(domainForPrompt);
+            persistSelectedDomain(domainForPrompt);
+        }
         setClarifiedRequirement('');
         setCurrentPhase('prd');
 
@@ -1452,8 +1459,9 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
 
     const executeCodegenWithWebSocket = async (requirement, plan, architecture, project_name, prdText, uiuxText, appendAi) => {
         return new Promise((resolve, reject) => {
+            const codegenDomain = resolveEffectiveDomain(selectedDomain, requirement, prdText);
             agentsAccumulatorRef.current = isFullstackKind(config.kind)
-                ? (selectedDomain === AGENTIC_DOMAIN_SAP
+                ? (codegenDomain === AGENTIC_DOMAIN_SAP
                     ? seedSapCodegenPipeline()
                     : seedProductionCodegenPipeline())
                 : { ...agentsAccumulatorRef.current, ...seedCodegenAgentPipeline() };
@@ -1496,12 +1504,22 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                             ...base,
                             blueprint: {
                                 ...((base.blueprint) || {}),
-                                selected_domain: selectedDomain,
-                                domain: selectedDomain,
+                                selected_domain: resolveEffectiveDomain(
+                                    selectedDomain,
+                                    requirement,
+                                    prdText,
+                                ),
+                                domain: resolveEffectiveDomain(
+                                    selectedDomain,
+                                    requirement,
+                                    prdText,
+                                ),
                             },
                         };
                     })(),
-                    domain: isFullstackKind(config.kind) ? selectedDomain : undefined,
+                    domain: isFullstackKind(config.kind)
+                        ? resolveEffectiveDomain(selectedDomain, requirement, prdText)
+                        : undefined,
                     resume_stage: undefined, // set by retry handler if needed
                 })));
             };
@@ -1828,8 +1846,8 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     updateTitle={config.chatUpdateTitle}
                     welcomeMessage={config.chatWelcome}
                     showDomainSelector={isFullstackKind(config.kind)}
-                    selectedDomain={selectedDomain}
-                    promptTemplatesDomain={sapProjectActive ? AGENTIC_DOMAIN_SAP : selectedDomain}
+                    selectedDomain={effectiveDomain}
+                    promptTemplatesDomain={sapProjectActive ? AGENTIC_DOMAIN_SAP : effectiveDomain}
                     onDomainChange={(domain) => {
                         setSelectedDomain(domain);
                         persistSelectedDomain(domain);
@@ -1890,7 +1908,7 @@ const AppBuilder = ({ builderKind = BUILDER_KIND_APP }) => {
                     builderKind={config.kind}
                     planJson={planJson}
                     appTrack={appTrack}
-                    selectedDomain={isFullstackKind(config.kind) ? selectedDomain : null}
+                    selectedDomain={isFullstackKind(config.kind) ? effectiveDomain : null}
                 />
             </div>
         </div>
